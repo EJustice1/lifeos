@@ -1,0 +1,116 @@
+Supabase url: https://tixxuowsywximpcsngbw.supabase.co
+
+Here is the functional feature set and usage guide for your Life Operating System, built on Vercel and Supabase.
+
+1. High-Level Goals
+
+Centralized Data Warehouse: A single source of truth for financial, physical, professional, and digital health.
+
+Split-Personality Interface: A UX designed for two distinct modes of life: Doing (Mobile) and Analyzing (Desktop).
+
+Growth Mindset: Visualizations focused on upward trends, volume accumulation, and consistency streaks rather than punitive metrics.
+
+Correlative Insights: Ability to see how behavior in one area (e.g., phone usage) affects performance in another (e.g., gym consistency).
+
+2. Usage Patterns
+
+Mobile Experience (Data Entry):
+
+Acts as a collection of "Mini-Apps" or bookmarks on the home screen.
+
+Optimized for speed: Large buttons, auto-calculations, and simple sliders.
+
+Context-aware: Specific URLs for specific environments (e.g., opening the Gym module only when at the gym).
+
+Desktop Experience (Analytics):
+
+Acts as "Mission Control."
+
+High-density dashboards, complex charts, and historical data review.
+
+Used for weekly reviews and long-term planning.
+
+3. Feature Modules
+A. Financial Health
+
+Goal: Track wealth accumulation and net worth growth.
+
+Features:
+
+Net Worth Dashboard: A stacked visualization showing the ratio of Cash vs. Investments over time.
+
+Hybrid Data Sync: API integrations for automatic bank syncing, with a manual override interface for specific assets.
+
+Income vs. Expense: Monthly cash flow tracking to monitor savings rate.
+
+Asset Breakdown: Granular view of specific stock portfolios vs. liquid cash.
+
+B. Gym & Physical Health
+
+Goal: Consistency and progressive overload (Volume/Strength).
+
+Features:
+
+Workout Logger: Mobile-optimized interface to log Sets, Reps, and Weight in real-time.
+
+Volume Calculator: Automatic calculation of total tonnage lifted per session.
+
+PR Tracker: Historical log of "Big Lift" maximums (Bench, Squat, Deadlift, etc.).
+
+History Lookup: "Last time you did this" reference visible during data entry.
+
+Consistency Streak: Binary tracking of workout days vs. rest days.
+
+C. Career & Student Life (CS Major)
+
+Goal: Academic success and professional skill acquisition.
+
+Features:
+
+Dynamic "Buckets": Create and archive tracking buckets for specific classes, research labs, or personal coding projects.
+
+Dual Tracking: Option to track by time spent (Timer/Duration) or by completion (Binary "Done").
+
+Consistency Heatmap: GitHub-style visualization showing daily activity across all study/career domains.
+
+Project Logs: Space to attach notes or milestones to specific study sessions.
+
+D. Digital Wellbeing
+
+Goal: Conscious technology usage.
+
+Features:
+
+RescueTime Integration: Automated background syncing of device usage.
+
+Category Split: Visual comparison of "Productive Time" (VS Code, Docs) vs. "Distracted Time" (Social Media, Streaming).
+
+Platform Breakdown: Analysis of time spent on Mobile vs. Desktop.
+
+E. Daily Review & Metacognition
+
+Goal: Qualitative analysis and daily reflection.
+
+Features:
+
+EOD Wizard: A guided mobile flow to wrap up the day.
+
+Subjective Metrics: 1-10 Sliders for "Mood," "Energy," and "Perceived Success."
+
+Journaling: Short-form text entry for "Wins" and "Improvements."
+
+Tagging System: Quick-select tags (e.g., "Tired," "Motivated," "Social") to correlate feelings with data.
+
+F. Analytics & Visualization
+
+Goal: Identify spikes and correlations.
+
+Features:
+
+The "Spike" Chart: A master line graph overlaying major categories (e.g., Gym Volume vs. Study Hours) to see peaks in performance.
+
+Radar Charts: "Balance of Life" visualization to see if one area is being neglected.
+
+Growth Trends: Long-term trend lines for Net Worth and Lift Strength.
+
+Correlation Engine: Visuals that help answer questions like "Does high phone usage correlate with lower study hours?"
