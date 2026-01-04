@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mobile Design Tokens */
+:root {
+  --mobile-card-bg: #18181b; /* zinc-900 */
+  --mobile-primary: #10b981; /* emerald-600 */
+  --mobile-danger: #ef4444;  /* red-600 */
+  --mobile-secondary: #3b82f6; /* blue-600 */
+  --mobile-accent: #ea580c; /* orange-600 */
+  --mobile-border-radius: 0.75rem; /* rounded-xl */
+  --mobile-card-padding: 1rem; /* p-4 */
+  --mobile-button-padding-sm: 0.75rem 1rem; /* px-3 py-2 */
+  --mobile-button-padding-md: 1rem 1.5rem; /* px-4 py-3 */
+  --mobile-button-padding-lg: 1.5rem 2.5rem; /* px-6 py-4 */
+}

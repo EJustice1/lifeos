@@ -7,6 +7,13 @@ import {
   endWorkout,
 } from '@/lib/actions/gym'
 import { calculate1RM, MUSCLE_GROUPS } from '@/lib/gym-utils'
+import { MobileCard } from '@/components/mobile/cards/MobileCard'
+import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
+import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
+import { WorkoutTypeButton } from '@/components/mobile/buttons/WorkoutTypeButton'
+import { MuscleGroupButton } from '@/components/mobile/buttons/MuscleGroupButton'
+import { useToast } from '@/components/mobile/feedback/ToastProvider'
 
 interface Exercise {
   readonly id: number
@@ -81,27 +88,33 @@ export function GymLogger({
     })
   }
 
+  const { showToast } = useToast()
+
   async function handleLogSet() {
     if (!activeWorkout || !selectedExercise) return
 
     startTransition(async () => {
-      // Use the new logLift function which handles PR detection internally
-      const result = await logLift(activeWorkout, selectedExercise, weight, reps)
-      const exerciseName = exercises.find(e => e.id === selectedExercise)?.name ?? ''
+      try {
+        // Use the new logLift function which handles PR detection internally
+        const result = await logLift(activeWorkout, selectedExercise, weight, reps)
+        const exerciseName = exercises.find(e => e.id === selectedExercise)?.name ?? ''
 
-      if (result.isNewPR) {
-        setPrCelebration(`New PR on ${exerciseName}!`)
+        if (result.isNewPR) {
+          showToast(`🏆 New PR on ${exerciseName}!`, 'success')
+        }
+
+        setLoggedSets(prev => [...prev, {
+          exercise: exerciseName,
+          exerciseId: selectedExercise,
+          setNumber: currentSetNumber,
+          reps,
+          weight,
+          estimated1RM: calculate1RM(weight, reps),
+          isNewPR: result.isNewPR,
+        }])
+      } catch (error) {
+        showToast('Failed to log set', 'error')
       }
-
-      setLoggedSets(prev => [...prev, {
-        exercise: exerciseName,
-        exerciseId: selectedExercise,
-        setNumber: currentSetNumber,
-        reps,
-        weight,
-        estimated1RM: calculate1RM(weight, reps),
-        isNewPR: result.isNewPR,
-      }])
     })
   }
 
@@ -136,114 +149,90 @@ export function GymLogger({
 
   return (
     <section className="space-y-4">
-      {/* PR Celebration Toast */}
-      {prCelebration && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-4 text-center animate-bounce shadow-lg">
-          <span className="text-2xl mr-2">🏆</span>
-          <span className="font-bold text-lg">{prCelebration}</span>
-        </div>
-      )}
-
       {!activeWorkout ? (
         /* Pre-workout screen */
         <div className="space-y-4">
-          {/* Workout type selector */}
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">Workout Type (optional)</label>
+          <MobileCard>
+            <div className="text-sm text-zinc-400 mb-2">Workout Type (optional)</div>
             <div className="grid grid-cols-3 gap-2">
               {['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Full'].map(type => (
-                <button
+                <WorkoutTypeButton
                   key={type}
+                  type={type}
+                  isSelected={workoutType === type}
                   onClick={() => setWorkoutType(workoutType === type ? '' : type)}
-                  className={`p-3 rounded-lg text-sm font-medium transition-colors ${
-                    workoutType === type
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {type}
-                </button>
+                />
               ))}
             </div>
-          </div>
+          </MobileCard>
 
-          <button
+          <PrimaryButton
+            variant="primary"
+            size="lg"
             onClick={handleStartWorkout}
             disabled={isPending}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-xl font-bold transition-colors"
+            loading={isPending}
           >
             {isPending ? 'Starting...' : 'Start Workout'}
-          </button>
+          </PrimaryButton>
 
-          {/* Quick stats */}
-          <div className="bg-zinc-900 rounded-xl p-4">
+          <MobileCard>
             <p className="text-sm text-zinc-400">{exercises.length} exercises available</p>
-          </div>
+          </MobileCard>
         </div>
       ) : (
         /* Active workout screen */
         <>
-          {/* Workout header */}
-          <div className="bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-zinc-400">Active Workout</p>
-              <p className="font-semibold text-lg">
-                {workoutType || 'General'} • {loggedSets.length} sets
-              </p>
+          <MobileCard>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-zinc-400">Active Workout</p>
+                <p className="font-semibold text-lg">
+                  {workoutType || 'General'} • {loggedSets.length} sets
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-zinc-400">Volume</p>
+                <p className="font-bold text-emerald-400 text-lg">
+                  {totalVolume.toLocaleString()} lbs
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-zinc-400">Volume</p>
-              <p className="font-bold text-emerald-400 text-lg">
-                {totalVolume.toLocaleString()} lbs
-              </p>
-            </div>
-          </div>
+          </MobileCard>
 
-          {/* Quick muscle group navigation */}
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">Browse by Muscle Group</label>
+          <MobileCard>
+            <div className="text-sm text-zinc-400 mb-2">Browse by Muscle Group</div>
             <div className="grid grid-cols-3 gap-2">
               {MUSCLE_GROUPS.map(mg => {
                 const exercisesForGroup = exercises.filter(ex =>
                   (ex.primary_muscles?.includes(mg) || ex.secondary_muscles?.includes(mg))
                 )
                 return (
-                  <button
+                  <MuscleGroupButton
                     key={mg}
+                    muscleGroup={mg}
+                    count={exercisesForGroup.length}
+                    isDisabled={exercisesForGroup.length === 0}
                     onClick={() => {
                       const firstExercise = exercisesForGroup[0]
                       if (firstExercise) setSelectedExercise(firstExercise.id)
                     }}
-                    disabled={exercisesForGroup.length === 0}
-                    className={`p-3 rounded-lg text-sm font-medium capitalize transition-colors ${
-                      exercisesForGroup.length === 0
-                        ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                    }`}
-                  >
-                    {mg} ({exercisesForGroup.length})
-                  </button>
+                  />
                 )
               })}
             </div>
-          </div>
+          </MobileCard>
 
-          {/* Exercise selector with add button */}
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm text-zinc-400">Exercise</label>
-            </div>
-            <select
-              value={selectedExercise || ''}
+          <MobileCard>
+            <div className="text-sm text-zinc-400 mb-2">Exercise</div>
+            <MobileSelect
+              options={exercises.map((ex) => ({
+                value: ex.id.toString(),
+                label: `${ex.name} ${ex.is_compound ? '🏋️' : ''}`,
+              }))}
+              value={selectedExercise?.toString() || ''}
               onChange={(e) => setSelectedExercise(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full bg-zinc-800 rounded-lg p-4 text-lg font-medium"
-            >
-              {exercises.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name} {ex.is_compound ? '🏋️' : ''}
-                </option>
-              ))}
-            </select>
+            />
             {/* Muscle groups and exercise info display */}
             {currentExerciseDetails && (currentExerciseDetails.primary_muscles || currentExerciseDetails.secondary_muscles) && (
               <div className="flex flex-wrap gap-1 mt-2 items-center">
@@ -264,8 +253,7 @@ export function GymLogger({
                 )}
               </div>
             )}
-          </div>
-
+          </MobileCard>
 
           {/* Set counter */}
           <div className="bg-orange-900/30 rounded-lg p-3 text-center">
@@ -277,53 +265,31 @@ export function GymLogger({
             )}
           </div>
 
-          {/* Reps input with +/- buttons */}
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-3 text-center">Reps</label>
+          <MobileCard>
+            <div className="text-sm text-zinc-400 mb-3 text-center">Reps</div>
             <div className="flex items-center justify-center gap-4">
-              <button
-                onClick={() => adjustReps(-1)}
-                className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-xl text-2xl font-bold transition-colors"
-              >
-                −
-              </button>
+              <AdjustButton onClick={() => adjustReps(-1)}>−</AdjustButton>
               <input
                 type="number"
                 value={reps}
                 onChange={(e) => setReps(Math.max(1, Number(e.target.value)))}
                 className="w-24 bg-transparent text-5xl font-bold text-center"
               />
-              <button
-                onClick={() => adjustReps(1)}
-                className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-xl text-2xl font-bold transition-colors"
-              >
-                +
-              </button>
+              <AdjustButton onClick={() => adjustReps(1)}>+</AdjustButton>
             </div>
-          </div>
+          </MobileCard>
 
-          {/* Weight input with +/- buttons */}
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-3 text-center">Weight (lbs)</label>
+          <MobileCard>
+            <div className="text-sm text-zinc-400 block mb-3 text-center">Weight (lbs)</div>
             <div className="flex items-center justify-center gap-4">
-              <button
-                onClick={() => adjustWeight(-5)}
-                className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-xl text-xl font-bold transition-colors"
-              >
-                −5
-              </button>
+              <AdjustButton onClick={() => adjustWeight(-5)}>-5</AdjustButton>
               <input
                 type="number"
                 value={weight}
                 onChange={(e) => setWeight(Math.max(0, Number(e.target.value)))}
                 className="w-28 bg-transparent text-5xl font-bold text-center"
               />
-              <button
-                onClick={() => adjustWeight(5)}
-                className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-xl text-xl font-bold transition-colors"
-              >
-                +5
-              </button>
+              <AdjustButton onClick={() => adjustWeight(5)}>+5</AdjustButton>
             </div>
             {/* Quick weight adjustments */}
             <div className="flex justify-center gap-2 mt-3">
@@ -337,10 +303,9 @@ export function GymLogger({
                 </button>
               ))}
             </div>
-          </div>
+          </MobileCard>
 
-          {/* Volume and 1RM preview */}
-          <div className="bg-zinc-800/50 rounded-lg p-4">
+          <MobileCard>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
                 <span className="text-zinc-500 text-sm block">Set Volume</span>
@@ -358,20 +323,21 @@ export function GymLogger({
             <p className="text-center text-xs text-zinc-600 mt-2">
               1RM = {weight} × (36 ÷ (37 − {reps})) = {estimated1RM} lbs
             </p>
-          </div>
+          </MobileCard>
 
-          {/* Log Set button */}
-          <button
+          <PrimaryButton
+            variant="primary"
+            size="lg"
             onClick={handleLogSet}
             disabled={isPending || !selectedExercise}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-xl font-bold transition-colors"
+            loading={isPending}
           >
             {isPending ? 'Logging...' : 'Log Set'}
-          </button>
+          </PrimaryButton>
 
           {/* Logged sets summary */}
           {Object.keys(exerciseSummary).length > 0 && (
-            <div className="bg-zinc-900 rounded-xl p-4">
+            <MobileCard>
               <h3 className="text-sm text-zinc-400 mb-3 font-medium">This Workout</h3>
               <div className="space-y-3">
                 {Object.entries(exerciseSummary).map(([exercise, data]) => (
@@ -394,17 +360,17 @@ export function GymLogger({
                   </div>
                 ))}
               </div>
-            </div>
+            </MobileCard>
           )}
 
-          {/* End Workout button */}
-          <button
+          <PrimaryButton
+            variant="secondary"
+            size="lg"
             onClick={handleEndWorkout}
             disabled={isPending}
-            className="w-full bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 disabled:opacity-50 rounded-xl p-4 text-lg font-semibold transition-colors"
           >
             End Workout
-          </button>
+          </PrimaryButton>
         </>
       )}
 

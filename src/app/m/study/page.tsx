@@ -1,5 +1,6 @@
 import { getBuckets, getTodaySessions } from '@/lib/actions/study'
 import { CareerTracker } from './career-tracker'
+import { MobileHeader } from '@/components/mobile/layout/MobileHeader'
 
 export default async function StudyPage() {
   const [buckets, todaySessions] = await Promise.all([
@@ -8,13 +9,11 @@ export default async function StudyPage() {
   ])
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold">Career Tracker</h1>
-        <p className="text-zinc-400 text-sm">Track time, manage tasks & buckets</p>
-      </header>
-
-      <CareerTracker buckets={buckets} todaySessions={todaySessions} />
+    <div className="space-y-4">
+      <MobileHeader title="Career Tracker" />
+      <div className="px-4 pb-20">
+        <CareerTracker buckets={buckets} todaySessions={todaySessions} />
+      </div>
     </div>
   )
 }

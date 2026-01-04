@@ -2,6 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { submitDailyReview } from '@/lib/actions/daily-review'
+import { MobileCard } from '@/components/mobile/cards/MobileCard'
+import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { MobileSlider } from '@/components/mobile/inputs/MobileSlider'
+import { useToast } from '@/components/mobile/feedback/ToastProvider'
 
 const AVAILABLE_TAGS = ['Tired', 'Motivated', 'Social', 'Focused', 'Stressed', 'Creative', 'Anxious', 'Calm']
 
@@ -30,86 +34,74 @@ export function ReviewForm({ existingReview }: { existingReview: Review | null }
     )
   }
 
+  const { showToast } = useToast()
+
   async function handleSubmit() {
     startTransition(async () => {
-      await submitDailyReview(
-        mood,
-        energy,
-        success,
-        wins || undefined,
-        improvements || undefined,
-        tags
-      )
-      setSubmitted(true)
-      setTimeout(() => setSubmitted(false), 2000)
+      try {
+        await submitDailyReview(
+          mood,
+          energy,
+          success,
+          wins || undefined,
+          improvements || undefined,
+          tags
+        )
+        showToast('Review saved successfully!', 'success')
+      } catch (error) {
+        showToast('Failed to save review', 'error')
+      }
     })
   }
 
   return (
-    <section className="space-y-4">
-      {/* Mood slider */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <div className="flex justify-between mb-2">
-          <label className="text-sm text-zinc-400">Mood</label>
-          <span className="text-lg font-bold">{mood}</span>
-        </div>
-        <input
-          type="range"
-          min="1"
-          max="10"
+    <div className="space-y-4">
+      <MobileCard title="Mood">
+        <MobileSlider
+          label="Mood"
+          min={1}
+          max={10}
           value={mood}
-          onChange={(e) => setMood(Number(e.target.value))}
-          className="w-full accent-emerald-500"
+          onChange={setMood}
+          showValue
         />
         <div className="flex justify-between text-xs text-zinc-500 mt-1">
           <span>Low</span>
           <span>High</span>
         </div>
-      </div>
+      </MobileCard>
 
-      {/* Energy slider */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <div className="flex justify-between mb-2">
-          <label className="text-sm text-zinc-400">Energy</label>
-          <span className="text-lg font-bold">{energy}</span>
-        </div>
-        <input
-          type="range"
-          min="1"
-          max="10"
+      <MobileCard title="Energy">
+        <MobileSlider
+          label="Energy"
+          min={1}
+          max={10}
           value={energy}
-          onChange={(e) => setEnergy(Number(e.target.value))}
-          className="w-full accent-blue-500"
+          onChange={setEnergy}
+          showValue
         />
         <div className="flex justify-between text-xs text-zinc-500 mt-1">
           <span>Drained</span>
           <span>Energized</span>
         </div>
-      </div>
+      </MobileCard>
 
-      {/* Perceived success slider */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <div className="flex justify-between mb-2">
-          <label className="text-sm text-zinc-400">Perceived Success</label>
-          <span className="text-lg font-bold">{success}</span>
-        </div>
-        <input
-          type="range"
-          min="1"
-          max="10"
+      <MobileCard title="Perceived Success">
+        <MobileSlider
+          label="Perceived Success"
+          min={1}
+          max={10}
           value={success}
-          onChange={(e) => setSuccess(Number(e.target.value))}
-          className="w-full accent-purple-500"
+          onChange={setSuccess}
+          showValue
         />
         <div className="flex justify-between text-xs text-zinc-500 mt-1">
           <span>Unproductive</span>
           <span>Crushed it</span>
         </div>
-      </div>
+      </MobileCard>
 
-      {/* Quick tags */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <label className="text-sm text-zinc-400 block mb-3">Tags</label>
+      <MobileCard title="Tags">
         <div className="flex flex-wrap gap-2">
           {AVAILABLE_TAGS.map((tag) => (
             <button
@@ -125,11 +117,9 @@ export function ReviewForm({ existingReview }: { existingReview: Review | null }
             </button>
           ))}
         </div>
-      </div>
+      </MobileCard>
 
-      {/* Wins */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <label className="text-sm text-zinc-400 block mb-2">Wins</label>
+      <MobileCard title="Wins">
         <textarea
           value={wins}
           onChange={(e) => setWins(e.target.value)}
@@ -137,11 +127,9 @@ export function ReviewForm({ existingReview }: { existingReview: Review | null }
           rows={2}
           className="w-full bg-zinc-800 rounded-lg p-3 resize-none"
         />
-      </div>
+      </MobileCard>
 
-      {/* Improvements */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <label className="text-sm text-zinc-400 block mb-2">Improvements</label>
+      <MobileCard title="Improvements">
         <textarea
           value={improvements}
           onChange={(e) => setImprovements(e.target.value)}
@@ -149,20 +137,17 @@ export function ReviewForm({ existingReview }: { existingReview: Review | null }
           rows={2}
           className="w-full bg-zinc-800 rounded-lg p-3 resize-none"
         />
-      </div>
+      </MobileCard>
 
-      {/* Submit */}
-      <button
+      <PrimaryButton
+        variant="primary"
+        size="lg"
         onClick={handleSubmit}
         disabled={isPending}
-        className={`w-full rounded-xl p-4 text-lg font-semibold transition-colors ${
-          submitted
-            ? 'bg-emerald-500'
-            : 'bg-emerald-600 hover:bg-emerald-500'
-        } disabled:opacity-50`}
+        loading={isPending}
       >
-        {isPending ? 'Saving...' : submitted ? 'Saved!' : existingReview ? 'Update Review' : 'Complete Review'}
-      </button>
-    </section>
+        {isPending ? 'Saving...' : existingReview ? 'Update Review' : 'Complete Review'}
+      </PrimaryButton>
+    </div>
   )
 }

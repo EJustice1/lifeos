@@ -8,6 +8,12 @@ import {
   createBucket,
   archiveBucket,
 } from '@/lib/actions/study'
+import { MobileCard } from '@/components/mobile/cards/MobileCard'
+import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
+import { MobileSlider } from '@/components/mobile/inputs/MobileSlider'
+import { ToggleButton } from '@/components/mobile/buttons/ToggleButton'
+import { useToast } from '@/components/mobile/feedback/ToastProvider'
 
 interface Bucket {
   id: string
@@ -93,9 +99,6 @@ export function CareerTracker({
   const [buckets, setBuckets] = useState(initialBuckets)
   const [todaySessions, setTodaySessions] = useState(initialSessions)
 
-  // Toast state
-  const [toast, setToast] = useState<string | null>(null)
-
   // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -106,14 +109,6 @@ export function CareerTracker({
     }
     return () => clearInterval(interval)
   }, [isRunning])
-
-  // Toast effect
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [toast])
 
   // Session recovery on mount
   useEffect(() => {
@@ -144,6 +139,8 @@ export function CareerTracker({
       }
     }
   }, [])
+
+  const { showToast } = useToast()
 
   // Persist active session
   useEffect(() => {
@@ -184,7 +181,7 @@ export function CareerTracker({
         setIsRunning(true)
         setSeconds(0)
       } catch (error) {
-        setToast('Failed to start session. Please try again.')
+        showToast('Failed to start session. Please try again.', 'error')
         console.error('Start session error:', error)
       }
     })
@@ -213,10 +210,10 @@ export function CareerTracker({
         setIsRunning(false)
         setSeconds(0)
         setNotes('')
-        setToast('Session saved!')
+        showToast('Session saved!', 'success')
       } catch (error) {
         setTodaySessions(previousSessions)
-        setToast('Failed to save session. Please try again.')
+        showToast('Failed to save session. Please try again.', 'error')
         console.error('Stop session error:', error)
       }
     })
@@ -232,7 +229,7 @@ export function CareerTracker({
 
     const totalMin = (manualHours * 60) + manualMinutes
     if (totalMin <= 0) {
-      setToast('Duration must be greater than 0')
+      showToast('Duration must be greater than 0', 'error')
       return
     }
 
@@ -255,10 +252,10 @@ export function CareerTracker({
         setManualMinutes(30)
         setManualHours(0)
         setNotes('')
-        setToast('Session logged!')
+        showToast('Session logged!', 'success')
       } catch (error) {
         setTodaySessions(previousSessions)
-        setToast('Failed to log session. Please try again.')
+        showToast('Failed to log session. Please try again.', 'error')
         console.error('Manual log error:', error)
       }
     })
@@ -282,9 +279,9 @@ export function CareerTracker({
         setNewBucketType('class')
         setNewBucketColor(PRESET_COLORS[0])
         setShowCreateBucket(false)
-        setToast('Bucket created!')
+        showToast('Bucket created!', 'success')
       } catch (error) {
-        setToast('Failed to create bucket. Please try again.')
+        showToast('Failed to create bucket. Please try again.', 'error')
         console.error('Create bucket error:', error)
       }
     })
@@ -309,9 +306,9 @@ export function CareerTracker({
           setSelectedBucket(remaining[0]?.id ?? '')
         }
 
-        setToast('Bucket archived!')
+        showToast('Bucket archived!', 'success')
       } catch (error) {
-        setToast('Failed to archive bucket. Please try again.')
+        showToast('Failed to archive bucket. Please try again.', 'error')
         console.error('Archive bucket error:', error)
       }
     })
@@ -423,21 +420,16 @@ export function CareerTracker({
 
   return (
     <section className="space-y-4">
-      {/* Toast notification */}
-      {toast && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-emerald-600 rounded-xl p-4 text-center shadow-lg">
-          <span className="text-lg font-semibold">{toast}</span>
-        </div>
-      )}
 
-      {/* Bucket Manager Toggle */}
-      <button
-        onClick={() => setShowBucketManager(!showBucketManager)}
-        className="w-full bg-zinc-900 rounded-xl p-4 flex items-center justify-between text-left hover:bg-zinc-800 transition-colors"
-      >
-        <span className="font-semibold">Manage Buckets</span>
-        <span className="text-zinc-400">{showBucketManager ? '▲' : '▼'}</span>
-      </button>
+      <MobileCard>
+        <button
+          onClick={() => setShowBucketManager(!showBucketManager)}
+          className="w-full flex items-center justify-between text-left"
+        >
+          <span className="font-semibold">Manage Buckets</span>
+          <span className="text-zinc-400">{showBucketManager ? '▲' : '▼'}</span>
+        </button>
+      </MobileCard>
 
       {/* Bucket Manager Section */}
       {showBucketManager && (
@@ -562,31 +554,17 @@ export function CareerTracker({
         </div>
       )}
 
-      {/* Mode Switcher */}
-      <div className="bg-zinc-900 rounded-xl p-1 grid grid-cols-2 gap-1">
-        <button
-          onClick={() => setMode('timer')}
-          disabled={isRunning}
-          className={`py-3 rounded-lg font-semibold transition-colors ${
-            mode === 'timer'
-              ? 'bg-emerald-600 text-white'
-              : 'text-zinc-400 hover:text-white'
-          } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Timer
-        </button>
-        <button
-          onClick={() => setMode('manual')}
-          disabled={isRunning}
-          className={`py-3 rounded-lg font-semibold transition-colors ${
-            mode === 'manual'
-              ? 'bg-emerald-600 text-white'
-              : 'text-zinc-400 hover:text-white'
-          } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Manual
-        </button>
-      </div>
+      <MobileCard>
+        <ToggleButton
+          options={[
+            { value: 'timer', label: 'Timer' },
+            { value: 'manual', label: 'Manual' },
+          ]}
+          selectedValue={mode}
+          onChange={(value) => setMode(value as 'timer' | 'manual')}
+          className={`${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+        />
+      </MobileCard>
 
       {/* Main Interface - Timer Mode */}
       {mode === 'timer' && (
