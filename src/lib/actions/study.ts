@@ -186,8 +186,11 @@ export async function getWeeklyStats() {
   const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
 
   const byBucket = sessions.reduce((acc, s) => {
-    const name = s.bucket?.name ?? 'Unknown'
-    if (!acc[name]) acc[name] = { minutes: 0, color: s.bucket?.color ?? '#3b82f6' }
+    // Supabase returns joined relations - handle both object and array types
+    const bucket = s.bucket as { name?: string; color?: string } | { name?: string; color?: string }[] | null
+    const bucketData = Array.isArray(bucket) ? bucket[0] : bucket
+    const name = bucketData?.name ?? 'Unknown'
+    if (!acc[name]) acc[name] = { minutes: 0, color: bucketData?.color ?? '#3b82f6' }
     acc[name].minutes += s.duration_minutes || 0
     return acc
   }, {} as Record<string, { minutes: number; color: string }>)

@@ -92,7 +92,7 @@ export async function getReviewStats(days = 30) {
 
   // Tag frequency
   const tagCounts = reviews.reduce((acc, r) => {
-    (r.tags || []).forEach(tag => {
+    (r.tags || []).forEach((tag: string) => {
       acc[tag] = (acc[tag] || 0) + 1
     })
     return acc

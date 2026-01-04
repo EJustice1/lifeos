@@ -68,6 +68,144 @@ export interface Database {
         }
       }
 
+      // Financial: Recurring Expenses/Income
+      recurring_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          created_at: string
+          name: string
+          type: 'income' | 'expense'
+          amount: number
+          category: string
+          description: string | null
+          account_id: string | null
+          start_date: string
+          end_date: string | null
+          frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+          day_of_month: number | null
+          day_of_week: number | null
+          is_active: boolean
+          last_processed: string | null
+          next_occurrence: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          created_at?: string
+          name: string
+          type: 'income' | 'expense'
+          amount: number
+          category: string
+          description?: string | null
+          account_id?: string | null
+          start_date: string
+          end_date?: string | null
+          frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+          day_of_month?: number | null
+          day_of_week?: number | null
+          is_active?: boolean
+          last_processed?: string | null
+          next_occurrence?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          created_at?: string
+          name?: string
+          type?: 'income' | 'expense'
+          amount?: number
+          category?: string
+          description?: string | null
+          account_id?: string | null
+          start_date?: string
+          end_date?: string | null
+          frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+          day_of_month?: number | null
+          day_of_week?: number | null
+          is_active?: boolean
+          last_processed?: string | null
+          next_occurrence?: string | null
+        }
+      }
+
+      // Financial: Stock Holdings
+      stock_holdings: {
+        Row: {
+          id: string
+          user_id: string
+          created_at: string
+          symbol: string
+          company_name: string
+          shares: number
+          average_price: number
+          current_price: number | null
+          last_updated: string | null
+          account_id: string | null
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          created_at?: string
+          symbol: string
+          company_name: string
+          shares: number
+          average_price: number
+          current_price?: number | null
+          last_updated?: string | null
+          account_id?: string | null
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          created_at?: string
+          symbol?: string
+          company_name?: string
+          shares?: number
+          average_price?: number
+          current_price?: number | null
+          last_updated?: string | null
+          account_id?: string | null
+          is_active?: boolean
+        }
+      }
+
+      // Financial: Manual Cash Adjustments
+      cash_adjustments: {
+        Row: {
+          id: string
+          user_id: string
+          created_at: string
+          date: string
+          amount: number
+          reason: string
+          account_id: string | null
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          created_at?: string
+          date: string
+          amount: number
+          reason: string
+          account_id?: string | null
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          created_at?: string
+          date?: string
+          amount?: number
+          reason?: string
+          account_id?: string | null
+          notes?: string | null
+        }
+      }
+
       // Financial: Transactions
       transactions: {
         Row: {
@@ -133,35 +271,78 @@ export interface Database {
         }
       }
 
-      // Gym: Exercise definitions
-      exercises: {
+      // Gym: Lifts (replaces workout_sets)
+      lifts: {
         Row: {
           id: string
           user_id: string
-          name: string
-          category: 'push' | 'pull' | 'legs' | 'core' | 'cardio' | 'other'
-          is_compound: boolean
+          exercise_id: number // References predefined exercise ID
+          workout_id: string
+          weight: number
+          reps: number
+          rpe: number | null
+          set_number: number
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          name: string
-          category: 'push' | 'pull' | 'legs' | 'core' | 'cardio' | 'other'
-          is_compound?: boolean
+          exercise_id: number
+          workout_id: string
+          weight: number
+          reps: number
+          rpe?: number | null
+          set_number: number
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          name?: string
-          category?: 'push' | 'pull' | 'legs' | 'core' | 'cardio' | 'other'
-          is_compound?: boolean
+          exercise_id?: number
+          workout_id?: string
+          weight?: number
+          reps?: number
+          rpe?: number | null
+          set_number?: number
           created_at?: string
         }
       }
 
-      // Gym: Workout sessions
+      // Gym: Personal Records
+      personal_records: {
+        Row: {
+          id: string
+          user_id: string
+          exercise_id: number // References predefined exercise ID
+          weight: number
+          reps: number
+          estimated_1rm: number
+          date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          exercise_id: number
+          weight: number
+          reps: number
+          estimated_1rm: number
+          date: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          exercise_id?: number
+          weight?: number
+          reps?: number
+          estimated_1rm?: number
+          date?: string
+          created_at?: string
+        }
+      }
+
+      // Gym: Workouts
       workouts: {
         Row: {
           id: string
@@ -195,70 +376,7 @@ export interface Database {
         }
       }
 
-      // Gym: Individual sets
-      workout_sets: {
-        Row: {
-          id: string
-          workout_id: string
-          exercise_id: string
-          set_number: number
-          reps: number
-          weight: number
-          rpe: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          workout_id: string
-          exercise_id: string
-          set_number: number
-          reps: number
-          weight: number
-          rpe?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          workout_id?: string
-          exercise_id?: string
-          set_number?: number
-          reps?: number
-          weight?: number
-          rpe?: number | null
-          created_at?: string
-        }
-      }
 
-      // Gym: Personal records
-      personal_records: {
-        Row: {
-          id: string
-          user_id: string
-          exercise_id: string
-          weight: number
-          reps: number
-          date: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          exercise_id: string
-          weight: number
-          reps: number
-          date: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          exercise_id?: string
-          weight?: number
-          reps?: number
-          date?: string
-          created_at?: string
-        }
-      }
 
       // Career: Study/work buckets
       buckets: {
@@ -438,9 +556,13 @@ export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Account = Database['public']['Tables']['accounts']['Row']
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type NetWorthSnapshot = Database['public']['Tables']['net_worth_snapshots']['Row']
-export type Exercise = Database['public']['Tables']['exercises']['Row']
+export type RecurringTransaction = Database['public']['Tables']['recurring_transactions']['Row']
+export type StockHolding = Database['public']['Tables']['stock_holdings']['Row']
+export type CashAdjustment = Database['public']['Tables']['cash_adjustments']['Row']
+// Exercise type removed - using predefined exercises instead
 export type Workout = Database['public']['Tables']['workouts']['Row']
-export type WorkoutSet = Database['public']['Tables']['workout_sets']['Row']
+export type Lift = Database['public']['Tables']['lifts']['Row']
+// WorkoutSet type removed - replaced with Lifts
 export type PersonalRecord = Database['public']['Tables']['personal_records']['Row']
 export type Bucket = Database['public']['Tables']['buckets']['Row']
 export type StudySession = Database['public']['Tables']['study_sessions']['Row']

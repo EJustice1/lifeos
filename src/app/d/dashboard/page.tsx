@@ -1,5 +1,5 @@
 import { getNetWorth } from '@/lib/actions/finance'
-import { getGymStats, getRecentWorkouts } from '@/lib/actions/gym'
+import { getGymStats, getRecentWorkoutsWithDetails } from '@/lib/actions/gym'
 import { getWeeklyStats } from '@/lib/actions/study'
 import { getDigitalStats } from '@/lib/actions/digital'
 import { getRecentReviews } from '@/lib/actions/daily-review'
@@ -11,7 +11,7 @@ export default async function DashboardPage() {
     getWeeklyStats(),
     getDigitalStats(7),
     getRecentReviews(3),
-    getRecentWorkouts(3),
+    getRecentWorkoutsWithDetails(3),
   ])
 
   const formatCurrency = (n: number) =>

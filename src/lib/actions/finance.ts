@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { calculateNextOccurrence } from '@/lib/utils/finance'
 
 export async function getAccounts() {
   const supabase = await createClient()
@@ -154,10 +155,22 @@ export async function getNetWorth() {
     .filter(a => ['investment', 'crypto'].includes(a.type))
     .reduce((sum, a) => sum + a.balance, 0)
 
+  // Get stock holdings value
+  const { data: stocks } = await supabase
+    .from('stock_holdings')
+    .select('shares, current_price')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+
+  const stockValue = stocks?.reduce((sum, stock) => {
+    return sum + (stock.shares * (stock.current_price ?? 0))
+  }, 0) ?? 0
+
   return {
-    total: cash + investments,
+    total: cash + investments + stockValue,
     cash,
-    investments,
+    investments: investments + stockValue,
+    stockValue,
   }
 }
 
@@ -202,3 +215,214 @@ export async function saveNetWorthSnapshot() {
   if (error) throw error
   revalidatePath('/d/finance')
 }
+
+// Recurring Transaction Functions
+export async function getRecurringTransactions() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('recurring_transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .order('next_occurrence')
+
+  return data ?? []
+}
+
+export async function createRecurringTransaction(
+  name: string,
+  type: 'income' | 'expense',
+  amount: number,
+  category: string,
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly',
+  startDate: string,
+  endDate?: string,
+  accountId?: string,
+  description?: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Calculate next occurrence based on frequency
+  const nextOccurrence = calculateNextOccurrence(startDate, frequency)
+
+  const { data, error } = await supabase
+    .from('recurring_transactions')
+    .insert({
+      user_id: user.id,
+      name,
+      type,
+      amount,
+      category,
+      description,
+      account_id: accountId,
+      start_date: startDate,
+      end_date: endDate,
+      frequency,
+      is_active: true,
+      next_occurrence: nextOccurrence,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
+export async function updateRecurringTransaction(
+  id: string,
+  updates: {
+    name?: string
+    amount?: number
+    category?: string
+    frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+    startDate?: string
+    endDate?: string
+    isActive?: boolean
+    description?: string
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('recurring_transactions')
+    .update({
+      name: updates.name,
+      amount: updates.amount,
+      category: updates.category,
+      frequency: updates.frequency,
+      start_date: updates.startDate,
+      end_date: updates.endDate,
+      is_active: updates.isActive,
+      description: updates.description,
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
+// Stock Holding Functions
+export async function getStockHoldings() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('stock_holdings')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .order('symbol')
+
+  return data ?? []
+}
+
+export async function addStockHolding(
+  symbol: string,
+  companyName: string,
+  shares: number,
+  averagePrice: number,
+  accountId?: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('stock_holdings')
+    .insert({
+      user_id: user.id,
+      symbol,
+      company_name: companyName,
+      shares,
+      average_price: averagePrice,
+      account_id: accountId,
+      is_active: true,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
+export async function updateStockHolding(
+  id: string,
+  updates: {
+    shares?: number
+    currentPrice?: number
+    accountId?: string
+    isActive?: boolean
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('stock_holdings')
+    .update({
+      shares: updates.shares,
+      current_price: updates.currentPrice,
+      account_id: updates.accountId,
+      is_active: updates.isActive,
+      last_updated: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
+// Cash Adjustment Functions
+export async function logCashAdjustment(
+  date: string,
+  amount: number,
+  reason: string,
+  accountId?: string,
+  notes?: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('cash_adjustments')
+    .insert({
+      user_id: user.id,
+      date,
+      amount,
+      reason,
+      account_id: accountId,
+      notes,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
