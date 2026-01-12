@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
+import { useSession } from '@/context/SessionContext'
 import { startStudySession, endStudySession } from '@/lib/actions/study'
 
 interface Bucket {
@@ -39,19 +40,43 @@ export function StudyTimer({
   const [isPending, startTransition] = useTransition()
   const [selectedBucket, setSelectedBucket] = useState(buckets[0]?.id ?? '')
   const [activeSession, setActiveSession] = useState<string | null>(null)
-  const [seconds, setSeconds] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
 
-  // Timer effect
+  const {
+    activeSession: contextSession,
+    startSession,
+    endSession,
+    updateSession,
+    recoverSession
+  } = useSession()
+
+  // Sync local state with context session
+  const [seconds, setSeconds] = useState(contextSession?.type === 'study' ? contextSession.durationSeconds : 0)
+
+  // Session recovery on component mount
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (isRunning) {
-      interval = setInterval(() => {
-        setSeconds((s) => s + 1)
-      }, 1000)
+    recoverSession()
+  }, [recoverSession])
+
+  // Sync with context session changes
+  useEffect(() => {
+    if (contextSession?.type === 'study') {
+      setSeconds(contextSession.durationSeconds)
+      setIsRunning(true)
+    } else {
+      setIsRunning(false)
     }
-    return () => clearInterval(interval)
-  }, [isRunning])
+  }, [contextSession])
+
+  // Update context session every second when running
+  useEffect(() => {
+    if (isRunning) {
+      const interval = setInterval(() => {
+        updateSession()
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [isRunning, updateSession])
 
   // Aggregate today's sessions by bucket
   const todayByBucket = todaySessions.reduce((acc, s) => {
@@ -67,8 +92,8 @@ export function StudyTimer({
     startTransition(async () => {
       const session = await startStudySession(selectedBucket)
       setActiveSession(session.id)
+      startSession('study', { bucketId: selectedBucket })
       setIsRunning(true)
-      setSeconds(0)
     })
   }
 
@@ -78,8 +103,8 @@ export function StudyTimer({
     startTransition(async () => {
       await endStudySession(activeSession)
       setActiveSession(null)
+      endSession()
       setIsRunning(false)
-      setSeconds(0)
     })
   }
 

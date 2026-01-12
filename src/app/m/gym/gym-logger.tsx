@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import { useSession } from '@/context/SessionContext'
 import {
   startWorkout,
   logLift,
@@ -289,33 +290,42 @@ export function GymLogger({
   const [activeSection, setActiveSection] = useState<'workout' | 'history' | 'progress'>('workout')
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
-  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null)
-  const [workoutDuration, setWorkoutDuration] = useState<number>(0)
+
+  const {
+    activeSession: contextSession,
+    startSession,
+    endSession,
+    updateSession,
+    recoverSession
+  } = useSession()
+
+  // Sync workout duration with context session
+  const [workoutDuration, setWorkoutDuration] = useState<number>(contextSession?.type === 'workout' ? contextSession.durationSeconds : 0)
 
   // Calculate estimated 1RM for current input
   const estimated1RM = calculate1RM(weight, reps)
 
-  // Track workout duration
+  // Session recovery on component mount
   useEffect(() => {
-    if (activeWorkout && !workoutStartTime) {
-      setWorkoutStartTime(Date.now())
-      setWorkoutDuration(0)
-    } else if (!activeWorkout) {
-      setWorkoutStartTime(null)
-      setWorkoutDuration(0)
+    recoverSession()
+  }, [recoverSession])
+
+  // Sync with context session changes
+  useEffect(() => {
+    if (contextSession?.type === 'workout') {
+      setWorkoutDuration(contextSession.durationSeconds)
     }
-  }, [activeWorkout])
+  }, [contextSession])
 
-  // Update workout duration every second
+  // Update context session every second when workout is active
   useEffect(() => {
-    if (workoutStartTime) {
+    if (activeWorkout) {
       const interval = setInterval(() => {
-        setWorkoutDuration(Math.floor((Date.now() - workoutStartTime) / 1000))
+        updateSession()
       }, 1000)
-
       return () => clearInterval(interval)
     }
-  }, [workoutStartTime])
+  }, [activeWorkout, updateSession])
 
   // Format duration as MM:SS
   const formatDuration = (seconds: number) => {
@@ -357,6 +367,7 @@ export function GymLogger({
     startTransition(async () => {
       const workout = await startWorkout(workoutType || undefined)
       setActiveWorkout(workout.id)
+      startSession('workout', { workoutType: workoutType || 'General' })
     })
   }
 
@@ -462,6 +473,7 @@ export function GymLogger({
       setWorkoutHistory(prev => [newWorkoutHistory, ...prev])
 
       await endWorkout(activeWorkout)
+      endSession()
       setActiveWorkout(null)
       setLoggedSets([])
       setWorkoutType('')
@@ -504,6 +516,7 @@ export function GymLogger({
                     startTransition(async () => {
                       const workout = await startWorkout(type)
                       setActiveWorkout(workout.id)
+                      startSession('workout', { workoutType: type })
                     })
                   }}
                   className={`p-6 rounded-xl text-lg font-semibold transition-all ${
