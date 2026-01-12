@@ -474,16 +474,17 @@ export function GymLogger({
   // Group logged sets by exercise for summary
   const exerciseSummary = loggedSets.reduce((acc, set) => {
     if (!acc[set.exercise]) {
-      acc[set.exercise] = { sets: 0, totalVolume: 0, bestSet: set, best1RM: set.estimated1RM }
+      acc[set.exercise] = { sets: 0, totalReps: 0, totalVolume: 0, bestSet: set, best1RM: set.estimated1RM }
     }
     acc[set.exercise].sets++
+    acc[set.exercise].totalReps += set.reps
     acc[set.exercise].totalVolume += set.reps * set.weight
     if (set.estimated1RM > acc[set.exercise].best1RM) {
       acc[set.exercise].bestSet = set
       acc[set.exercise].best1RM = set.estimated1RM
     }
     return acc
-  }, {} as Record<string, { sets: number; totalVolume: number; bestSet: LoggedSet; best1RM: number }>)
+  }, {} as Record<string, { sets: number; totalReps: number; totalVolume: number; bestSet: LoggedSet; best1RM: number }>)
 
 
 

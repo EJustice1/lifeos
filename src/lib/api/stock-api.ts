@@ -71,7 +71,7 @@ class StockApiClient {
           }
         } catch (tableError) {
           // If table doesn't exist, log but don't fail
-          if (tableError.message.includes('relation "stock_price_cache" does not exist')) {
+          if (tableError instanceof Error && tableError.message.includes('relation "stock_price_cache" does not exist')) {
             console.log('Stock price cache table does not exist yet. Will be created on first write.');
           } else {
             throw tableError;
@@ -101,7 +101,7 @@ class StockApiClient {
             });
         } catch (tableError) {
           // If table doesn't exist, try to create it
-          if (tableError.message.includes('relation "stock_price_cache" does not exist')) {
+          if (tableError instanceof Error && tableError.message.includes('relation "stock_price_cache" does not exist')) {
             console.log('Creating stock_price_cache table...');
             await this.createCacheTable();
             // Retry the save operation
