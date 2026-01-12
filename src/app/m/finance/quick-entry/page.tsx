@@ -41,31 +41,31 @@ export default function QuickEntryPage() {
     {
       icon: <HomeIcon />,
       label: 'Overview',
-      href: '/m/finance',
+      onClick: () => window.location.href = '/m/finance',
       isActive: false
     },
     {
       icon: <TransactionIcon />,
       label: 'Quick Entry',
-      href: '/m/finance/quick-entry',
+      onClick: () => window.location.href = '/m/finance/quick-entry',
       isActive: true
     },
     {
       icon: <StockIcon />,
       label: 'Investments',
-      href: '/m/finance/investments',
+      onClick: () => window.location.href = '/m/finance/investments',
       isActive: false
     },
     {
       icon: <BankIcon />,
       label: 'Accounts',
-      href: '/m/finance/accounts',
+      onClick: () => window.location.href = '/m/finance/accounts',
       isActive: false
     },
     {
       icon: <ChartIcon />,
       label: 'Analytics',
-      href: '/m/finance/analytics',
+      onClick: () => window.location.href = '/m/finance/analytics',
       isActive: false
     }
   ];

@@ -14,7 +14,7 @@ export function SimpleTransactionEntry() {
   const [symbol, setSymbol] = useState('AAPL');
   const [shares, setShares] = useState('1');
   const [price, setPrice] = useState('');
-  const [accountId] = useState('');
+  const [accountId] = useState<string | null>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export function SimpleTransactionEntry() {
     try {
       if (transactionType === 'expense' || transactionType === 'income') {
         // Cash transaction
+        const today = new Date().toISOString().split('T')[0];
         await processUnifiedTransaction(
           'cash',
           transactionType === 'income' ? 'deposit' : 'withdrawal',
@@ -45,9 +46,10 @@ export function SimpleTransactionEntry() {
           null,
           null,
           accountId || null,
-          new Date().toISOString().split('T')[0],
+          today,
           false,
           null,
+          today,
           null,
           null,
           description || `${transactionType === 'income' ? 'Income' : 'Expense'}: ${category} - $${amount}`
@@ -65,9 +67,10 @@ export function SimpleTransactionEntry() {
           price ? parseFloat(price) : null,
           shares ? parseFloat(shares) : null,
           accountId || null,
-          new Date().toISOString().split('T')[0],
+          today,
           false,
           null,
+          today,
           null,
           null,
           description || `Stock purchase: ${shares} shares of ${symbol}`

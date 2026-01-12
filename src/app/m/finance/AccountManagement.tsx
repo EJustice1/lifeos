@@ -61,6 +61,9 @@ export function AccountManagement() {
       setIsLoading(true)
       // Calculate the difference to update
       const account = accounts.find(a => a.id === accountId)
+      if (!account) {
+        throw new Error('Account not found')
+      }
       const difference = newBalance - account.balance
 
       await updateAccountBalance(accountId, difference)
