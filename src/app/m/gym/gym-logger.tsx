@@ -6,14 +6,15 @@ import {
   logLift,
   endWorkout,
 } from '@/lib/actions/gym'
-import { calculate1RM, MUSCLE_GROUPS } from '@/lib/gym-utils'
+import { calculate1RM } from '@/lib/gym-utils'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
 import { WorkoutTypeButton } from '@/components/mobile/buttons/WorkoutTypeButton'
-import { MuscleGroupButton } from '@/components/mobile/buttons/MuscleGroupButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
+import { useRef } from 'react'
+import { Chart, registerables } from 'chart.js'
 
 interface Exercise {
   readonly id: number
@@ -35,6 +36,243 @@ interface LoggedSet {
   isNewPR?: boolean
 }
 
+interface WorkoutHistory {
+  id: string
+  date: string
+  type: string
+  duration: number // in minutes
+  totalVolume: number // in lbs
+  exercises: Array<{
+    name: string
+    totalSets: number
+    totalReps: number
+    totalVolume: number
+    sets: Array<{
+      setNumber: number
+      reps: number
+      weight: number
+      volume: number
+      estimated1RM: number
+    }>
+  }>
+}
+
+interface PersonalRecord {
+  exercise: string
+  oneRepMax: number
+  date: string
+  workoutType: string
+}
+
+interface StrengthCategory {
+  name: string
+  key: string
+  score: number
+}
+
+// Strength Radar Chart Component
+const StrengthRadarChart = ({ personalRecords }: { personalRecords: PersonalRecord[] }) => {
+  const chartRef = useRef<HTMLCanvasElement>(null)
+  const chartInstance = useRef<Chart | null>(null)
+
+  // Register Chart.js components
+  useEffect(() => {
+    Chart.register(...registerables)
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
+  }, [])
+
+  // Calculate strength scores for radar chart
+  const calculateStrengthScores = () => {
+    // Define strength categories and their associated exercises
+    const categories = [
+      { name: 'Push Strength', exercises: ['Bench Press', 'Overhead Press', 'Dips'], key: 'push' },
+      { name: 'Pull Strength', exercises: ['Pull Ups', 'Rows', 'Deadlifts'], key: 'pull' },
+      { name: 'Leg Strength', exercises: ['Squats', 'Lunges', 'Leg Press'], key: 'legs' },
+      { name: 'Core Strength', exercises: ['Planks', 'Ab Wheel', 'Hanging Leg Raises'], key: 'core' },
+    ]
+
+    // Calculate scores (0-100 scale based on PRs)
+    return categories.map(category => {
+      const categoryPRs = personalRecords.filter(pr =>
+        category.exercises.some(ex => pr.exercise.toLowerCase().includes(ex.toLowerCase()))
+      )
+
+      if (categoryPRs.length === 0) return { ...category, score: 0 }
+
+      const max1RM = Math.max(...categoryPRs.map(pr => pr.oneRepMax))
+
+      // Simple scoring: scale based on weight (this would be more sophisticated in production)
+      // For demo purposes, we'll use a simple linear scale
+      const score = Math.min(100, max1RM / 2) // 200lbs 1RM = 100 score
+      return { ...category, score: Math.round(score) }
+    })
+  }
+
+  const strengthData = calculateStrengthScores()
+
+  useEffect(() => {
+    if (!chartRef.current) return
+
+    const ctx = chartRef.current.getContext('2d')
+    if (!ctx) return
+
+    // Destroy previous chart
+    if (chartInstance.current) {
+      chartInstance.current.destroy()
+    }
+
+    const data = {
+      labels: strengthData.map(cat => cat.name),
+      datasets: [{
+        label: 'Strength Score',
+        data: strengthData.map(cat => cat.score),
+        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+        borderColor: 'rgba(168, 85, 247, 1)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(168, 85, 247, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(168, 85, 247, 1)',
+      }]
+    }
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          angleLines: {
+            color: 'rgba(255, 255, 255, 0.2)'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          pointLabels: {
+            color: 'white',
+            font: {
+              size: 12
+            }
+          },
+          ticks: {
+            display: false,
+            beginAtZero: true,
+            max: 100
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: (context: any) => {
+              return `${strengthData[context.dataIndex].name}: ${context.raw}%`
+            }
+          }
+        }
+      }
+    }
+
+    chartInstance.current = new Chart(ctx, {
+      type: 'radar',
+      data: data,
+      options: options
+    })
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
+  }, [personalRecords])
+
+  return <canvas ref={chartRef} />
+}
+
+// Workout History Card Component
+const WorkoutHistoryCard = ({ workout, onExerciseClick }: {
+  workout: WorkoutHistory
+  onExerciseClick: (exerciseName: string) => void
+}) => {
+  const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
+  const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null)
+
+  return (
+    <div className="border-b border-zinc-800 pb-4">
+      {/* Workout Header - Clickable */}
+      <button
+        onClick={() => setExpandedWorkout(expandedWorkout === workout.id ? null : workout.id)}
+        className="w-full text-left mb-3 flex items-center justify-between"
+      >
+        <div>
+          <p className="font-semibold">{workout.type} Workout</p>
+          <p className="text-sm text-zinc-400">{new Date(workout.date).toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-emerald-400 font-bold">{workout.totalVolume.toLocaleString()} lbs</p>
+            <p className="text-sm text-zinc-400">{workout.duration} min</p>
+          </div>
+          <svg
+            className={`w-5 h-5 transform transition-transform ${expandedWorkout === workout.id ? 'rotate-90' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Exercise List - Only show when workout is expanded */}
+      {expandedWorkout === workout.id && (
+        <div className="space-y-2 ml-4">
+          {workout.exercises.map((exercise) => (
+            <div key={exercise.name} className="border-l-2 border-zinc-700 pl-3">
+              {/* Exercise Header - Clickable */}
+              <button
+                onClick={() => setExpandedExercise(expandedExercise === exercise.name ? null : exercise.name)}
+                className="w-full text-left py-2 flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-medium">{exercise.name}</span>
+                  <span className="text-zinc-400 ml-2 text-sm">
+                    {exercise.totalSets} sets • {exercise.totalReps} reps • {exercise.totalVolume} lbs
+                  </span>
+                </div>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${expandedExercise === exercise.name ? 'rotate-90' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {/* Expanded Set Details - More Compact */}
+              {expandedExercise === exercise.name && (
+                <div className="ml-4 mt-2 space-y-1">
+                  {exercise.sets.map((set, index) => (
+                    <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-xs">
+                      <span className="text-zinc-300">Set {set.setNumber}</span>
+                      <span className="text-emerald-400 font-semibold">
+                        {set.weight} × {set.reps} = {set.volume} lbs
+                      </span>
+                      <span className="text-purple-400 ml-2">1RM: {set.estimated1RM}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function GymLogger({
   exercises,
 }: {
@@ -48,9 +286,43 @@ export function GymLogger({
   const [loggedSets, setLoggedSets] = useState<LoggedSet[]>([])
   const [prCelebration, setPrCelebration] = useState<string | null>(null)
   const [workoutType, setWorkoutType] = useState<string>('')
+  const [activeSection, setActiveSection] = useState<'workout' | 'history' | 'progress'>('workout')
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null)
+  const [workoutDuration, setWorkoutDuration] = useState<number>(0)
 
   // Calculate estimated 1RM for current input
   const estimated1RM = calculate1RM(weight, reps)
+
+  // Track workout duration
+  useEffect(() => {
+    if (activeWorkout && !workoutStartTime) {
+      setWorkoutStartTime(Date.now())
+      setWorkoutDuration(0)
+    } else if (!activeWorkout) {
+      setWorkoutStartTime(null)
+      setWorkoutDuration(0)
+    }
+  }, [activeWorkout])
+
+  // Update workout duration every second
+  useEffect(() => {
+    if (workoutStartTime) {
+      const interval = setInterval(() => {
+        setWorkoutDuration(Math.floor((Date.now() - workoutStartTime) / 1000))
+      }, 1000)
+
+      return () => clearInterval(interval)
+    }
+  }, [workoutStartTime])
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Calculate total volume for current workout
   const totalVolume = loggedSets.reduce((sum, s) => sum + s.reps * s.weight, 0)
@@ -101,6 +373,20 @@ export function GymLogger({
 
         if (result.isNewPR) {
           showToast(`🏆 New PR on ${exerciseName}!`, 'success')
+
+          // Update personal records
+          const newPR: PersonalRecord = {
+            exercise: exerciseName,
+            oneRepMax: calculate1RM(weight, reps),
+            date: new Date().toISOString(),
+            workoutType: workoutType || 'General'
+          }
+
+          setPersonalRecords(prev => {
+            // Remove any existing PR for this exercise if new one is better
+            const existingPRs = prev.filter(pr => pr.exercise !== exerciseName || pr.oneRepMax > newPR.oneRepMax)
+            return [...existingPRs, newPR]
+          })
         }
 
         setLoggedSets(prev => [...prev, {
@@ -122,10 +408,64 @@ export function GymLogger({
     if (!activeWorkout) return
 
     startTransition(async () => {
+      // Use actual workout duration from timer
+      const duration = Math.round(workoutDuration / 60) // Convert seconds to minutes
+
+      // Calculate total volume
+      const totalVolume = loggedSets.reduce((sum, set) => sum + set.reps * set.weight, 0)
+
+      // Group exercises with detailed set information for history
+      const exerciseDetails = loggedSets.reduce((acc, set) => {
+        if (!acc[set.exercise]) {
+          acc[set.exercise] = {
+            sets: [],
+            totalSets: 0,
+            totalReps: 0,
+            totalVolume: 0
+          }
+        }
+        acc[set.exercise].sets.push({
+          setNumber: set.setNumber,
+          reps: set.reps,
+          weight: set.weight,
+          volume: set.reps * set.weight,
+          estimated1RM: set.estimated1RM
+        })
+        acc[set.exercise].totalSets++
+        acc[set.exercise].totalReps += set.reps
+        acc[set.exercise].totalVolume += set.reps * set.weight
+        return acc
+      }, {} as Record<string, {
+        sets: Array<{ setNumber: number; reps: number; weight: number; volume: number; estimated1RM: number }>;
+        totalSets: number;
+        totalReps: number;
+        totalVolume: number;
+      }>)
+
+      // Create workout history entry with detailed set data
+      const newWorkoutHistory: WorkoutHistory = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        type: workoutType || 'General',
+        duration: duration,
+        totalVolume: totalVolume,
+        exercises: Object.entries(exerciseDetails).map(([name, data]) => ({
+          name,
+          totalSets: data.totalSets,
+          totalReps: data.totalReps,
+          totalVolume: data.totalVolume,
+          sets: data.sets // Store individual sets with details
+        }))
+      }
+
+      // Save to history
+      setWorkoutHistory(prev => [newWorkoutHistory, ...prev])
+
       await endWorkout(activeWorkout)
       setActiveWorkout(null)
       setLoggedSets([])
       setWorkoutType('')
+      setActiveSection('workout') // Go back to main workout screen
     })
   }
 
@@ -149,38 +489,51 @@ export function GymLogger({
 
   return (
     <section className="space-y-4">
-      {!activeWorkout ? (
-        /* Pre-workout screen */
-        <div className="space-y-4">
-          <MobileCard>
-            <div className="text-sm text-zinc-400 mb-2">Workout Type (optional)</div>
-            <div className="grid grid-cols-3 gap-2">
-              {['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Full'].map(type => (
-                <WorkoutTypeButton
+      {activeSection === 'workout' && !activeWorkout ? (
+          /* New front screen design - 2-column grid with big buttons */
+          <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
+            <div className="grid grid-cols-2 gap-4 flex-1 content-start">
+              {/* Workout Type Buttons - 2 columns */}
+              {['Push', 'Pull', 'Chest/Back', 'Arms', 'Legs', 'Upper', 'Full', 'Core'].map(type => (
+                <button
                   key={type}
-                  type={type}
-                  isSelected={workoutType === type}
-                  onClick={() => setWorkoutType(workoutType === type ? '' : type)}
-                />
+                  onClick={() => {
+                    setWorkoutType(type)
+                    // Auto-start workout when type is selected
+                    startTransition(async () => {
+                      const workout = await startWorkout(type)
+                      setActiveWorkout(workout.id)
+                    })
+                  }}
+                  className={`p-6 rounded-xl text-lg font-semibold transition-all ${
+                    workoutType === type
+                      ? 'bg-[var(--mobile-accent)] text-white shadow-lg'
+                      : 'bg-[var(--mobile-card-bg)] text-white hover:bg-zinc-800'
+                  }`}
+                >
+                  {type}
+                </button>
               ))}
+
+              {/* See History Button */}
+              <button
+                onClick={() => setActiveSection('history')}
+                className="p-6 rounded-xl text-lg font-semibold bg-zinc-800 text-white hover:bg-zinc-700 transition-all col-span-2"
+              >
+                See History
+              </button>
+
+              {/* Progress Button */}
+              <button
+                onClick={() => setActiveSection('progress')}
+                className="p-6 rounded-xl text-lg font-semibold bg-purple-900/50 text-purple-300 hover:bg-purple-900/70 transition-all col-span-2"
+              >
+                Progress & Strength
+              </button>
             </div>
-          </MobileCard>
 
-          <PrimaryButton
-            variant="primary"
-            size="lg"
-            onClick={handleStartWorkout}
-            disabled={isPending}
-            loading={isPending}
-          >
-            {isPending ? 'Starting...' : 'Start Workout'}
-          </PrimaryButton>
-
-          <MobileCard>
-            <p className="text-sm text-zinc-400">{exercises.length} exercises available</p>
-          </MobileCard>
-        </div>
-      ) : (
+          </div>
+        ) : activeSection === 'workout' && activeWorkout ? (
         /* Active workout screen */
         <>
           <MobileCard>
@@ -192,6 +545,12 @@ export function GymLogger({
                 </p>
               </div>
               <div className="text-right">
+                <p className="text-sm text-zinc-400">Timer</p>
+                <p className="font-bold text-yellow-400 text-lg">
+                  {formatDuration(workoutDuration)}
+                </p>
+              </div>
+              <div className="text-right">
                 <p className="text-sm text-zinc-400">Volume</p>
                 <p className="font-bold text-emerald-400 text-lg">
                   {totalVolume.toLocaleString()} lbs
@@ -200,28 +559,6 @@ export function GymLogger({
             </div>
           </MobileCard>
 
-          <MobileCard>
-            <div className="text-sm text-zinc-400 mb-2">Browse by Muscle Group</div>
-            <div className="grid grid-cols-3 gap-2">
-              {MUSCLE_GROUPS.map(mg => {
-                const exercisesForGroup = exercises.filter(ex =>
-                  (ex.primary_muscles?.includes(mg) || ex.secondary_muscles?.includes(mg))
-                )
-                return (
-                  <MuscleGroupButton
-                    key={mg}
-                    muscleGroup={mg}
-                    count={exercisesForGroup.length}
-                    isDisabled={exercisesForGroup.length === 0}
-                    onClick={() => {
-                      const firstExercise = exercisesForGroup[0]
-                      if (firstExercise) setSelectedExercise(firstExercise.id)
-                    }}
-                  />
-                )
-              })}
-            </div>
-          </MobileCard>
 
           <MobileCard>
             <div className="text-sm text-zinc-400 mb-2">Exercise</div>
@@ -233,26 +570,6 @@ export function GymLogger({
               value={selectedExercise?.toString() || ''}
               onChange={(e) => setSelectedExercise(e.target.value ? parseInt(e.target.value) : null)}
             />
-            {/* Muscle groups and exercise info display */}
-            {currentExerciseDetails && (currentExerciseDetails.primary_muscles || currentExerciseDetails.secondary_muscles) && (
-              <div className="flex flex-wrap gap-1 mt-2 items-center">
-                {currentExerciseDetails.primary_muscles?.map((mg: string) => (
-                  <span key={mg} className="px-2 py-1 bg-purple-900/50 text-purple-300 text-xs rounded capitalize">
-                    {mg}
-                  </span>
-                ))}
-                {currentExerciseDetails.secondary_muscles?.map((mg: string) => (
-                  <span key={mg} className="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded capitalize">
-                    {mg} (sec)
-                  </span>
-                ))}
-                {currentExerciseDetails.is_compound && (
-                  <span className="px-2 py-1 bg-emerald-900/50 text-emerald-300 text-xs rounded">
-                    Compound
-                  </span>
-                )}
-              </div>
-            )}
           </MobileCard>
 
           {/* Set counter */}
@@ -264,6 +581,24 @@ export function GymLogger({
               </span>
             )}
           </div>
+
+          {/* Show rep and 1RM counter above reps, always show volume */}
+          <MobileCard>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <span className="text-zinc-500 text-sm block">Set Volume</span>
+                <span className="text-emerald-400 font-bold text-xl">
+                  {(reps * weight).toLocaleString()} lbs
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500 text-sm block">Est. 1RM</span>
+                <span className="text-purple-400 font-bold text-xl">
+                  {estimated1RM} lbs
+                </span>
+              </div>
+            </div>
+          </MobileCard>
 
           <MobileCard>
             <div className="text-sm text-zinc-400 mb-3 text-center">Reps</div>
@@ -305,73 +640,157 @@ export function GymLogger({
             </div>
           </MobileCard>
 
-          <MobileCard>
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <span className="text-zinc-500 text-sm block">Set Volume</span>
-                <span className="text-emerald-400 font-bold text-xl">
-                  {(reps * weight).toLocaleString()} lbs
-                </span>
-              </div>
-              <div>
-                <span className="text-zinc-500 text-sm block">Est. 1RM</span>
-                <span className="text-purple-400 font-bold text-xl">
-                  {estimated1RM} lbs
-                </span>
-              </div>
-            </div>
-            <p className="text-center text-xs text-zinc-600 mt-2">
-              1RM = {weight} × (36 ÷ (37 − {reps})) = {estimated1RM} lbs
-            </p>
-          </MobileCard>
+          {/* Side-by-side buttons moved above workout summary */}
+          <div className="grid grid-cols-2 gap-2">
+            <PrimaryButton
+              variant="primary"
+              size="lg"
+              onClick={handleLogSet}
+              disabled={isPending || !selectedExercise}
+              loading={isPending}
+              className="w-full"
+            >
+              {isPending ? 'Logging...' : 'Log Set'}
+            </PrimaryButton>
 
-          <PrimaryButton
-            variant="primary"
-            size="lg"
-            onClick={handleLogSet}
-            disabled={isPending || !selectedExercise}
-            loading={isPending}
-          >
-            {isPending ? 'Logging...' : 'Log Set'}
-          </PrimaryButton>
+            <PrimaryButton
+              variant="secondary"
+              size="lg"
+              onClick={handleEndWorkout}
+              disabled={isPending}
+              className="w-full"
+            >
+              End Workout
+            </PrimaryButton>
+          </div>
 
-          {/* Logged sets summary */}
+
+          {/* Logged sets summary - Compact display like history */}
           {Object.keys(exerciseSummary).length > 0 && (
             <MobileCard>
               <h3 className="text-sm text-zinc-400 mb-3 font-medium">This Workout</h3>
-              <div className="space-y-3">
-                {Object.entries(exerciseSummary).map(([exercise, data]) => (
-                  <div key={exercise} className="bg-zinc-800 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">{exercise}</span>
-                      <span className="text-emerald-400 font-bold">
-                        {data.totalVolume.toLocaleString()} lbs
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-400">
-                        {data.sets} sets • Best: {data.bestSet.reps}×{data.bestSet.weight}
+              <div className="space-y-2 ml-2">
+                {Object.entries(exerciseSummary).map(([exerciseName, data]) => (
+                  <div key={exerciseName} className="border-l-2 border-zinc-700 pl-3">
+                    <div className="py-2 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{exerciseName}</span>
+                        <span className="text-zinc-400 ml-2 text-sm">
+                          {data.sets} sets • {data.totalReps} reps • {data.totalVolume} lbs
+                        </span>
+                      </div>
+                      <span className="text-emerald-400 font-semibold">
+                        Best: {data.bestSet.reps}×{data.bestSet.weight}
                         {data.bestSet.isNewPR && <span className="text-yellow-400 ml-1">🏆</span>}
                       </span>
-                      <span className="text-purple-400 font-medium">
-                        1RM: {data.best1RM} lbs
-                      </span>
+                    </div>
+
+                    {/* Show all sets for this exercise - compact format */}
+                    <div className="ml-4 mt-1 space-y-1">
+                      {loggedSets
+                        .filter(set => set.exercise === exerciseName)
+                        .map((set, index) => (
+                          <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-xs">
+                            <span className="text-zinc-300">Set {set.setNumber}</span>
+                            <span className="text-emerald-400 font-semibold">
+                              {set.weight} × {set.reps} = {set.weight * set.reps} lbs
+                            </span>
+                            <span className="text-purple-400 ml-2">1RM: {set.estimated1RM}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 ))}
               </div>
             </MobileCard>
           )}
-
-          <PrimaryButton
-            variant="secondary"
-            size="lg"
-            onClick={handleEndWorkout}
-            disabled={isPending}
-          >
-            End Workout
-          </PrimaryButton>
         </>
+      ) : activeSection === 'history' ? (
+        /* Enhanced History Section */
+        <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
+
+          <MobileCard className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Workout History</h2>
+              <button
+                onClick={() => setActiveSection('workout')}
+                className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {workoutHistory.length === 0 ? (
+              <p className="text-zinc-400 text-center py-8">No workout history yet. Complete a workout to see your history here.</p>
+            ) : (
+              <div className="space-y-4">
+                {workoutHistory.map(workout => (
+                  <WorkoutHistoryCard
+                    key={workout.id}
+                    workout={workout}
+                    onExerciseClick={(exerciseName) => {
+                      // Handle exercise click - could show detailed view
+                      console.log('Exercise clicked:', exerciseName)
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </MobileCard>
+        </div>
+      ) : (
+        /* PRs & Strength Radar Section */
+        <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
+
+          <MobileCard className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Progress & Strength</h2>
+              <button
+                onClick={() => setActiveSection('workout')}
+                className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {personalRecords.length === 0 ? (
+              <p className="text-zinc-400 text-center py-8">No personal records yet. Complete workouts and set new PRs to track your progress.</p>
+            ) : (
+              <div className="space-y-6">
+                {/* PRs List */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Personal Records</h3>
+                  <div className="space-y-3">
+                    {personalRecords.map((pr, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
+                        <div>
+                          <p className="font-medium">{pr.exercise}</p>
+                          <p className="text-sm text-zinc-400">{pr.workoutType} • {new Date(pr.date).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-emerald-400 font-bold text-lg">{pr.oneRepMax} lbs</p>
+                          <p className="text-xs text-zinc-500">1RM</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Strength Radar Chart */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Strength Balance</h3>
+                  <div className="h-64 relative">
+                    <StrengthRadarChart personalRecords={personalRecords} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </MobileCard>
+        </div>
       )}
 
 

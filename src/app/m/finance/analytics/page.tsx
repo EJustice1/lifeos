@@ -1,8 +1,12 @@
 "use client";
 
 import { AppSidebar } from '@/components/mobile/layout/AppSidebar';
-import { FinanceDashboard } from './finance-dashboard';
+import { SummaryCards } from '../SummaryCards';
+import { NetWorthChart } from '../charts/NetWorthChart';
+import { DistributionChart } from '../charts/DistributionChart';
+import { AssetCompositionChart } from '../charts/AssetCompositionChart';
 import { useState } from 'react';
+import { TimeRange } from '@/lib/types/finance';
 
 // Icon components for sidebar
 const HomeIcon = () => (
@@ -35,39 +39,39 @@ const ChartIcon = () => (
   </svg>
 );
 
-export default function FinancePage() {
-  const [activeSection, setActiveSection] = useState('overview');
+export default function AnalyticsPage() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('month');
 
   const sidebarItems = [
     {
       icon: <HomeIcon />,
       label: 'Overview',
-      onClick: () => setActiveSection('overview'),
-      isActive: activeSection === 'overview'
+      href: '/m/finance',
+      isActive: false
     },
     {
       icon: <TransactionIcon />,
-      label: 'Transactions',
-      onClick: () => setActiveSection('transactions'),
-      isActive: activeSection === 'transactions'
+      label: 'Quick Entry',
+      href: '/m/finance/quick-entry',
+      isActive: false
     },
     {
       icon: <StockIcon />,
       label: 'Investments',
-      onClick: () => setActiveSection('investments'),
-      isActive: activeSection === 'investments'
+      href: '/m/finance/investments',
+      isActive: false
     },
     {
       icon: <BankIcon />,
       label: 'Accounts',
-      onClick: () => setActiveSection('accounts'),
-      isActive: activeSection === 'accounts'
+      href: '/m/finance/accounts',
+      isActive: false
     },
     {
       icon: <ChartIcon />,
       label: 'Analytics',
-      onClick: () => setActiveSection('analytics'),
-      isActive: activeSection === 'analytics'
+      href: '/m/finance/analytics',
+      isActive: true
     }
   ];
 
@@ -75,12 +79,21 @@ export default function FinancePage() {
     <>
       <AppSidebar
         items={sidebarItems}
-        title="Finance"
+        title="Analytics"
         accentColor="var(--mobile-primary)"
       />
 
       <div className="pt-16 pb-8 px-4">
-        <FinanceDashboard section={activeSection} />
+        <div className="space-y-4">
+          <SummaryCards />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AssetCompositionChart timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <NetWorthChart timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+            <DistributionChart />
+          </div>
+        </div>
       </div>
     </>
   );

@@ -1,8 +1,8 @@
 "use client";
 
 import { AppSidebar } from '@/components/mobile/layout/AppSidebar';
-import { FinanceDashboard } from './finance-dashboard';
-import { useState } from 'react';
+import { SummaryCards } from '../SummaryCards';
+import { AccountManagement } from '../AccountManagement';
 
 // Icon components for sidebar
 const HomeIcon = () => (
@@ -35,39 +35,37 @@ const ChartIcon = () => (
   </svg>
 );
 
-export default function FinancePage() {
-  const [activeSection, setActiveSection] = useState('overview');
-
+export default function AccountsPage() {
   const sidebarItems = [
     {
       icon: <HomeIcon />,
       label: 'Overview',
-      onClick: () => setActiveSection('overview'),
-      isActive: activeSection === 'overview'
+      href: '/m/finance',
+      isActive: false
     },
     {
       icon: <TransactionIcon />,
-      label: 'Transactions',
-      onClick: () => setActiveSection('transactions'),
-      isActive: activeSection === 'transactions'
+      label: 'Quick Entry',
+      href: '/m/finance/quick-entry',
+      isActive: false
     },
     {
       icon: <StockIcon />,
       label: 'Investments',
-      onClick: () => setActiveSection('investments'),
-      isActive: activeSection === 'investments'
+      href: '/m/finance/investments',
+      isActive: false
     },
     {
       icon: <BankIcon />,
       label: 'Accounts',
-      onClick: () => setActiveSection('accounts'),
-      isActive: activeSection === 'accounts'
+      href: '/m/finance/accounts',
+      isActive: true
     },
     {
       icon: <ChartIcon />,
       label: 'Analytics',
-      onClick: () => setActiveSection('analytics'),
-      isActive: activeSection === 'analytics'
+      href: '/m/finance/analytics',
+      isActive: false
     }
   ];
 
@@ -75,12 +73,15 @@ export default function FinancePage() {
     <>
       <AppSidebar
         items={sidebarItems}
-        title="Finance"
+        title="Accounts"
         accentColor="var(--mobile-primary)"
       />
 
       <div className="pt-16 pb-8 px-4">
-        <FinanceDashboard section={activeSection} />
+        <div className="space-y-4">
+          <SummaryCards />
+          <AccountManagement />
+        </div>
       </div>
     </>
   );

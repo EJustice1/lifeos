@@ -395,6 +395,38 @@ export async function updateStockHolding(
   return data
 }
 
+// Account Balance Update Function
+export async function updateAccountBalance(
+  accountId: string,
+  amount: number
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Validate amount
+  if (isNaN(amount) || !isFinite(amount)) {
+    throw new Error('Invalid amount value')
+  }
+
+  if (amount === 0) {
+    return { id: accountId, balance: 0 } // No change needed
+  }
+
+  const { data, error } = await supabase
+    .from('accounts')
+    .update({ balance: supabase.rpc('increment_balance', { account_id: accountId, amount: amount }) })
+    .eq('id', accountId)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
 // Cash Adjustment Functions
 export async function logCashAdjustment(
   date: string,
@@ -424,5 +456,411 @@ export async function logCashAdjustment(
   revalidatePath('/m/finance')
   revalidatePath('/d/finance')
   return data
+}
+
+// Enhanced Recurring Transaction Functions
+export async function createEnhancedRecurringTransaction(
+  name: string,
+  transactionType: 'cash' | 'stock',
+  cashType: 'deposit' | 'withdrawal' | null,
+  stockType: 'buy' | 'sell' | null,
+  amount: number,
+  symbol: string | null,
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly',
+  startDate: string,
+  endDate?: string,
+  accountId?: string,
+  description?: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Calculate next occurrence based on frequency
+  const nextOccurrence = calculateNextOccurrence(startDate, frequency)
+
+  const { data, error } = await supabase
+    .from('enhanced_recurring_transactions')
+    .insert({
+      user_id: user.id,
+      name,
+      transaction_type: transactionType,
+      cash_type: cashType,
+      stock_type: stockType,
+      amount,
+      symbol,
+      frequency,
+      start_date: startDate,
+      end_date: endDate,
+      account_id: accountId,
+      description,
+      is_active: true,
+      next_occurrence: nextOccurrence,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/m/finance')
+  revalidatePath('/d/finance')
+  return data
+}
+
+// Asset Breakdown Data
+export interface AssetBreakdownData {
+  cash: number;
+  stocks: number;
+  cashByAccount: Record<string, number>;
+  stocksBySymbol: Record<string, number>;
+}
+
+export async function getAssetBreakdownData(): Promise<AssetBreakdownData> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Get cash accounts
+  const { data: cashAccounts } = await supabase
+    .from('accounts')
+    .select('id, name, balance')
+    .eq('user_id', user.id)
+    .in('type', ['cash', 'checking', 'savings'])
+    .eq('is_active', true)
+
+  // Get investment accounts and stock holdings
+  const { data: investmentAccounts } = await supabase
+    .from('accounts')
+    .select('id, name, balance')
+    .eq('user_id', user.id)
+    .in('type', ['investment', 'crypto'])
+    .eq('is_active', true)
+
+  const { data: stockHoldings } = await supabase
+    .from('stock_holdings')
+    .select('symbol, shares, current_price')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+
+  // Calculate breakdown
+  const cashByAccount: Record<string, number> = {}
+  let totalCash = 0
+
+  cashAccounts?.forEach(account => {
+    cashByAccount[account.name] = account.balance
+    totalCash += account.balance
+  })
+
+  const stocksBySymbol: Record<string, number> = {}
+  let totalStocks = 0
+
+  investmentAccounts?.forEach(account => {
+    if (account.balance > 0) {
+      stocksBySymbol[`${account.name} (account)`] = account.balance
+      totalStocks += account.balance
+    }
+  })
+
+  stockHoldings?.forEach(holding => {
+    const value = holding.shares * (holding.current_price ?? 0)
+    if (value > 0) {
+      stocksBySymbol[holding.symbol] = value
+      totalStocks += value
+    }
+  })
+
+  return {
+    cash: totalCash,
+    stocks: totalStocks,
+    cashByAccount,
+    stocksBySymbol
+  }
+}
+
+// Asset Composition History
+export interface AssetCompositionData {
+  date: string;
+  cash: number;
+  stocks: number;
+}
+
+export async function getAssetCompositionHistory(months = 12): Promise<AssetCompositionData[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const startDate = new Date()
+  startDate.setMonth(startDate.getMonth() - months)
+
+  const { data: snapshots } = await supabase
+    .from('net_worth_snapshots')
+    .select('date, total_cash, total_investments')
+    .eq('user_id', user.id)
+    .gte('date', startDate.toISOString().split('T')[0])
+    .order('date')
+    .limit(months + 1)
+
+  if (!snapshots || snapshots.length === 0) return []
+
+  return snapshots.map(snapshot => ({
+    date: snapshot.date,
+    cash: snapshot.total_cash || 0,
+    stocks: snapshot.total_investments || 0,
+  }))
+}
+
+// Unified Transaction Processing
+export async function processUnifiedTransaction(
+  transactionType: 'cash' | 'stock',
+  cashType: 'deposit' | 'withdrawal' | null,
+  stockType: 'buy' | 'sell' | null,
+  amount: number,
+  symbol: string | null,
+  price: number | null,
+  shares: number | null,
+  accountId: string | null,
+  date: string,
+  isRecurring: boolean,
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | null,
+  startDate: string | null,
+  endDate: string | null,
+  description: string | null
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Validate amount
+  if (amount <= 0) {
+    throw new Error('Amount must be positive')
+  }
+
+  // Validate date format
+  try {
+    new Date(date)
+  } catch (e) {
+    throw new Error('Invalid date format')
+  }
+
+  if (transactionType === 'cash') {
+    if (!cashType || !accountId) {
+      throw new Error('Cash transaction requires type and account')
+    }
+
+    // Process cash transaction
+    const transactionData = {
+      user_id: user.id,
+      date,
+      type: cashType === 'deposit' ? 'income' : 'expense',
+      amount,
+      category: cashType === 'deposit' ? 'Deposit' : 'Withdrawal',
+      description: description || `${cashType.charAt(0).toUpperCase() + cashType.slice(1)}: $${amount}`,
+      account_id: accountId,
+    }
+
+    const { data: transaction, error: transactionError } = await supabase
+      .from('transactions')
+      .insert(transactionData)
+      .select()
+      .single()
+
+    if (transactionError) throw transactionError
+
+    // Update account balance
+    const accountUpdate = cashType === 'deposit' ? amount : -amount
+    const { error: accountError } = await supabase
+      .from('accounts')
+      .update({ balance: supabase.rpc('increment_balance', { account_id: accountId, amount: accountUpdate }) })
+      .eq('id', accountId)
+
+    if (accountError) throw accountError
+
+    // Handle recurring transaction if needed
+    if (isRecurring && frequency && startDate) {
+      await createEnhancedRecurringTransaction(
+        `${cashType} - $${amount}`,
+        'cash',
+        cashType,
+        null,
+        amount,
+        null,
+        frequency,
+        startDate,
+        endDate || undefined,
+        accountId,
+        description || undefined
+      )
+    }
+
+    revalidatePath('/m/finance')
+    revalidatePath('/d/finance')
+    return { success: true, transaction }
+
+  } else if (transactionType === 'stock') {
+    if (!stockType || !symbol || !price || !shares || !accountId) {
+      throw new Error('Stock transaction requires all fields')
+    }
+
+    // Validate stock parameters
+    if (price <= 0) {
+      throw new Error('Stock price must be positive')
+    }
+
+    if (shares <= 0) {
+      throw new Error('Number of shares must be positive')
+    }
+
+    if (!symbol || symbol.trim().length === 0) {
+      throw new Error('Stock symbol is required')
+    }
+
+    // Process stock transaction
+    const totalValue = price * shares
+
+    if (isNaN(totalValue) || !isFinite(totalValue)) {
+      throw new Error('Invalid total value calculation')
+    }
+
+    if (stockType === 'buy') {
+      // Create or update stock holding
+      const { data: existingHolding } = await supabase
+        .from('stock_holdings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol)
+        .eq('account_id', accountId)
+        .single()
+
+      if (existingHolding) {
+        // Update existing holding
+        const newShares = existingHolding.shares + shares
+        const newAveragePrice = ((existingHolding.average_price * existingHolding.shares) + (price * shares)) / newShares
+
+        const { error: holdingError } = await supabase
+          .from('stock_holdings')
+          .update({
+            shares: newShares,
+            average_price: newAveragePrice,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', existingHolding.id)
+
+        if (holdingError) throw holdingError
+      } else {
+        // Create new holding
+        const { error: holdingError } = await supabase
+          .from('stock_holdings')
+          .insert({
+            user_id: user.id,
+            symbol,
+            company_name: symbol, // Will be updated via API
+            shares,
+            average_price: price,
+            current_price: price,
+            account_id: accountId,
+            is_active: true
+          })
+
+        if (holdingError) throw holdingError
+      }
+
+      // Log the cash withdrawal for the purchase
+      try {
+        await logCashAdjustment(
+          date,
+          -totalValue,
+          'Stock Purchase',
+          accountId,
+          `Purchase of ${shares} shares of ${symbol} at $${price}`
+        )
+      } catch (cashAdjustmentError) {
+        console.error('Failed to log cash adjustment for stock purchase:', cashAdjustmentError)
+        throw new Error('Failed to complete stock purchase: could not update cash balance')
+      }
+
+    } else if (stockType === 'sell') {
+      // Find existing holding
+      const { data: existingHolding } = await supabase
+        .from('stock_holdings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol)
+        .eq('account_id', accountId)
+        .single()
+
+      if (!existingHolding) {
+        throw new Error('No holding found for this stock')
+      }
+
+      if (existingHolding.shares < shares) {
+        throw new Error('Not enough shares to sell')
+      }
+
+      const newShares = existingHolding.shares - shares
+
+      if (newShares === 0) {
+        // Sell all shares - mark as inactive
+        const { error: holdingError } = await supabase
+          .from('stock_holdings')
+          .update({
+            is_active: false,
+            sold_date: date,
+            sold_price: price
+          })
+          .eq('id', existingHolding.id)
+
+        if (holdingError) throw holdingError
+      } else {
+        // Update holding with remaining shares
+        const { error: holdingError } = await supabase
+          .from('stock_holdings')
+          .update({
+            shares: newShares,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', existingHolding.id)
+
+        if (holdingError) throw holdingError
+      }
+
+      // Log the cash deposit from the sale
+      try {
+        await logCashAdjustment(
+          date,
+          totalValue,
+          'Stock Sale',
+          accountId,
+          `Sale of ${shares} shares of ${symbol} at $${price}`
+        )
+      } catch (cashAdjustmentError) {
+        console.error('Failed to log cash adjustment for stock sale:', cashAdjustmentError)
+        throw new Error('Failed to complete stock sale: could not update cash balance')
+      }
+    }
+
+    // Handle recurring transaction if needed
+    if (isRecurring && frequency && startDate) {
+      await createEnhancedRecurringTransaction(
+        `${stockType} ${symbol} - ${shares} shares`,
+        'stock',
+        null,
+        stockType,
+        totalValue,
+        symbol,
+        frequency,
+        startDate,
+        endDate || undefined,
+        accountId,
+        description || undefined
+      )
+    }
+
+    revalidatePath('/m/finance')
+    revalidatePath('/d/finance')
+    return { success: true, message: 'Stock transaction processed successfully' }
+  }
+
+  throw new Error('Invalid transaction type')
 }
 

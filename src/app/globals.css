@@ -32,6 +32,7 @@ body {
   --mobile-danger: #ef4444;  /* red-600 */
   --mobile-secondary: #3b82f6; /* blue-600 */
   --mobile-accent: #ea580c; /* orange-600 */
+  --mobile-purple: #a855f7; /* purple-600 */
   --mobile-border-radius: 0.75rem; /* rounded-xl */
   --mobile-card-padding: 1rem; /* p-4 */
   --mobile-button-padding-sm: 0.75rem 1rem; /* px-3 py-2 */

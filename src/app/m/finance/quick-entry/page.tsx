@@ -1,8 +1,9 @@
 "use client";
 
 import { AppSidebar } from '@/components/mobile/layout/AppSidebar';
-import { FinanceDashboard } from './finance-dashboard';
-import { useState } from 'react';
+import { SimpleTransactionEntry } from '../SimpleTransactionEntry';
+import { SummaryCards } from '../SummaryCards';
+import { RecentActivity } from '../RecentActivity';
 
 // Icon components for sidebar
 const HomeIcon = () => (
@@ -35,39 +36,37 @@ const ChartIcon = () => (
   </svg>
 );
 
-export default function FinancePage() {
-  const [activeSection, setActiveSection] = useState('overview');
-
+export default function QuickEntryPage() {
   const sidebarItems = [
     {
       icon: <HomeIcon />,
       label: 'Overview',
-      onClick: () => setActiveSection('overview'),
-      isActive: activeSection === 'overview'
+      href: '/m/finance',
+      isActive: false
     },
     {
       icon: <TransactionIcon />,
-      label: 'Transactions',
-      onClick: () => setActiveSection('transactions'),
-      isActive: activeSection === 'transactions'
+      label: 'Quick Entry',
+      href: '/m/finance/quick-entry',
+      isActive: true
     },
     {
       icon: <StockIcon />,
       label: 'Investments',
-      onClick: () => setActiveSection('investments'),
-      isActive: activeSection === 'investments'
+      href: '/m/finance/investments',
+      isActive: false
     },
     {
       icon: <BankIcon />,
       label: 'Accounts',
-      onClick: () => setActiveSection('accounts'),
-      isActive: activeSection === 'accounts'
+      href: '/m/finance/accounts',
+      isActive: false
     },
     {
       icon: <ChartIcon />,
       label: 'Analytics',
-      onClick: () => setActiveSection('analytics'),
-      isActive: activeSection === 'analytics'
+      href: '/m/finance/analytics',
+      isActive: false
     }
   ];
 
@@ -75,12 +74,16 @@ export default function FinancePage() {
     <>
       <AppSidebar
         items={sidebarItems}
-        title="Finance"
+        title="Quick Entry"
         accentColor="var(--mobile-primary)"
       />
 
       <div className="pt-16 pb-8 px-4">
-        <FinanceDashboard section={activeSection} />
+        <div className="space-y-4">
+          <SummaryCards />
+          <SimpleTransactionEntry />
+          <RecentActivity />
+        </div>
       </div>
     </>
   );

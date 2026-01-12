@@ -23,3 +23,4 @@ exception
 end;
 $$ language plpgsql security definer;
 
+
