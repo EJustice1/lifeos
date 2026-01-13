@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useSession } from '@/context/SessionContext'
 import { validateSessionAge } from '@/lib/utils/session-storage'
 import { endWorkout } from '@/lib/actions/gym'
@@ -9,6 +9,7 @@ import { endStudySession } from '@/lib/actions/study'
 
 export function SessionRecovery() {
   const router = useRouter()
+  const pathname = usePathname()
   const { recoverActiveSession, activeSession, endSession } = useSession()
   const [isRecovering, setIsRecovering] = useState(true)
   const [showExpiredDialog, setShowExpiredDialog] = useState(false)
@@ -31,20 +32,40 @@ export function SessionRecovery() {
 
         // Session is valid and fresh (< 24 hours)
         if (validation.isValid && !validation.isExpired) {
-          // Auto-navigate to the appropriate module
-          if (session.type === 'workout') {
-            router.push('/m/gym')
-          } else if (session.type === 'study') {
-            router.push('/m/study')
+          // Only auto-navigate if we're on a matching route
+          const isOnGymRoute = pathname === '/m/gym'
+          const isOnStudyRoute = pathname === '/m/study'
+          const isGymSession = session.type === 'workout'
+          const isStudySession = session.type === 'study'
+
+          // Navigate only if route matches session type
+          if (isGymSession && !isOnGymRoute) {
+            // User is not on gym route, don't auto-navigate
+            setIsRecovering(false)
+            return
+          } else if (isStudySession && !isOnStudyRoute) {
+            // User is not on study route, don't auto-navigate
+            setIsRecovering(false)
+            return
           }
+
+          // If we're already on the matching route, session will auto-populate via hooks
           setIsRecovering(false)
           return
         }
 
         // Session is expired (> 24 hours)
         if (validation.isExpired) {
-          setExpiredSession(session)
-          setShowExpiredDialog(true)
+          // Only show expired dialog if we're on the matching route
+          const isOnGymRoute = pathname === '/m/gym'
+          const isOnStudyRoute = pathname === '/m/study'
+          const isGymSession = session.type === 'workout'
+          const isStudySession = session.type === 'study'
+
+          if ((isGymSession && isOnGymRoute) || (isStudySession && isOnStudyRoute)) {
+            setExpiredSession(session)
+            setShowExpiredDialog(true)
+          }
           setIsRecovering(false)
           return
         }
@@ -57,19 +78,14 @@ export function SessionRecovery() {
     // Small delay to avoid flash
     const timer = setTimeout(performRecovery, 100)
     return () => clearTimeout(timer)
-  }, []) // Only run once on mount
+  }, [pathname]) // Re-run when pathname changes
 
   // Handle expired session confirmation
   const handleContinueExpiredSession = () => {
     if (!expiredSession) return
 
-    // Navigate to the module
-    if (expiredSession.type === 'workout') {
-      router.push('/m/gym')
-    } else if (expiredSession.type === 'study') {
-      router.push('/m/study')
-    }
-
+    // Just close the dialog - we're already on the right route
+    // The session will auto-populate via the hooks
     setShowExpiredDialog(false)
     setExpiredSession(null)
   }
