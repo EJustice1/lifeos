@@ -1,63 +1,103 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import {
+  saveSessionMetadata,
+  loadSessionMetadata,
+  validateSessionAge,
+  clearSessionMetadata,
+  saveSessionData,
+  loadSessionData,
+  clearSessionData,
+  clearAllSessionData,
+  type SessionMetadata,
+} from '@/lib/utils/session-storage'
 
 interface ActiveSession {
   type: 'study' | 'workout'
   startedAt: string
   bucketId?: string
   workoutType?: string
+  workoutId?: string      // DB record ID for gym
+  sessionId?: string      // DB record ID for study
+  sessionData?: any       // Module-specific data (sets, timer state, etc.)
 }
 
 interface SessionContextType {
   activeSession: ActiveSession | null
-  startSession: (type: 'study' | 'workout', options?: { bucketId?: string; workoutType?: string }) => void
+  startSession: (
+    type: 'study' | 'workout',
+    options?: {
+      bucketId?: string
+      workoutType?: string
+      workoutId?: string
+      sessionId?: string
+      sessionData?: any
+    }
+  ) => void
   endSession: () => void
   getSessionDuration: () => number
   clearExpiredSessions: () => void
+  updateSessionData: (data: any) => void
+  recoverActiveSession: () => ActiveSession | null
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
-const SESSION_KEY = 'lifeos_active_session'
+const SESSION_KEY = 'lifeos_active_session' // Keep for backward compatibility
 const MAX_SESSION_AGE_HOURS = 24
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
 
-  // Load session from localStorage on initial render
+  // Load session from localStorage on initial render using new storage utilities
   useEffect(() => {
-    const data = localStorage.getItem(SESSION_KEY)
-    if (!data) return
+    const metadata = loadSessionMetadata()
+    if (!metadata) return
 
     try {
-      const session = JSON.parse(data) as ActiveSession
-      const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
+      const validation = validateSessionAge(metadata.startedAt)
 
-      if (ageHours <= MAX_SESSION_AGE_HOURS) {
+      if (validation.isValid) {
+        // Load session data if exists
+        const sessionData = loadSessionData(metadata.type)
+
+        const session: ActiveSession = {
+          ...metadata,
+          sessionData,
+        }
         setActiveSession(session)
       } else {
-        localStorage.removeItem(SESSION_KEY)
+        // Clear expired session
+        clearAllSessionData()
       }
     } catch (error) {
       console.error('Failed to recover session:', error)
-      localStorage.removeItem(SESSION_KEY)
+      clearAllSessionData()
     }
   }, [])
 
   // Handle cross-tab communication via storage events
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === SESSION_KEY) {
+      // Listen for changes to session metadata key
+      if (e.key === SESSION_KEY || e.key?.startsWith('lifeos_session_')) {
         if (e.newValue) {
           try {
-            const session = JSON.parse(e.newValue) as ActiveSession
-            // Validate the session before applying it
-            const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
-            if (ageHours <= MAX_SESSION_AGE_HOURS) {
+            const metadata = loadSessionMetadata()
+            if (!metadata) return
+
+            const validation = validateSessionAge(metadata.startedAt)
+            if (validation.isValid) {
+              const sessionData = loadSessionData(metadata.type)
+              const session: ActiveSession = {
+                ...metadata,
+                sessionData,
+              }
               setActiveSession(session)
             } else {
-              localStorage.removeItem(SESSION_KEY)
+              clearAllSessionData()
+              setActiveSession(null)
             }
           } catch (error) {
             console.error('Failed to parse session from storage event:', error)
@@ -75,13 +115,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Auto-save active session to localStorage when it changes
   useEffect(() => {
     if (activeSession) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(activeSession))
+      // Save metadata
+      const metadata: SessionMetadata = {
+        type: activeSession.type,
+        startedAt: activeSession.startedAt,
+        bucketId: activeSession.bucketId,
+        workoutType: activeSession.workoutType,
+        workoutId: activeSession.workoutId,
+        sessionId: activeSession.sessionId,
+      }
+      saveSessionMetadata(metadata)
+
+      // Save session data if exists
+      if (activeSession.sessionData) {
+        saveSessionData(activeSession.type, activeSession.sessionData)
+      }
     } else {
-      localStorage.removeItem(SESSION_KEY)
+      clearAllSessionData()
     }
   }, [activeSession])
 
-  const startSession = (type: 'study' | 'workout', options: { bucketId?: string; workoutType?: string } = {}) => {
+  const startSession = (
+    type: 'study' | 'workout',
+    options: {
+      bucketId?: string
+      workoutType?: string
+      workoutId?: string
+      sessionId?: string
+      sessionData?: any
+    } = {}
+  ) => {
     const now = new Date().toISOString()
     const newSession: ActiveSession = {
       type,
@@ -93,6 +156,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const endSession = () => {
     setActiveSession(null)
+    // Cleanup is handled by the useEffect hook above
+  }
+
+  const updateSessionData = (data: any) => {
+    if (!activeSession) return
+
+    const updatedSession: ActiveSession = {
+      ...activeSession,
+      sessionData: data,
+    }
+    setActiveSession(updatedSession)
+  }
+
+  const recoverActiveSession = (): ActiveSession | null => {
+    try {
+      const metadata = loadSessionMetadata()
+      if (!metadata) return null
+
+      const validation = validateSessionAge(metadata.startedAt)
+      if (!validation.isValid) {
+        clearAllSessionData()
+        return null
+      }
+
+      const sessionData = loadSessionData(metadata.type)
+      return {
+        ...metadata,
+        sessionData,
+      }
+    } catch (error) {
+      console.error('Failed to recover active session:', error)
+      clearAllSessionData()
+      return null
+    }
   }
 
   // Calculate current session duration based on start time
@@ -103,39 +200,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return 0
   }
 
-  const recoverSession = () => {
-    const data = localStorage.getItem(SESSION_KEY)
-    if (!data) return
-
-    try {
-      const session = JSON.parse(data) as ActiveSession
-      const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
-
-      if (ageHours <= MAX_SESSION_AGE_HOURS) {
-        setActiveSession(session)
-      } else {
-        localStorage.removeItem(SESSION_KEY)
-      }
-    } catch (error) {
-      console.error('Failed to recover session:', error)
-      localStorage.removeItem(SESSION_KEY)
-    }
-  }
-
   const clearExpiredSessions = () => {
-    const data = localStorage.getItem(SESSION_KEY)
-    if (data) {
+    const metadata = loadSessionMetadata()
+    if (metadata) {
       try {
-        const session = JSON.parse(data) as ActiveSession
-        const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
+        const validation = validateSessionAge(metadata.startedAt)
 
-        if (ageHours > MAX_SESSION_AGE_HOURS) {
-          localStorage.removeItem(SESSION_KEY)
+        if (validation.isExpired) {
+          clearAllSessionData()
           setActiveSession(null)
         }
       } catch (error) {
         console.error('Failed to check session expiration:', error)
-        localStorage.removeItem(SESSION_KEY)
+        clearAllSessionData()
         setActiveSession(null)
       }
     }
@@ -148,7 +225,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         startSession,
         endSession,
         getSessionDuration,
-        clearExpiredSessions
+        clearExpiredSessions,
+        updateSessionData,
+        recoverActiveSession,
       }}>
       {children}
     </SessionContext.Provider>

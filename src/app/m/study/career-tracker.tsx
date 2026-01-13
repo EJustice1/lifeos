@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
+import { useStudySession } from '@/lib/hooks/useStudySession'
 import {
-  startStudySession,
-  endStudySession,
   logCompletedSession,
   createBucket,
   archiveBucket,
@@ -73,10 +72,18 @@ export function CareerTracker({
 }) {
   const [isPending, startTransition] = useTransition()
 
-  // Session state
-  const [activeSession, setActiveSession] = useState<string | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-  const [seconds, setSeconds] = useState(0)
+  const {
+    activeSession: activeStudySession,
+    startSession,
+    updateTimer,
+    updateNotes: updateSessionNotes,
+    endSession,
+    isSessionActive,
+  } = useStudySession()
+
+  // Session state derived from hook
+  const isRunning = isSessionActive
+  const seconds = activeStudySession?.elapsedSeconds || 0
 
   // UI mode state
   const [mode, setMode] = useState<'timer' | 'manual'>('timer')
@@ -84,8 +91,10 @@ export function CareerTracker({
   const [showCreateBucket, setShowCreateBucket] = useState(false)
 
   // Form state
-  const [selectedBucket, setSelectedBucket] = useState(initialBuckets[0]?.id ?? '')
-  const [notes, setNotes] = useState('')
+  const [selectedBucket, setSelectedBucket] = useState(
+    activeStudySession?.bucketId || initialBuckets[0]?.id || ''
+  )
+  const [notes, setNotes] = useState(activeStudySession?.notes || '')
   const [manualMinutes, setManualMinutes] = useState(30)
   const [manualHours, setManualHours] = useState(0)
 
@@ -99,61 +108,25 @@ export function CareerTracker({
   const [buckets, setBuckets] = useState(initialBuckets)
   const [todaySessions, setTodaySessions] = useState(initialSessions)
 
-  // Timer effect
+  // Timer effect - increment seconds and update storage
   useEffect(() => {
     let interval: NodeJS.Timeout
     if (isRunning) {
       interval = setInterval(() => {
-        setSeconds((s) => s + 1)
+        updateTimer(seconds + 1)
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isRunning])
-
-  // Session recovery on mount
-  useEffect(() => {
-    const persistedSession = localStorage.getItem('activeStudySession')
-    if (persistedSession) {
-      try {
-        const { sessionId, startedAt, bucketId } = JSON.parse(persistedSession)
-        const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-
-        if (elapsed > 0 && elapsed < 43200) { // Less than 12 hours
-          const shouldContinue = confirm(
-            `You have an active session (${formatTime(elapsed)} elapsed). Continue?`
-          )
-
-          if (shouldContinue) {
-            setActiveSession(sessionId)
-            setSeconds(elapsed)
-            setIsRunning(true)
-            setSelectedBucket(bucketId)
-          } else {
-            localStorage.removeItem('activeStudySession')
-          }
-        } else {
-          localStorage.removeItem('activeStudySession')
-        }
-      } catch {
-        localStorage.removeItem('activeStudySession')
-      }
-    }
-  }, [])
+  }, [isRunning, seconds, updateTimer])
 
   const { showToast } = useToast()
 
-  // Persist active session
+  // Sync notes with session
   useEffect(() => {
-    if (activeSession && isRunning) {
-      localStorage.setItem('activeStudySession', JSON.stringify({
-        sessionId: activeSession,
-        startedAt: new Date().toISOString(),
-        bucketId: selectedBucket,
-      }))
-    } else {
-      localStorage.removeItem('activeStudySession')
+    if (notes && isSessionActive) {
+      updateSessionNotes(notes)
     }
-  }, [activeSession, isRunning, selectedBucket])
+  }, [notes, isSessionActive])
 
   // Aggregate today's sessions
   const todayByBucket = todaySessions.reduce((acc, session) => {
@@ -176,10 +149,7 @@ export function CareerTracker({
 
     startTransition(async () => {
       try {
-        const session = await startStudySession(selectedBucket)
-        setActiveSession(session.id)
-        setIsRunning(true)
-        setSeconds(0)
+        await startSession(selectedBucket)
       } catch (error) {
         showToast('Failed to start session. Please try again.', 'error')
         console.error('Start session error:', error)
@@ -188,27 +158,23 @@ export function CareerTracker({
   }
 
   async function handleStopTimer() {
-    if (!activeSession) return
+    if (!activeStudySession) return
 
     const previousSessions = todaySessions
 
     startTransition(async () => {
       try {
-        await endStudySession(activeSession, notes || undefined)
-
         // Optimistically update
         const bucket = buckets.find(b => b.id === selectedBucket)
         const newSession: Session = {
-          id: activeSession,
+          id: activeStudySession.sessionId,
           duration_minutes: Math.floor(seconds / 60),
           notes: notes || null,
           bucket: bucket ? { name: bucket.name, color: bucket.color } : null,
         }
         setTodaySessions(prev => [newSession, ...prev])
 
-        setActiveSession(null)
-        setIsRunning(false)
-        setSeconds(0)
+        await endSession(notes || undefined)
         setNotes('')
         showToast('Session saved!', 'success')
       } catch (error) {
@@ -220,7 +186,7 @@ export function CareerTracker({
   }
 
   function handleResetTimer() {
-    setSeconds(0)
+    updateTimer(0)
   }
 
   // Manual entry handler

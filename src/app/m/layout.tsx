@@ -1,4 +1,5 @@
 import { SessionProvider } from './_components/SessionProvider';
+import { SessionRecovery } from './_components/SessionRecovery';
 import { ToastProvider } from '@/components/mobile';
 
 export const metadata = {
@@ -18,6 +19,7 @@ export default function MobileLayout({
 }) {
   return (
     <SessionProvider>
+      <SessionRecovery />
       <ToastProvider>
         <div className="min-h-screen bg-zinc-950 text-white">
           <main className="container mx-auto px-0 py-0 max-w-md min-h-screen">

@@ -1,12 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { useSession } from '@/context/SessionContext'
-import {
-  startWorkout,
-  logLift,
-  endWorkout,
-} from '@/lib/actions/gym'
+import { useGymSession, type LoggedSet } from '@/lib/hooks/useGymSession'
 import { calculate1RM } from '@/lib/gym-utils'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
@@ -25,16 +20,6 @@ interface Exercise {
   readonly secondary_muscles?: readonly string[]
   readonly is_compound: boolean
   readonly equipment?: string
-}
-
-interface LoggedSet {
-  exercise: string
-  exerciseId: number
-  setNumber: number
-  reps: number
-  weight: number
-  estimated1RM: number
-  isNewPR?: boolean
 }
 
 interface WorkoutHistory {
@@ -280,47 +265,42 @@ export function GymLogger({
   exercises: readonly Exercise[]
 }) {
   const [isPending, startTransition] = useTransition()
-  const [activeWorkout, setActiveWorkout] = useState<string | null>(null)
   const [selectedExercise, setSelectedExercise] = useState<number | null>(exercises.length > 0 ? exercises[0].id : null)
   const [reps, setReps] = useState(8)
   const [weight, setWeight] = useState(135)
-  const [loggedSets, setLoggedSets] = useState<LoggedSet[]>([])
-  const [prCelebration, setPrCelebration] = useState<string | null>(null)
   const [workoutType, setWorkoutType] = useState<string>('')
   const [activeSection, setActiveSection] = useState<'workout' | 'history' | 'progress'>('workout')
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
 
   const {
-    activeSession: contextSession,
-    startSession,
-    endSession,
-    getSessionDuration
-  } = useSession()
+    activeWorkout,
+    startWorkout,
+    logSet,
+    endWorkout,
+    isWorkoutActive,
+    getSessionDuration,
+  } = useGymSession()
 
-  // Sync workout duration with context session
-  const [workoutDuration, setWorkoutDuration] = useState<number>(contextSession?.type === 'workout' ? getSessionDuration() : 0)
+  // Get logged sets from active workout
+  const loggedSets = activeWorkout?.loggedSets || []
+
+  // Sync workout duration
+  const [workoutDuration, setWorkoutDuration] = useState<number>(getSessionDuration())
 
   // Calculate estimated 1RM for current input
   const estimated1RM = calculate1RM(weight, reps)
 
 
-  // Sync with context session changes
-  useEffect(() => {
-    if (contextSession?.type === 'workout') {
-      setWorkoutDuration(getSessionDuration())
-    }
-  }, [contextSession, getSessionDuration])
-
   // Update timer display every second when workout is active
   useEffect(() => {
-    if (activeWorkout) {
+    if (isWorkoutActive) {
       const interval = setInterval(() => {
         setWorkoutDuration(getSessionDuration())
       }, 1000)
       return () => clearInterval(interval)
     }
-  }, [activeWorkout, getSessionDuration])
+  }, [isWorkoutActive, getSessionDuration])
 
   // Format duration as MM:SS
   const formatDuration = (seconds: number) => {
@@ -339,15 +319,6 @@ export function GymLogger({
   // Get current exercise details
   const currentExerciseDetails = exercises.find(e => e.id === selectedExercise)
 
-
-  // Clear PR celebration after delay
-  useEffect(() => {
-    if (prCelebration) {
-      const timer = setTimeout(() => setPrCelebration(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [prCelebration])
-
   const adjustWeight = (delta: number) => {
     setWeight(prev => Math.max(0, prev + delta))
   }
@@ -358,24 +329,25 @@ export function GymLogger({
 
 
 
-  async function handleStartWorkout() {
+  const { showToast } = useToast()
+
+  async function handleStartWorkout(type: string) {
     startTransition(async () => {
-      const workout = await startWorkout(workoutType || undefined)
-      setActiveWorkout(workout.id)
-      startSession('workout', { workoutType: workoutType || 'General' })
+      try {
+        await startWorkout(type)
+      } catch (error) {
+        showToast('Failed to start workout', 'error')
+      }
     })
   }
 
-  const { showToast } = useToast()
-
   async function handleLogSet() {
-    if (!activeWorkout || !selectedExercise) return
+    if (!isWorkoutActive || !selectedExercise) return
 
     startTransition(async () => {
       try {
-        // Use the new logLift function which handles PR detection internally
-        const result = await logLift(activeWorkout, selectedExercise, weight, reps)
         const exerciseName = exercises.find(e => e.id === selectedExercise)?.name ?? ''
+        const result = await logSet(selectedExercise, weight, reps, exerciseName)
 
         if (result.isNewPR) {
           showToast(`🏆 New PR on ${exerciseName}!`, 'success')
@@ -385,7 +357,7 @@ export function GymLogger({
             exercise: exerciseName,
             oneRepMax: calculate1RM(weight, reps),
             date: new Date().toISOString(),
-            workoutType: workoutType || 'General'
+            workoutType: activeWorkout?.workoutType || 'General'
           }
 
           setPersonalRecords(prev => {
@@ -394,16 +366,6 @@ export function GymLogger({
             return [...existingPRs, newPR]
           })
         }
-
-        setLoggedSets(prev => [...prev, {
-          exercise: exerciseName,
-          exerciseId: selectedExercise,
-          setNumber: currentSetNumber,
-          reps,
-          weight,
-          estimated1RM: calculate1RM(weight, reps),
-          isNewPR: result.isNewPR,
-        }])
       } catch (error) {
         showToast('Failed to log set', 'error')
       }
@@ -414,65 +376,66 @@ export function GymLogger({
     if (!activeWorkout) return
 
     startTransition(async () => {
-      // Use actual workout duration from timer
-      const duration = Math.round(workoutDuration / 60) // Convert seconds to minutes
+      try {
+        // Use actual workout duration from timer
+        const duration = Math.round(workoutDuration / 60) // Convert seconds to minutes
 
-      // Calculate total volume
-      const totalVolume = loggedSets.reduce((sum, set) => sum + set.reps * set.weight, 0)
+        // Calculate total volume
+        const totalVolume = loggedSets.reduce((sum, set) => sum + set.reps * set.weight, 0)
 
-      // Group exercises with detailed set information for history
-      const exerciseDetails = loggedSets.reduce((acc, set) => {
-        if (!acc[set.exercise]) {
-          acc[set.exercise] = {
-            sets: [],
-            totalSets: 0,
-            totalReps: 0,
-            totalVolume: 0
+        // Group exercises with detailed set information for history
+        const exerciseDetails = loggedSets.reduce((acc, set) => {
+          if (!acc[set.exercise]) {
+            acc[set.exercise] = {
+              sets: [],
+              totalSets: 0,
+              totalReps: 0,
+              totalVolume: 0
+            }
           }
+          acc[set.exercise].sets.push({
+            setNumber: set.setNumber,
+            reps: set.reps,
+            weight: set.weight,
+            volume: set.reps * set.weight,
+            estimated1RM: set.estimated1RM
+          })
+          acc[set.exercise].totalSets++
+          acc[set.exercise].totalReps += set.reps
+          acc[set.exercise].totalVolume += set.reps * set.weight
+          return acc
+        }, {} as Record<string, {
+          sets: Array<{ setNumber: number; reps: number; weight: number; volume: number; estimated1RM: number }>;
+          totalSets: number;
+          totalReps: number;
+          totalVolume: number;
+        }>)
+
+        // Create workout history entry with detailed set data
+        const newWorkoutHistory: WorkoutHistory = {
+          id: Date.now().toString(),
+          date: new Date().toISOString(),
+          type: activeWorkout.workoutType || 'General',
+          duration: duration,
+          totalVolume: totalVolume,
+          exercises: Object.entries(exerciseDetails).map(([name, data]) => ({
+            name,
+            totalSets: data.totalSets,
+            totalReps: data.totalReps,
+            totalVolume: data.totalVolume,
+            sets: data.sets // Store individual sets with details
+          }))
         }
-        acc[set.exercise].sets.push({
-          setNumber: set.setNumber,
-          reps: set.reps,
-          weight: set.weight,
-          volume: set.reps * set.weight,
-          estimated1RM: set.estimated1RM
-        })
-        acc[set.exercise].totalSets++
-        acc[set.exercise].totalReps += set.reps
-        acc[set.exercise].totalVolume += set.reps * set.weight
-        return acc
-      }, {} as Record<string, {
-        sets: Array<{ setNumber: number; reps: number; weight: number; volume: number; estimated1RM: number }>;
-        totalSets: number;
-        totalReps: number;
-        totalVolume: number;
-      }>)
 
-      // Create workout history entry with detailed set data
-      const newWorkoutHistory: WorkoutHistory = {
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        type: workoutType || 'General',
-        duration: duration,
-        totalVolume: totalVolume,
-        exercises: Object.entries(exerciseDetails).map(([name, data]) => ({
-          name,
-          totalSets: data.totalSets,
-          totalReps: data.totalReps,
-          totalVolume: data.totalVolume,
-          sets: data.sets // Store individual sets with details
-        }))
+        // Save to history
+        setWorkoutHistory(prev => [newWorkoutHistory, ...prev])
+
+        await endWorkout()
+        setWorkoutType('')
+        setActiveSection('workout') // Go back to main workout screen
+      } catch (error) {
+        showToast('Failed to end workout', 'error')
       }
-
-      // Save to history
-      setWorkoutHistory(prev => [newWorkoutHistory, ...prev])
-
-      await endWorkout(activeWorkout)
-      endSession()
-      setActiveWorkout(null)
-      setLoggedSets([])
-      setWorkoutType('')
-      setActiveSection('workout') // Go back to main workout screen
     })
   }
 
@@ -497,7 +460,7 @@ export function GymLogger({
 
   return (
     <section className="space-y-4">
-      {activeSection === 'workout' && !activeWorkout ? (
+      {activeSection === 'workout' && !isWorkoutActive ? (
           /* New front screen design - 2-column grid with big buttons */
           <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
             <div className="grid grid-cols-2 gap-4 flex-1 content-start">
@@ -507,12 +470,7 @@ export function GymLogger({
                   key={type}
                   onClick={() => {
                     setWorkoutType(type)
-                    // Auto-start workout when type is selected
-                    startTransition(async () => {
-                      const workout = await startWorkout(type)
-                      setActiveWorkout(workout.id)
-                      startSession('workout', { workoutType: type })
-                    })
+                    handleStartWorkout(type)
                   }}
                   className={`p-6 rounded-xl text-lg font-semibold transition-all ${
                     workoutType === type
@@ -542,7 +500,7 @@ export function GymLogger({
             </div>
 
           </div>
-        ) : activeSection === 'workout' && activeWorkout ? (
+        ) : activeSection === 'workout' && isWorkoutActive ? (
         /* Active workout screen */
         <>
           <MobileCard>
@@ -550,7 +508,7 @@ export function GymLogger({
               <div>
                 <p className="text-sm text-zinc-400">Active Workout</p>
                 <p className="font-semibold text-lg">
-                  {workoutType || 'General'} • {loggedSets.length} sets
+                  {activeWorkout?.workoutType || 'General'} • {loggedSets.length} sets
                 </p>
               </div>
               <div className="text-right">
