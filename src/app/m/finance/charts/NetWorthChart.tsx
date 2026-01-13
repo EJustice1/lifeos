@@ -12,6 +12,14 @@ interface NetWorthChartProps {
   onTimeRangeChange: (range: TimeRange) => void;
 }
 
+// Map time ranges to number of weeks
+const TIME_RANGE_WEEKS: Record<TimeRange, number | 'all'> = {
+  month: 4,
+  quarter: 12,
+  year: 52,
+  all: 'all',
+};
+
 export function NetWorthChart({ timeRange, onTimeRangeChange }: NetWorthChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
@@ -64,36 +72,98 @@ export function NetWorthChart({ timeRange, onTimeRangeChange }: NetWorthChartPro
         setIsLoading(true);
         setError(null);
 
-        // Convert time range to months
-        const monthsMap: Record<TimeRange, number> = {
-          'month': 1,
-          'quarter': 3,
-          'year': 12,
-          'all': 24
-        };
-
-        // Fetch data from server actions
+        // Fetch all available data (24 months max)
         const [netWorth, history, monthlyStats] = await Promise.all([
           getNetWorth(),
-          getNetWorthHistory(monthsMap[timeRange]),
+          getNetWorthHistory(24),
           getMonthlyStats(new Date().getFullYear(), new Date().getMonth() + 1)
         ]);
 
-        if (!netWorth || !history) {
+        if (!netWorth) {
           throw new Error('No net worth data available');
         }
 
-        // Prepare data for chart
-        const historicalData = history.map(item => ({
-          date: item.date,
-          value: item.total_assets
-        }));
+        // Determine number of weeks to show based on time range
+        const weeksToShow = TIME_RANGE_WEEKS[timeRange];
+
+        // Generate weekly data points
+        const weeklyData = [];
+        const now = new Date();
+
+        // Create a map of monthly data for quick lookup
+        const monthlyDataMap = new Map();
+        if (history && history.length > 0) {
+          history.forEach(item => {
+            const monthKey = item.date.slice(0, 7); // YYYY-MM format
+            monthlyDataMap.set(monthKey, item.total_assets);
+          });
+        }
+
+        // Get the oldest available data date
+        const oldestDate = history && history.length > 0
+          ? new Date(history[0].date)
+          : now;
+
+        // For 'all' time range, calculate weeks from oldest data to now
+        let numWeeks: number;
+        if (weeksToShow === 'all') {
+          const weeksDiff = Math.ceil((now.getTime() - oldestDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+          numWeeks = Math.max(weeksDiff, 4); // Minimum 4 weeks
+        } else {
+          numWeeks = weeksToShow;
+        }
+
+        // Generate weekly data points (going back numWeeks from now)
+        for (let i = numWeeks - 1; i >= 0; i--) {
+          const weekDate = new Date(now);
+          weekDate.setDate(now.getDate() - (i * 7));
+
+          // Check if this week is before the oldest available data
+          if (weekDate < oldestDate) {
+            // Use oldest available data
+            const oldestMonthKey = oldestDate.toISOString().slice(0, 7);
+            const value = monthlyDataMap.get(oldestMonthKey) || netWorth.total;
+            weeklyData.push({
+              date: weekDate.toISOString().split('T')[0],
+              value: value
+            });
+          } else {
+            // Find the most recent monthly data for this week
+            const monthKey = weekDate.toISOString().slice(0, 7); // YYYY-MM
+
+            let value = netWorth.total; // Default to current net worth
+
+            // Look for exact month match or most recent month before this week
+            if (monthlyDataMap.has(monthKey)) {
+              value = monthlyDataMap.get(monthKey);
+            } else {
+              // Find the most recent month with data before this week
+              let mostRecentValue = null;
+              for (const [dataMonthKey, dataValue] of monthlyDataMap.entries()) {
+                if (dataMonthKey <= monthKey) {
+                  if (!mostRecentValue || dataMonthKey > mostRecentValue.key) {
+                    mostRecentValue = { key: dataMonthKey, value: dataValue };
+                  }
+                }
+              }
+
+              if (mostRecentValue) {
+                value = mostRecentValue.value;
+              }
+            }
+
+            weeklyData.push({
+              date: weekDate.toISOString().split('T')[0],
+              value: value
+            });
+          }
+        }
 
         setNetWorthData({
           currentNetWorth: netWorth.total,
           monthlyIncome: monthlyStats?.income || 0,
           monthlyExpenses: monthlyStats?.expenses || 0,
-          historicalData
+          historicalData: weeklyData
         });
 
       } catch (err) {
@@ -125,19 +195,20 @@ export function NetWorthChart({ timeRange, onTimeRangeChange }: NetWorthChartPro
     }
 
     const historical = netWorthData.historicalData;
-    const projected = calculateProjection();
-    const allData = [...historical, ...projected];
+
+    // No projections for weekly view - just show historical data
+    const allData = [...historical];
 
     const labels = allData.map(item => {
       const date = new Date(item.date);
-      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
     const data = allData.map(item => item.value);
 
-    // Separate historical and projected data points
+    // All points are historical
     const historicalPoints = historical.map((_, i) => i);
-    const projectedPoints = projected.map((_, i) => historical.length + i);
+    const projectedPoints: number[] = [];
 
     chartInstance.current = new Chart(ctx, {
       type: 'line',
@@ -203,23 +274,42 @@ export function NetWorthChart({ timeRange, onTimeRangeChange }: NetWorthChartPro
         chartInstance.current.destroy();
       }
     };
-  }, [timeRange]);
+  }, [netWorthData, timeRange]);
+
+  const timeRangeLabels: Record<TimeRange, string> = {
+    month: '1M',
+    quarter: '3M',
+    year: '1Y',
+    all: 'All',
+  };
 
   return (
     <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Net Worth Over Time</h3>
-        <div className="flex space-x-2">
-          {['month', 'quarter', 'year', 'all'].map((range) => (
-            <button
-              key={range}
-              onClick={() => onTimeRangeChange(range as TimeRange)}
-              className={`px-3 py-1 rounded-full text-sm ${timeRange === range ? 'bg-[var(--mobile-primary)] text-white' : 'bg-zinc-800 text-zinc-300'}`}
-            >
-              {range.charAt(0).toUpperCase() + range.slice(1)}
-            </button>
-          ))}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Net Worth</h3>
+          <div className="flex gap-1">
+            {(Object.keys(TIME_RANGE_WEEKS) as TimeRange[]).map((range) => (
+              <button
+                key={range}
+                onClick={() => onTimeRangeChange(range)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  timeRange === range
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {timeRangeLabels[range]}
+              </button>
+            ))}
+          </div>
         </div>
+        <p className="text-sm text-zinc-400">
+          {timeRange === 'month' && 'Last 4 weeks'}
+          {timeRange === 'quarter' && 'Last 12 weeks'}
+          {timeRange === 'year' && 'Last 52 weeks'}
+          {timeRange === 'all' && 'All time'}
+        </p>
       </div>
 
       <div className="h-64 relative">
@@ -236,10 +326,8 @@ export function NetWorthChart({ timeRange, onTimeRangeChange }: NetWorthChartPro
         )}
       </div>
 
-      <div className="mt-4 text-sm text-zinc-400">
-        <p>📈 <strong>Current Net Worth:</strong> ${netWorthData?.currentNetWorth ? (isNaN(netWorthData.currentNetWorth) ? '0' : netWorthData.currentNetWorth.toLocaleString()) : '...'}</p>
-        <p>💰 <strong>Monthly Savings:</strong> ${netWorthData ? (isNaN(netWorthData.monthlyIncome - netWorthData.monthlyExpenses) ? '0' : (netWorthData.monthlyIncome - netWorthData.monthlyExpenses).toLocaleString()) : '...'}</p>
-        <p className="text-xs mt-1">Projections based on current monthly savings rate. Dashed line indicates estimated future values.</p>
+      <div className="mt-4 text-xs text-zinc-500">
+        <p>Weekly resolution showing net worth trend</p>
       </div>
     </div>
   );
