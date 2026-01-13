@@ -5,8 +5,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 interface ActiveSession {
   type: 'study' | 'workout'
   startedAt: string
-  lastActivity: string
-  durationSeconds: number
   bucketId?: string
   workoutType?: string
 }
@@ -15,8 +13,7 @@ interface SessionContextType {
   activeSession: ActiveSession | null
   startSession: (type: 'study' | 'workout', options?: { bucketId?: string; workoutType?: string }) => void
   endSession: () => void
-  updateSession: () => void
-  recoverSession: () => void
+  getSessionDuration: () => number
   clearExpiredSessions: () => void
 }
 
@@ -30,7 +27,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // Load session from localStorage on initial render
   useEffect(() => {
-    recoverSession()
+    const data = localStorage.getItem(SESSION_KEY)
+    if (!data) return
+
+    try {
+      const session = JSON.parse(data) as ActiveSession
+      const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
+
+      if (ageHours <= MAX_SESSION_AGE_HOURS) {
+        setActiveSession(session)
+      } else {
+        localStorage.removeItem(SESSION_KEY)
+      }
+    } catch (error) {
+      console.error('Failed to recover session:', error)
+      localStorage.removeItem(SESSION_KEY)
+    }
   }, [])
 
   // Handle cross-tab communication via storage events
@@ -41,7 +53,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           try {
             const session = JSON.parse(e.newValue) as ActiveSession
             // Validate the session before applying it
-            const ageHours = (Date.now() - new Date(session.lastActivity).getTime()) / (1000 * 60 * 60)
+            const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
             if (ageHours <= MAX_SESSION_AGE_HOURS) {
               setActiveSession(session)
             } else {
@@ -74,8 +86,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const newSession: ActiveSession = {
       type,
       startedAt: now,
-      lastActivity: now,
-      durationSeconds: 0,
       ...options,
     }
     setActiveSession(newSession)
@@ -85,14 +95,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveSession(null)
   }
 
-  const updateSession = () => {
+  // Calculate current session duration based on start time
+  const getSessionDuration = () => {
     if (activeSession) {
-      setActiveSession({
-        ...activeSession,
-        lastActivity: new Date().toISOString(),
-        durationSeconds: activeSession.durationSeconds + 1,
-      })
+      return Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000)
     }
+    return 0
   }
 
   const recoverSession = () => {
@@ -101,16 +109,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     try {
       const session = JSON.parse(data) as ActiveSession
-      const ageHours = (Date.now() - new Date(session.lastActivity).getTime()) / (1000 * 60 * 60)
+      const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
 
       if (ageHours <= MAX_SESSION_AGE_HOURS) {
-        // Calculate elapsed time since last activity
-        const elapsedSeconds = Math.floor((Date.now() - new Date(session.lastActivity).getTime()) / 1000)
-        setActiveSession({
-          ...session,
-          durationSeconds: session.durationSeconds + elapsedSeconds,
-          lastActivity: new Date().toISOString(),
-        })
+        setActiveSession(session)
       } else {
         localStorage.removeItem(SESSION_KEY)
       }
@@ -125,7 +127,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (data) {
       try {
         const session = JSON.parse(data) as ActiveSession
-        const ageHours = (Date.now() - new Date(session.lastActivity).getTime()) / (1000 * 60 * 60)
+        const ageHours = (Date.now() - new Date(session.startedAt).getTime()) / (1000 * 60 * 60)
 
         if (ageHours > MAX_SESSION_AGE_HOURS) {
           localStorage.removeItem(SESSION_KEY)
@@ -145,8 +147,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         activeSession,
         startSession,
         endSession,
-        updateSession,
-        recoverSession,
+        getSessionDuration,
         clearExpiredSessions
       }}>
       {children}

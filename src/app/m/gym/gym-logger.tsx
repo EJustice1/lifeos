@@ -295,37 +295,32 @@ export function GymLogger({
     activeSession: contextSession,
     startSession,
     endSession,
-    updateSession,
-    recoverSession
+    getSessionDuration
   } = useSession()
 
   // Sync workout duration with context session
-  const [workoutDuration, setWorkoutDuration] = useState<number>(contextSession?.type === 'workout' ? contextSession.durationSeconds : 0)
+  const [workoutDuration, setWorkoutDuration] = useState<number>(contextSession?.type === 'workout' ? getSessionDuration() : 0)
 
   // Calculate estimated 1RM for current input
   const estimated1RM = calculate1RM(weight, reps)
 
-  // Session recovery on component mount
-  useEffect(() => {
-    recoverSession()
-  }, [recoverSession])
 
   // Sync with context session changes
   useEffect(() => {
     if (contextSession?.type === 'workout') {
-      setWorkoutDuration(contextSession.durationSeconds)
+      setWorkoutDuration(getSessionDuration())
     }
-  }, [contextSession])
+  }, [contextSession, getSessionDuration])
 
-  // Update context session every second when workout is active
+  // Update timer display every second when workout is active
   useEffect(() => {
     if (activeWorkout) {
       const interval = setInterval(() => {
-        updateSession()
+        setWorkoutDuration(getSessionDuration())
       }, 1000)
       return () => clearInterval(interval)
     }
-  }, [activeWorkout, updateSession])
+  }, [activeWorkout, getSessionDuration])
 
   // Format duration as MM:SS
   const formatDuration = (seconds: number) => {

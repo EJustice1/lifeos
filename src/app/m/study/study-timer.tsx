@@ -46,37 +46,32 @@ export function StudyTimer({
     activeSession: contextSession,
     startSession,
     endSession,
-    updateSession,
-    recoverSession
+    getSessionDuration
   } = useSession()
 
   // Sync local state with context session
-  const [seconds, setSeconds] = useState(contextSession?.type === 'study' ? contextSession.durationSeconds : 0)
+  const [seconds, setSeconds] = useState(contextSession?.type === 'study' ? getSessionDuration() : 0)
 
-  // Session recovery on component mount
-  useEffect(() => {
-    recoverSession()
-  }, [recoverSession])
 
   // Sync with context session changes
   useEffect(() => {
     if (contextSession?.type === 'study') {
-      setSeconds(contextSession.durationSeconds)
+      setSeconds(getSessionDuration())
       setIsRunning(true)
     } else {
       setIsRunning(false)
     }
-  }, [contextSession])
+  }, [contextSession, getSessionDuration])
 
-  // Update context session every second when running
+  // Update timer display every second when running
   useEffect(() => {
     if (isRunning) {
       const interval = setInterval(() => {
-        updateSession()
+        setSeconds(getSessionDuration())
       }, 1000)
       return () => clearInterval(interval)
     }
-  }, [isRunning, updateSession])
+  }, [isRunning, getSessionDuration])
 
   // Aggregate today's sessions by bucket
   const todayByBucket = todaySessions.reduce((acc, s) => {
