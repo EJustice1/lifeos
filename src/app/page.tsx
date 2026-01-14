@@ -57,6 +57,12 @@ export default async function Home() {
                   >
                     Daily Review
                   </Link>
+                  <Link
+                    href="/m/daily-context-review"
+                    className="block w-full bg-indigo-600 hover:bg-indigo-500 rounded-lg p-3 text-center transition-colors"
+                  >
+                    Weekly Review
+                  </Link>
                 </div>
               </div>
 

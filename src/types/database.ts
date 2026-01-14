@@ -547,6 +547,46 @@ export interface Database {
           created_at?: string
         }
       }
+
+      // Daily context reviews
+      daily_context_reviews: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          execution_score: number
+          focus_quality: number
+          physical_vitality: number
+          friction_factors: string[]
+          lesson_learned: string | null
+          highlights: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          execution_score: number
+          focus_quality: number
+          physical_vitality: number
+          friction_factors?: string[]
+          lesson_learned?: string | null
+          highlights?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          execution_score?: number
+          focus_quality?: number
+          physical_vitality?: number
+          friction_factors?: string[]
+          lesson_learned?: string | null
+          highlights?: string | null
+          created_at?: string
+        }
+      }
     }
   }
 }
@@ -569,3 +609,4 @@ export type StudySession = Database['public']['Tables']['study_sessions']['Row']
 export type ScreenTime = Database['public']['Tables']['screen_time']['Row']
 export type AppUsage = Database['public']['Tables']['app_usage']['Row']
 export type DailyReview = Database['public']['Tables']['daily_reviews']['Row']
+export type DailyContextReview = Database['public']['Tables']['daily_context_reviews']['Row']

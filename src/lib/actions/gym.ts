@@ -201,6 +201,44 @@ export async function getWorkoutWithLifts(workoutId: string) {
   }
 }
 
+// Get active workout (where ended_at is null)
+export async function getActiveWorkout() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('workouts')
+    .select(
+      `*,
+      lifts(
+        id,
+        reps,
+        weight,
+        set_number,
+        rpe,
+        created_at,
+        exercise_id
+      )`
+    )
+    .eq('user_id', user.id)
+    .is('ended_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!data) return null
+
+  // Enrich with exercise details
+  return {
+    ...data,
+    lifts: data.lifts?.map((lift: { exercise_id: number }) => ({
+      ...lift,
+      exercise: PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
+    })) || []
+  }
+}
+
 // Get gym statistics
 export async function getGymStats() {
   const supabase = await createClient()

@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useGymSession, type LoggedSet } from '@/lib/hooks/useGymSession'
 import { calculate1RM } from '@/lib/gym-utils'
+import { getRecentWorkoutsWithDetails } from '@/lib/actions/gym'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
@@ -261,8 +262,10 @@ const WorkoutHistoryCard = ({ workout, onExerciseClick }: {
 
 export function GymLogger({
   exercises,
+  initialWorkoutHistory = [],
 }: {
   exercises: readonly Exercise[]
+  initialWorkoutHistory?: any[]
 }) {
   const [isPending, startTransition] = useTransition()
   const [selectedExercise, setSelectedExercise] = useState<number | null>(exercises.length > 0 ? exercises[0].id : null)
@@ -270,7 +273,85 @@ export function GymLogger({
   const [weight, setWeight] = useState(135)
   const [workoutType, setWorkoutType] = useState<string>('')
   const [activeSection, setActiveSection] = useState<'workout' | 'history' | 'progress'>('workout')
-  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>(initialWorkoutHistory)
+
+  // Function to refresh workout history from database
+  const refreshWorkoutHistory = async () => {
+    try {
+      const dbWorkoutHistory = await getRecentWorkoutsWithDetails(20)
+
+      // Transform database workout history to match expected format
+      const transformedHistory = dbWorkoutHistory.map(workout => {
+        // Group lifts by exercise
+        const exercisesMap = new Map<string, {
+          totalSets: number;
+          totalReps: number;
+          totalVolume: number;
+          sets: Array<{
+            setNumber: number;
+            reps: number;
+            weight: number;
+            volume: number;
+            estimated1RM: number;
+          }>;
+        }>()
+
+        workout.lifts.forEach((lift: any) => {
+          const exerciseName = lift.exercise?.name || 'Unknown Exercise'
+          const setVolume = lift.weight * lift.reps
+          const estimated1RM = calculate1RM(lift.weight, lift.reps)
+
+          if (!exercisesMap.has(exerciseName)) {
+            exercisesMap.set(exerciseName, {
+              totalSets: 0,
+              totalReps: 0,
+              totalVolume: 0,
+              sets: []
+            })
+          }
+
+          const exerciseData = exercisesMap.get(exerciseName)
+          if (exerciseData) {
+            exerciseData.totalSets += 1
+            exerciseData.totalReps += lift.reps
+            exerciseData.totalVolume += setVolume
+
+            exerciseData.sets.push({
+              setNumber: lift.set_number,
+              reps: lift.reps,
+              weight: lift.weight,
+              volume: setVolume,
+              estimated1RM: estimated1RM
+            })
+          }
+        })
+
+        // Calculate workout duration in minutes
+        const workoutDuration = workout.ended_at && workout.started_at ?
+          Math.round((new Date(workout.ended_at).getTime() - new Date(workout.started_at).getTime()) / (1000 * 60)) :
+          0
+
+        return {
+          id: workout.id,
+          date: workout.date || workout.started_at.split('T')[0],
+          type: workout.type || 'General',
+          duration: workoutDuration,
+          totalVolume: workout.total_volume || Array.from(exercisesMap.values()).reduce((sum, ex) => sum + ex.totalVolume, 0),
+          exercises: Array.from(exercisesMap.entries()).map(([name, data]) => ({
+            name,
+            totalSets: data.totalSets,
+            totalReps: data.totalReps,
+            totalVolume: data.totalVolume,
+            sets: data.sets
+          }))
+        }
+      })
+
+      setWorkoutHistory(transformedHistory)
+    } catch (error) {
+      console.error('Failed to refresh workout history:', error)
+    }
+  }
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
 
   const {
@@ -413,7 +494,7 @@ export function GymLogger({
 
         // Create workout history entry with detailed set data
         const newWorkoutHistory: WorkoutHistory = {
-          id: Date.now().toString(),
+          id: activeWorkout.workoutId,
           date: new Date().toISOString(),
           type: activeWorkout.workoutType || 'General',
           duration: duration,
@@ -427,10 +508,13 @@ export function GymLogger({
           }))
         }
 
-        // Save to history
-        setWorkoutHistory(prev => [newWorkoutHistory, ...prev])
-
+        // End workout first to ensure database is updated
         await endWorkout()
+
+        // Refresh workout history from database to ensure consistency
+        await refreshWorkoutHistory()
+
+        // Update local state
         setWorkoutType('')
         setActiveSection('workout') // Go back to main workout screen
       } catch (error) {
