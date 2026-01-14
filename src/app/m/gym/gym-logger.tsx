@@ -514,9 +514,17 @@ export function GymLogger({
         // Refresh workout history from database to ensure consistency
         await refreshWorkoutHistory()
 
+        // Show success confirmation
+        showToast('Workout completed successfully! 🎉', 'success')
+
         // Update local state
         setWorkoutType('')
-        setActiveSection('workout') // Go back to main workout screen
+
+        // Always return to main gym page after ending workout
+        // Use setTimeout to ensure state updates are processed in order
+        setTimeout(() => {
+          setActiveSection('workout')
+        }, 50)
       } catch (error) {
         showToast('Failed to end workout', 'error')
       }
