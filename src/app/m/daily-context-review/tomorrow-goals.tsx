@@ -8,9 +8,10 @@ import { useDailyReview } from './DailyReviewContext'
 interface TomorrowGoalsProps {
   onSubmit: () => void
   onBack: () => void
+  isSubmitting?: boolean
 }
 
-export default function TomorrowGoals({ onSubmit, onBack }: TomorrowGoalsProps) {
+export default function TomorrowGoals({ onSubmit, onBack, isSubmitting = false }: TomorrowGoalsProps) {
   const { formData, setFormData } = useDailyReview()
   const [goalInput, setGoalInput] = useState('')
   const [goals, setGoals] = useState<string[]>(formData.tomorrowGoals || [])
@@ -109,7 +110,8 @@ export default function TomorrowGoals({ onSubmit, onBack }: TomorrowGoalsProps) 
       <div className="flex gap-2">
         <button
           onClick={onBack}
-          className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-semibold transition-colors"
+          disabled={isSubmitting}
+          className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
         >
           Back
         </button>
@@ -117,7 +119,8 @@ export default function TomorrowGoals({ onSubmit, onBack }: TomorrowGoalsProps) 
           {goals.length === 0 && (
             <button
               onClick={handleSkip}
-              className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-semibold transition-colors"
+              disabled={isSubmitting}
+              className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
             >
               Skip
             </button>
@@ -126,9 +129,11 @@ export default function TomorrowGoals({ onSubmit, onBack }: TomorrowGoalsProps) 
             variant="primary"
             size="lg"
             onClick={handleSubmit}
+            disabled={isSubmitting}
+            loading={isSubmitting}
             className="flex-1"
           >
-            Finish Review
+            {isSubmitting ? 'Saving...' : 'Finish Review'}
           </PrimaryButton>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, memo } from 'react'
+import { useReducer, useEffect, useCallback, useState } from 'react'
 import { getDailyContextData, getExistingDailyContextReview, submitDailyContextReview } from '@/lib/actions/daily-context-review'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
@@ -10,6 +10,7 @@ import InternalState from './internal-state'
 import KnowledgeBase from './knowledge-base'
 import TomorrowGoals from './tomorrow-goals'
 import { DailyReviewProvider, useDailyReview, DailyReviewRow, DailyReviewFormData } from './DailyReviewContext'
+import { DailyContextReviewSummary } from './review-summary'
 
 interface DailyContextData {
   date: string
@@ -21,11 +22,86 @@ interface DailyContextData {
   screenTimeMinutes: number
 }
 
+// State Machine States
+type AppState = 
+  | { type: 'LOADING' }
+  | { type: 'ERROR'; message: string }
+  | { type: 'VIEWING_SUMMARY'; review: DailyReviewRow }
+  | { type: 'EDITING_FORM'; step: number }
+  | { type: 'SUBMITTING'; step: number }
+
+// State Machine Actions
+type AppAction =
+  | { type: 'DATA_LOADED'; contextData: DailyContextData; existingReview: DailyReviewRow | null }
+  | { type: 'LOAD_ERROR'; message: string }
+  | { type: 'START_EDIT' }
+  | { type: 'NEXT_STEP' }
+  | { type: 'PREV_STEP' }
+  | { type: 'START_SUBMIT' }
+  | { type: 'SUBMIT_SUCCESS'; review: DailyReviewRow }
+  | { type: 'SUBMIT_ERROR' }
+
+function stateReducer(state: AppState, action: AppAction): AppState {
+  switch (action.type) {
+    case 'DATA_LOADED':
+      // Only transition from LOADING state
+      if (state.type !== 'LOADING') return state
+      
+      if (action.existingReview) {
+        return { type: 'VIEWING_SUMMARY', review: action.existingReview }
+      }
+      return { type: 'EDITING_FORM', step: 1 }
+    
+    case 'LOAD_ERROR':
+      // Only transition from LOADING state
+      if (state.type !== 'LOADING') return state
+      return { type: 'ERROR', message: action.message }
+    
+    case 'START_EDIT':
+      // Only transition from VIEWING_SUMMARY state
+      if (state.type !== 'VIEWING_SUMMARY') return state
+      return { type: 'EDITING_FORM', step: 1 }
+    
+    case 'NEXT_STEP':
+      // Only transition from EDITING_FORM state
+      if (state.type !== 'EDITING_FORM') return state
+      if (state.step < 5) {
+        return { type: 'EDITING_FORM', step: state.step + 1 }
+      }
+      return state
+    
+    case 'PREV_STEP':
+      // Only transition from EDITING_FORM state
+      if (state.type !== 'EDITING_FORM') return state
+      if (state.step > 1) {
+        return { type: 'EDITING_FORM', step: state.step - 1 }
+      }
+      return state
+    
+    case 'START_SUBMIT':
+      // Only transition from EDITING_FORM state when on step 5
+      if (state.type !== 'EDITING_FORM' || state.step !== 5) return state
+      return { type: 'SUBMITTING', step: 5 }
+    
+    case 'SUBMIT_SUCCESS':
+      // Only transition from SUBMITTING state
+      if (state.type !== 'SUBMITTING') return state
+      return { type: 'VIEWING_SUMMARY', review: action.review }
+    
+    case 'SUBMIT_ERROR':
+      // Only transition from SUBMITTING state
+      if (state.type !== 'SUBMITTING') return state
+      return { type: 'EDITING_FORM', step: 5 }
+    
+    default:
+      return state
+  }
+}
+
 export default function DailyContextReviewPage() {
+  const [state, dispatch] = useReducer(stateReducer, { type: 'LOADING' })
   const [contextData, setContextData] = useState<DailyContextData | null>(null)
   const [existingReview, setExistingReview] = useState<DailyReviewRow | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -33,8 +109,6 @@ export default function DailyContextReviewPage() {
 
     async function loadData() {
       try {
-        setLoading(true);
-
         // Load context data first (most critical)
         const context = await getDailyContextData();
 
@@ -44,14 +118,16 @@ export default function DailyContextReviewPage() {
           setContextData(context);
         }
 
-        // Allow page to render with context data
-        setLoading(false);
-
-        // Load existing review in background
+        // Load existing review
         const review = await getExistingDailyContextReview();
 
-        if (mounted && review) {
+        if (mounted) {
           setExistingReview(review);
+          dispatch({ 
+            type: 'DATA_LOADED', 
+            contextData: context!, 
+            existingReview: review 
+          });
         }
       } catch (err) {
         console.error('Failed to load daily review data:', err);
@@ -61,9 +137,9 @@ export default function DailyContextReviewPage() {
         if (err instanceof Error) {
           errorMessage = `Failed to load daily review data: ${err.message}`;
         }
-        setError(errorMessage);
+        
+        dispatch({ type: 'LOAD_ERROR', message: errorMessage });
         showToast(errorMessage, 'error');
-        setLoading(false);
       }
     }
 
@@ -74,9 +150,23 @@ export default function DailyContextReviewPage() {
     };
   }, [showToast]);
 
-  const handleSubmit = async (formData: DailyReviewFormData) => {
+  const handleEdit = useCallback(() => {
+    dispatch({ type: 'START_EDIT' });
+  }, []);
+
+  const handleNextStep = useCallback(() => {
+    dispatch({ type: 'NEXT_STEP' });
+  }, []);
+
+  const handlePrevStep = useCallback(() => {
+    dispatch({ type: 'PREV_STEP' });
+  }, []);
+
+  const handleSubmit = useCallback(async (formData: DailyReviewFormData) => {
     try {
       if (!contextData) return;
+
+      dispatch({ type: 'START_SUBMIT' });
 
       await submitDailyContextReview(
         contextData.date,
@@ -97,7 +187,11 @@ export default function DailyContextReviewPage() {
 
       // Refresh existing review data
       const updatedReview = await getExistingDailyContextReview();
-      setExistingReview(updatedReview);
+      
+      if (updatedReview) {
+        setExistingReview(updatedReview);
+        dispatch({ type: 'SUBMIT_SUCCESS', review: updatedReview });
+      }
     } catch (err) {
       console.error('Failed to save daily review:', err);
       let errorMessage = 'Failed to save daily review';
@@ -128,65 +222,109 @@ export default function DailyContextReviewPage() {
       }
 
       showToast(errorMessage, 'error');
+      dispatch({ type: 'SUBMIT_ERROR' });
     }
-  };
+  }, [contextData, showToast]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-zinc-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-zinc-400">Loading daily review...</p>
+  // Render based on state
+  switch (state.type) {
+    case 'LOADING':
+      return (
+        <div className="flex items-center justify-center h-screen bg-zinc-900">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-zinc-400">Loading daily review...</p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen p-4 text-center bg-zinc-900">
-        <div className="bg-red-900/50 p-6 rounded-lg border border-red-500 mb-4">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Daily Review</h2>
-          <p className="text-red-300 mb-4">{error}</p>
-          {error.includes('relation') && error.includes('does not exist') && (
-            <p className="text-red-300 text-sm mb-4">
-              The daily_context_reviews table may not exist in your database.
-              Please run the database migrations or check your Supabase setup.
-            </p>
-          )}
-          {error.includes('permission denied') && (
-            <p className="text-red-300 text-sm mb-4">
-              Database permission issue. Please check your Supabase Row Level Security policies.
-            </p>
-          )}
-          <PrimaryButton
-            variant="primary"
-            onClick={() => window.location.reload()}
-            className="mt-4"
-          >
-            Try Again
-          </PrimaryButton>
+    case 'ERROR':
+      return (
+        <div className="flex flex-col items-center justify-center h-screen p-4 text-center bg-zinc-900">
+          <div className="bg-red-900/50 p-6 rounded-lg border border-red-500 mb-4">
+            <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Daily Review</h2>
+            <p className="text-red-300 mb-4">{state.message}</p>
+            {state.message.includes('relation') && state.message.includes('does not exist') && (
+              <p className="text-red-300 text-sm mb-4">
+                The daily_context_reviews table may not exist in your database.
+                Please run the database migrations or check your Supabase setup.
+              </p>
+            )}
+            {state.message.includes('permission denied') && (
+              <p className="text-red-300 text-sm mb-4">
+                Database permission issue. Please check your Supabase Row Level Security policies.
+              </p>
+            )}
+            <PrimaryButton
+              variant="primary"
+              onClick={() => window.location.reload()}
+              className="mt-4"
+            >
+              Try Again
+            </PrimaryButton>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
 
-  return (
-    <DailyReviewProvider initialData={{ contextData, existingReview }}>
-      <div className="min-h-screen bg-zinc-900 p-4">
-        <DailyReviewContent onSubmit={handleSubmit} />
-      </div>
-    </DailyReviewProvider>
-  );
+    case 'VIEWING_SUMMARY':
+      return (
+        <DailyContextReviewSummary 
+          review={state.review}
+          contextData={contextData}
+          onEdit={handleEdit}
+        />
+      );
+
+    case 'EDITING_FORM':
+      return (
+        <DailyReviewProvider initialData={{ contextData, existingReview }} key="form-provider">
+          <div className="min-h-screen bg-zinc-900 p-4">
+            <DailyReviewForm 
+              currentStep={state.step}
+              onNextStep={handleNextStep}
+              onPrevStep={handlePrevStep}
+              onSubmit={handleSubmit}
+              isSubmitting={false}
+            />
+          </div>
+        </DailyReviewProvider>
+      );
+
+    case 'SUBMITTING':
+      return (
+        <DailyReviewProvider initialData={{ contextData, existingReview }} key="form-provider">
+          <div className="min-h-screen bg-zinc-900 p-4">
+            <DailyReviewForm 
+              currentStep={state.step}
+              onNextStep={handleNextStep}
+              onPrevStep={handlePrevStep}
+              onSubmit={handleSubmit}
+              isSubmitting={true}
+            />
+          </div>
+        </DailyReviewProvider>
+      );
+
+    default:
+      return null;
+  }
 }
 
-// Memoized content to avoid unnecessary re-renders
-const DailyReviewContent = memo(function DailyReviewContent({ onSubmit }: { onSubmit: (data: DailyReviewFormData) => void }) {
-  const [step, setStep] = useState(1);
+// Extracted form component
+function DailyReviewForm({ 
+  currentStep, 
+  onNextStep, 
+  onPrevStep, 
+  onSubmit,
+  isSubmitting 
+}: { 
+  currentStep: number
+  onNextStep: () => void
+  onPrevStep: () => void
+  onSubmit: (data: DailyReviewFormData) => void
+  isSubmitting: boolean
+}) {
   const { formData } = useDailyReview();
-
-  const nextStep = () => setStep(step + 1);
-  const prevStep = () => setStep(step - 1);
 
   const handleSubmit = () => {
     onSubmit(formData);
@@ -201,7 +339,7 @@ const DailyReviewContent = memo(function DailyReviewContent({ onSubmit }: { onSu
             <div
               key={s}
               className={`w-3 h-3 rounded-full transition-colors ${
-                s === step ? 'bg-white' : s < step ? 'bg-zinc-500' : 'bg-zinc-600'
+                s === currentStep ? 'bg-white' : s < currentStep ? 'bg-zinc-500' : 'bg-zinc-600'
               }`}
             ></div>
           ))}
@@ -209,13 +347,11 @@ const DailyReviewContent = memo(function DailyReviewContent({ onSubmit }: { onSu
       </div>
 
       {/* Step content - only render current step */}
-      {step === 1 && <GoalsAndScreentime onNext={nextStep} />}
-      {step === 2 && <ContextSnapshot onNext={nextStep} />}
-      {step === 3 && <InternalState onNext={nextStep} onBack={prevStep} />}
-      {step === 4 && <KnowledgeBase onNext={nextStep} onBack={prevStep} />}
-      {step === 5 && <TomorrowGoals onSubmit={handleSubmit} onBack={prevStep} />}
+      {currentStep === 1 && <GoalsAndScreentime onNext={onNextStep} />}
+      {currentStep === 2 && <ContextSnapshot onNext={onNextStep} />}
+      {currentStep === 3 && <InternalState onNext={onNextStep} onBack={onPrevStep} />}
+      {currentStep === 4 && <KnowledgeBase onNext={onNextStep} onBack={onPrevStep} />}
+      {currentStep === 5 && <TomorrowGoals onSubmit={handleSubmit} onBack={onPrevStep} isSubmitting={isSubmitting} />}
     </div>
   );
-});
-
-DailyReviewContent.displayName = 'DailyReviewContent';
+}
