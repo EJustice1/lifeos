@@ -1,28 +1,16 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useGymSession, type LoggedSet } from '@/lib/hooks/useGymSession'
-import { calculate1RM } from '@/lib/gym-utils'
-import { getRecentWorkoutsWithDetails } from '@/lib/actions/gym'
+import { calculate1RM, PREDEFINED_EXERCISES, WORKOUT_TYPES, getExercisesForWorkoutType, type WorkoutType, type PredefinedExercise } from '@/lib/gym-utils'
+import { getRecentWorkoutsTransformed } from '@/lib/actions/gym'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
-import { WorkoutTypeButton } from '@/components/mobile/buttons/WorkoutTypeButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
-import { useRef } from 'react'
-import { Chart, registerables } from 'chart.js'
-
-interface Exercise {
-  readonly id: number
-  readonly name: string
-  readonly category: string
-  readonly primary_muscles?: readonly string[]
-  readonly secondary_muscles?: readonly string[]
-  readonly is_compound: boolean
-  readonly equipment?: string
-}
+import { ClientCache, CACHE_KEYS, CACHE_DURATIONS } from '@/lib/cache-utils'
 
 interface WorkoutHistory {
   id: string
@@ -45,145 +33,8 @@ interface WorkoutHistory {
   }>
 }
 
-interface PersonalRecord {
-  exercise: string
-  oneRepMax: number
-  date: string
-  workoutType: string
-}
-
-interface StrengthCategory {
-  name: string
-  key: string
-  score: number
-}
-
-// Strength Radar Chart Component
-const StrengthRadarChart = ({ personalRecords }: { personalRecords: PersonalRecord[] }) => {
-  const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInstance = useRef<Chart | null>(null)
-
-  // Register Chart.js components
-  useEffect(() => {
-    Chart.register(...registerables)
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy()
-      }
-    }
-  }, [])
-
-  // Calculate strength scores for radar chart
-  const calculateStrengthScores = () => {
-    // Define strength categories and their associated exercises
-    const categories = [
-      { name: 'Push Strength', exercises: ['Bench Press', 'Overhead Press', 'Dips'], key: 'push' },
-      { name: 'Pull Strength', exercises: ['Pull Ups', 'Rows', 'Deadlifts'], key: 'pull' },
-      { name: 'Leg Strength', exercises: ['Squats', 'Lunges', 'Leg Press'], key: 'legs' },
-      { name: 'Core Strength', exercises: ['Planks', 'Ab Wheel', 'Hanging Leg Raises'], key: 'core' },
-    ]
-
-    // Calculate scores (0-100 scale based on PRs)
-    return categories.map(category => {
-      const categoryPRs = personalRecords.filter(pr =>
-        category.exercises.some(ex => pr.exercise.toLowerCase().includes(ex.toLowerCase()))
-      )
-
-      if (categoryPRs.length === 0) return { ...category, score: 0 }
-
-      const max1RM = Math.max(...categoryPRs.map(pr => pr.oneRepMax))
-
-      // Simple scoring: scale based on weight (this would be more sophisticated in production)
-      // For demo purposes, we'll use a simple linear scale
-      const score = Math.min(100, max1RM / 2) // 200lbs 1RM = 100 score
-      return { ...category, score: Math.round(score) }
-    })
-  }
-
-  const strengthData = calculateStrengthScores()
-
-  useEffect(() => {
-    if (!chartRef.current) return
-
-    const ctx = chartRef.current.getContext('2d')
-    if (!ctx) return
-
-    // Destroy previous chart
-    if (chartInstance.current) {
-      chartInstance.current.destroy()
-    }
-
-    const data = {
-      labels: strengthData.map(cat => cat.name),
-      datasets: [{
-        label: 'Strength Score',
-        data: strengthData.map(cat => cat.score),
-        backgroundColor: 'rgba(168, 85, 247, 0.2)',
-        borderColor: 'rgba(168, 85, 247, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(168, 85, 247, 1)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgba(168, 85, 247, 1)',
-      }]
-    }
-
-    const options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        r: {
-          angleLines: {
-            color: 'rgba(255, 255, 255, 0.2)'
-          },
-          grid: {
-            color: 'rgba(255, 255, 255, 0.1)'
-          },
-          pointLabels: {
-            color: 'white',
-            font: {
-              size: 12
-            }
-          },
-          ticks: {
-            display: false,
-            beginAtZero: true,
-            max: 100
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: (context: any) => {
-              return `${strengthData[context.dataIndex].name}: ${context.raw}%`
-            }
-          }
-        }
-      }
-    }
-
-    chartInstance.current = new Chart(ctx, {
-      type: 'radar',
-      data: data,
-      options: options
-    })
-
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy()
-      }
-    }
-  }, [personalRecords])
-
-  return <canvas ref={chartRef} />
-}
-
-// Workout History Card Component
-const WorkoutHistoryCard = ({ workout, onExerciseClick }: {
+// Workout History Card Component - Memoized
+const WorkoutHistoryCard = memo(({ workout, onExerciseClick }: {
   workout: WorkoutHistory
   onExerciseClick: (exerciseName: string) => void
 }) => {
@@ -259,107 +110,74 @@ const WorkoutHistoryCard = ({ workout, onExerciseClick }: {
       )}
     </div>
   );
+})
+
+WorkoutHistoryCard.displayName = 'WorkoutHistoryCard'
+
+interface GymLoggerProps {
+  initialActiveWorkout?: any
 }
 
-export function GymLogger({
-  exercises,
-  initialWorkoutHistory = [],
-}: {
-  exercises: readonly Exercise[]
-  initialWorkoutHistory?: any[]
-}) {
+export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
   const [isPending, startTransition] = useTransition()
-  const [selectedExercise, setSelectedExercise] = useState<number | null>(exercises.length > 0 ? exercises[0].id : null)
   const [reps, setReps] = useState(8)
   const [weight, setWeight] = useState(135)
-  const [workoutType, setWorkoutType] = useState<string>('')
+  const [workoutType, setWorkoutType] = useState<WorkoutType | ''>('')
   const [activeSection, setActiveSection] = useState<'workout' | 'history'>('workout')
-  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>(initialWorkoutHistory)
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
-  // Sync workout history state with prop updates
+  // Get exercises filtered by workout type (memoized for performance)
+  const exercises = useMemo(() => {
+    if (!workoutType) return PREDEFINED_EXERCISES;
+    return getExercisesForWorkoutType(workoutType);
+  }, [workoutType]);
+
+  const [selectedExercise, setSelectedExercise] = useState<number | null>(null)
+
+  // Update selected exercise when workout type changes
   useEffect(() => {
-    setWorkoutHistory(initialWorkoutHistory)
-  }, [initialWorkoutHistory])
+    if (exercises.length > 0 && (!selectedExercise || !exercises.find(e => e.id === selectedExercise))) {
+      setSelectedExercise(exercises[0].id)
+    }
+  }, [exercises, selectedExercise])
 
-  // Function to refresh workout history from database
-  const refreshWorkoutHistory = async () => {
+  // Function to load workout history from database (lazy loaded, server-side transformed, cached)
+  const loadWorkoutHistory = async () => {
+    if (historyLoaded) return; // Already loaded
+    
+    setHistoryLoading(true)
     try {
-      const dbWorkoutHistory = await getRecentWorkoutsWithDetails(20)
+      // Try to get from cache first
+      const cachedHistory = ClientCache.get<WorkoutHistory[]>(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5))
+      
+      if (cachedHistory) {
+        setWorkoutHistory(cachedHistory)
+        setHistoryLoaded(true)
+        setHistoryLoading(false)
+      }
 
-      // Transform database workout history to match expected format
-      const transformedHistory = dbWorkoutHistory.map(workout => {
-        // Group lifts by exercise
-        const exercisesMap = new Map<string, {
-          totalSets: number;
-          totalReps: number;
-          totalVolume: number;
-          sets: Array<{
-            setNumber: number;
-            reps: number;
-            weight: number;
-            volume: number;
-            estimated1RM: number;
-          }>;
-        }>()
-
-        workout.lifts.forEach((lift: any) => {
-          const exerciseName = lift.exercise?.name || 'Unknown Exercise'
-          const setVolume = lift.weight * lift.reps
-          const estimated1RM = calculate1RM(lift.weight, lift.reps)
-
-          if (!exercisesMap.has(exerciseName)) {
-            exercisesMap.set(exerciseName, {
-              totalSets: 0,
-              totalReps: 0,
-              totalVolume: 0,
-              sets: []
-            })
-          }
-
-          const exerciseData = exercisesMap.get(exerciseName)
-          if (exerciseData) {
-            exerciseData.totalSets += 1
-            exerciseData.totalReps += lift.reps
-            exerciseData.totalVolume += setVolume
-
-            exerciseData.sets.push({
-              setNumber: lift.set_number,
-              reps: lift.reps,
-              weight: lift.weight,
-              volume: setVolume,
-              estimated1RM: estimated1RM
-            })
-          }
-        })
-
-        // Calculate workout duration in minutes
-        const workoutDuration = workout.ended_at && workout.started_at ?
-          Math.round((new Date(workout.ended_at).getTime() - new Date(workout.started_at).getTime()) / (1000 * 60)) :
-          0
-
-        return {
-          id: workout.id,
-          date: workout.date || workout.started_at.split('T')[0],
-          type: workout.type || 'General',
-          duration: workoutDuration,
-          totalVolume: workout.total_volume || Array.from(exercisesMap.values()).reduce((sum, ex) => sum + ex.totalVolume, 0),
-          exercises: Array.from(exercisesMap.entries()).map(([name, data]) => ({
-            name,
-            totalSets: data.totalSets,
-            totalReps: data.totalReps,
-            totalVolume: data.totalVolume,
-            sets: data.sets
-          }))
-        }
-      })
-
+      // Fetch fresh data in background
+      const transformedHistory = await getRecentWorkoutsTransformed(5)
       setWorkoutHistory(transformedHistory)
+      setHistoryLoaded(true)
+      
+      // Cache for 5 minutes
+      ClientCache.set(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5), transformedHistory, CACHE_DURATIONS.MEDIUM)
     } catch (error) {
-      console.error('Failed to refresh workout history:', error)
+      console.error('Failed to load workout history:', error)
+    } finally {
+      setHistoryLoading(false)
     }
   }
-  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
 
+  // Load history when history section is opened
+  useEffect(() => {
+    if (activeSection === 'history' && !historyLoaded) {
+      loadWorkoutHistory()
+    }
+  }, [activeSection, historyLoaded])
   const {
     activeWorkout,
     startWorkout,
@@ -367,7 +185,16 @@ export function GymLogger({
     endWorkout,
     isWorkoutActive,
     getSessionDuration,
+    restoreFromDatabase,
   } = useGymSession()
+
+  // Restore active workout from database if found
+  useEffect(() => {
+    if (initialActiveWorkout && !isWorkoutActive) {
+      restoreFromDatabase(initialActiveWorkout)
+      setWorkoutType((initialActiveWorkout.type || '') as WorkoutType | '')
+    }
+  }, [initialActiveWorkout, isWorkoutActive, restoreFromDatabase])
 
   // Get logged sets from active workout
   const loggedSets = activeWorkout?.loggedSets || []
@@ -406,19 +233,18 @@ export function GymLogger({
   // Get current exercise details
   const currentExerciseDetails = exercises.find(e => e.id === selectedExercise)
 
-  const adjustWeight = (delta: number) => {
+  const adjustWeight = useCallback((delta: number) => {
     setWeight(prev => Math.max(0, prev + delta))
-  }
+  }, [])
 
-  const adjustReps = (delta: number) => {
+  const adjustReps = useCallback((delta: number) => {
     setReps(prev => Math.max(1, prev + delta))
-  }
-
-
+  }, [])
 
   const { showToast } = useToast()
 
-  async function handleStartWorkout(type: string) {
+  const handleStartWorkout = useCallback(async (type: WorkoutType) => {
+    setWorkoutType(type)
     startTransition(async () => {
       try {
         await startWorkout(type)
@@ -426,9 +252,9 @@ export function GymLogger({
         showToast('Failed to start workout', 'error')
       }
     })
-  }
+  }, [startWorkout, showToast])
 
-  async function handleLogSet() {
+  const handleLogSet = useCallback(async () => {
     if (!isWorkoutActive || !selectedExercise) return
 
     startTransition(async () => {
@@ -438,28 +264,14 @@ export function GymLogger({
 
         if (result.isNewPR) {
           showToast(`🏆 New PR on ${exerciseName}!`, 'success')
-
-          // Update personal records
-          const newPR: PersonalRecord = {
-            exercise: exerciseName,
-            oneRepMax: calculate1RM(weight, reps),
-            date: new Date().toISOString(),
-            workoutType: activeWorkout?.workoutType || 'General'
-          }
-
-          setPersonalRecords(prev => {
-            // Remove any existing PR for this exercise if new one is better
-            const existingPRs = prev.filter(pr => pr.exercise !== exerciseName || pr.oneRepMax > newPR.oneRepMax)
-            return [...existingPRs, newPR]
-          })
         }
       } catch (error) {
         showToast('Failed to log set', 'error')
       }
     })
-  }
+  }, [isWorkoutActive, selectedExercise, weight, reps, exercises, logSet, activeWorkout, showToast])
 
-  async function handleEndWorkout() {
+  const handleEndWorkout = useCallback(async () => {
     if (!activeWorkout) return
 
     startTransition(async () => {
@@ -517,8 +329,11 @@ export function GymLogger({
         // End workout first to ensure database is updated
         await endWorkout()
 
-        // Refresh workout history from database to ensure consistency
-        await refreshWorkoutHistory()
+        // Mark history as not loaded so it refreshes next time
+        setHistoryLoaded(false)
+        
+        // Invalidate workout history cache
+        ClientCache.remove(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5))
 
         // Show success confirmation
         showToast('Workout completed successfully! 🎉', 'success')
@@ -535,7 +350,7 @@ export function GymLogger({
         showToast('Failed to end workout', 'error')
       }
     })
-  }
+  }, [activeWorkout, loggedSets, endWorkout, showToast, setActiveSection])
 
 
 
@@ -563,17 +378,15 @@ export function GymLogger({
           <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
             <div className="grid grid-cols-2 gap-4 flex-1 content-start">
               {/* Workout Type Buttons - 2 columns */}
-              {['Push', 'Pull', 'Chest/Back', 'Arms', 'Legs', 'Upper', 'Full', 'Core'].map(type => (
+              {WORKOUT_TYPES.map(type => (
                 <button
                   key={type}
-                  onClick={() => {
-                    setWorkoutType(type)
-                    handleStartWorkout(type)
-                  }}
+                  onClick={() => handleStartWorkout(type)}
+                  disabled={isPending}
                   className={`p-6 rounded-xl text-lg font-semibold transition-all ${
-                    workoutType === type
-                      ? 'bg-[var(--mobile-accent)] text-white shadow-lg'
-                      : 'bg-[var(--mobile-card-bg)] text-white hover:bg-zinc-800'
+                    isPending
+                      ? 'bg-[var(--mobile-card-bg)] text-white opacity-50'
+                      : 'bg-[var(--mobile-card-bg)] text-white hover:bg-zinc-800 active:bg-[var(--mobile-accent)]'
                   }`}
                 >
                   {type}
@@ -583,9 +396,10 @@ export function GymLogger({
               {/* See History Button */}
               <button
                 onClick={() => setActiveSection('history')}
-                className="p-6 rounded-xl text-lg font-semibold bg-zinc-800 text-white hover:bg-zinc-700 transition-all col-span-2"
+                disabled={historyLoading}
+                className="p-6 rounded-xl text-lg font-semibold bg-zinc-800 text-white hover:bg-zinc-700 transition-all col-span-2 disabled:opacity-50"
               >
-                See History
+                {historyLoading ? 'Loading...' : 'See History'}
               </button>
 
               {/* Progress Button */}
@@ -787,7 +601,12 @@ export function GymLogger({
               </button>
             </div>
 
-            {workoutHistory.length === 0 ? (
+            {historyLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--mobile-accent)] mx-auto mb-4"></div>
+                <p className="text-zinc-400">Loading history...</p>
+              </div>
+            ) : workoutHistory.length === 0 ? (
               <p className="text-zinc-400 text-center py-8">No workout history yet. Complete a workout to see your history here.</p>
             ) : (
               <div className="space-y-4">

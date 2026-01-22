@@ -87,6 +87,8 @@ export const CACHE_KEYS = {
   WORKOUT_DATES: 'workout_dates',
   GYM_STATS: 'gym_stats',
   RECENT_WORKOUTS: (limit: number) => `recent_workouts_${limit}`,
+  EXERCISES: 'predefined_exercises',
+  WORKOUT_HISTORY_TRANSFORMED: (limit: number) => `workout_history_transformed_${limit}`,
 };
 
 // Cache durations

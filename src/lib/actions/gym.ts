@@ -166,6 +166,101 @@ export async function getRecentWorkoutsWithDetails(limit = 10) {
   })) || []
 }
 
+// Get recent workouts with lifts and transform to UI format (server-side)
+export async function getRecentWorkoutsTransformed(limit = 5) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('workouts')
+    .select(
+      `*,
+      lifts(
+        id,
+        exercise_id,
+        reps,
+        weight,
+        set_number,
+        rpe,
+        created_at
+      )`
+    )
+    .eq('user_id', user.id)
+    .order('date', { ascending: false })
+    .limit(limit)
+
+  if (!data) return []
+
+  // Transform workouts server-side
+  return data.map(workout => {
+    // Group lifts by exercise
+    const exercisesMap = new Map<string, {
+      totalSets: number;
+      totalReps: number;
+      totalVolume: number;
+      sets: Array<{
+        setNumber: number;
+        reps: number;
+        weight: number;
+        volume: number;
+        estimated1RM: number;
+      }>;
+    }>()
+
+    workout.lifts?.forEach((lift: any) => {
+      const exercise = PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
+      const exerciseName = exercise?.name || 'Unknown Exercise'
+      const setVolume = lift.weight * lift.reps
+      const estimated1RM = calculate1RM(lift.weight, lift.reps)
+
+      if (!exercisesMap.has(exerciseName)) {
+        exercisesMap.set(exerciseName, {
+          totalSets: 0,
+          totalReps: 0,
+          totalVolume: 0,
+          sets: []
+        })
+      }
+
+      const exerciseData = exercisesMap.get(exerciseName)
+      if (exerciseData) {
+        exerciseData.totalSets += 1
+        exerciseData.totalReps += lift.reps
+        exerciseData.totalVolume += setVolume
+
+        exerciseData.sets.push({
+          setNumber: lift.set_number,
+          reps: lift.reps,
+          weight: lift.weight,
+          volume: setVolume,
+          estimated1RM: estimated1RM
+        })
+      }
+    })
+
+    // Calculate workout duration in minutes
+    const workoutDuration = workout.ended_at && workout.started_at ?
+      Math.round((new Date(workout.ended_at).getTime() - new Date(workout.started_at).getTime()) / (1000 * 60)) :
+      0
+
+    return {
+      id: workout.id,
+      date: workout.date || workout.started_at?.split('T')[0],
+      type: workout.type || 'General',
+      duration: workoutDuration,
+      totalVolume: workout.total_volume || Array.from(exercisesMap.values()).reduce((sum, ex) => sum + ex.totalVolume, 0),
+      exercises: Array.from(exercisesMap.entries()).map(([name, data]) => ({
+        name,
+        totalSets: data.totalSets,
+        totalReps: data.totalReps,
+        totalVolume: data.totalVolume,
+        sets: data.sets
+      }))
+    }
+  })
+}
+
 // Get workout with lifts
 export async function getWorkoutWithLifts(workoutId: string) {
   const supabase = await createClient()
@@ -296,6 +391,36 @@ export async function getPersonalRecords() {
     ...pr,
     exercise: PREDEFINED_EXERCISES.find(ex => ex.id === pr.exercise_id)
   })) || []
+}
+
+// Get featured personal records (curated list for progress page)
+export async function getFeaturedPersonalRecords() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  // Import FEATURED_PR_EXERCISES from gym-utils
+  const FEATURED_EXERCISES = [1, 2, 40, 33, 27]
+
+  const { data } = await supabase
+    .from('personal_records')
+    .select('*')
+    .eq('user_id', user.id)
+    .in('exercise_id', FEATURED_EXERCISES)
+    .order('estimated_1rm', { ascending: false })
+
+  // Enrich with exercise details and sort by featured order
+  const prs = data?.map(pr => ({
+    ...pr,
+    exercise: PREDEFINED_EXERCISES.find(ex => ex.id === pr.exercise_id)
+  })) || []
+
+  // Sort by the order defined in FEATURED_PR_EXERCISES
+  return prs.sort((a, b) => {
+    const aIndex = FEATURED_EXERCISES.indexOf(a.exercise_id)
+    const bIndex = FEATURED_EXERCISES.indexOf(b.exercise_id)
+    return aIndex - bIndex
+  })
 }
 
 // Get muscle group stats

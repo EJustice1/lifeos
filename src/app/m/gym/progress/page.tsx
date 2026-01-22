@@ -2,15 +2,31 @@
 
 import { useState, useEffect, memo, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { MobileCard } from '@/components/mobile/cards/MobileCard';
 import { useToast } from '@/components/mobile/feedback/ToastProvider';
 import {
   getMuscleGroupPercentiles,
-  getPersonalRecords,
+  getFeaturedPersonalRecords,
   getRecentWorkoutsWithDetails
 } from '@/lib/actions/gym';
-import { MuscleGroupRadarChart } from '../MuscleGroupRadarChart';
 import { ClientCache, CACHE_KEYS, CACHE_DURATIONS } from '@/lib/cache-utils';
+
+// Dynamically import chart component to reduce initial bundle size
+const MuscleGroupRadarChart = dynamic(
+  () => import('../MuscleGroupRadarChart').then(mod => ({ default: mod.MuscleGroupRadarChart })),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-72 flex items-center justify-center">
+        <div className="text-center text-zinc-400">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+          <p className="text-sm">Loading chart...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 export default function GymProgressPage() {
   const [muscleGroupData, setMuscleGroupData] = useState<any>(null);
@@ -44,8 +60,8 @@ export default function GymProgressPage() {
         // Fetch fresh data in background
         const [muscleGroups, prs, workouts] = await Promise.all([
           getMuscleGroupPercentiles(),
-          getPersonalRecords(),
-          getRecentWorkoutsWithDetails(90) // Last 90 days for calendar
+          getFeaturedPersonalRecords(),
+          getRecentWorkoutsWithDetails(30) // Last 30 days for calendar (current month)
         ]);
 
         if (!mounted) return;
@@ -156,7 +172,7 @@ export default function GymProgressPage() {
             {/* Personal Records */}
             {personalRecords.length > 0 && (
               <MobileCard>
-                <h3 className="text-lg font-semibold mb-4">Personal Records</h3>
+                <h3 className="text-lg font-semibold mb-4">Key Personal Records</h3>
                 <div className="space-y-2">
                   {personalRecords.map((pr: any) => (
                     <div

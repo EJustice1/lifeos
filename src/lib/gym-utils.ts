@@ -23,10 +23,10 @@ export function calculate1RM(weight: number, reps: number): number {
 
 // Comprehensive predefined exercises with primary and secondary muscle groups
 export const PREDEFINED_EXERCISES = [
-  // Push Exercises
+  // Push Exercises - Chest
   {
     id: 1,
-    name: 'Bench Press',
+    name: 'Bench Press (Barbell)',
     primary_muscles: ['chest'],
     secondary_muscles: ['triceps', 'shoulders'],
     category: 'push',
@@ -36,27 +36,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 2,
-    name: 'Incline Bench Press',
-    primary_muscles: ['chest'],
-    secondary_muscles: ['triceps', 'shoulders'],
-    category: 'push',
-    is_compound: true,
-    equipment: 'barbell',
-    default_weight: 115
-  },
-  {
-    id: 3,
-    name: 'Decline Bench Press',
-    primary_muscles: ['chest'],
-    secondary_muscles: ['triceps'],
-    category: 'push',
-    is_compound: true,
-    equipment: 'barbell',
-    default_weight: 115
-  },
-  {
-    id: 4,
-    name: 'Dumbbell Bench Press',
+    name: 'Bench Press (Dumbbell)',
     primary_muscles: ['chest'],
     secondary_muscles: ['triceps', 'shoulders'],
     category: 'push',
@@ -65,38 +45,48 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 50
   },
   {
-    id: 5,
-    name: 'Overhead Press (Barbell)',
-    primary_muscles: ['shoulders'],
-    secondary_muscles: ['triceps'],
-    category: 'push',
-    is_compound: true,
-    equipment: 'barbell',
-    default_weight: 95
-  },
-  {
-    id: 6,
-    name: 'Overhead Press (Dumbbell)',
-    primary_muscles: ['shoulders'],
-    secondary_muscles: ['triceps'],
-    category: 'push',
-    is_compound: true,
-    equipment: 'dumbbell',
-    default_weight: 40
-  },
-  {
-    id: 7,
-    name: 'Push-ups',
+    id: 3,
+    name: 'Incline Bench Press (Barbell)',
     primary_muscles: ['chest'],
     secondary_muscles: ['triceps', 'shoulders'],
     category: 'push',
     is_compound: true,
-    equipment: 'bodyweight',
-    default_weight: 0
+    equipment: 'barbell',
+    default_weight: 115
   },
   {
-    id: 8,
-    name: 'Dips (Chest Focus)',
+    id: 4,
+    name: 'Incline Bench Press (Dumbbell)',
+    primary_muscles: ['chest'],
+    secondary_muscles: ['triceps', 'shoulders'],
+    category: 'push',
+    is_compound: true,
+    equipment: 'dumbbell',
+    default_weight: 45
+  },
+  {
+    id: 5,
+    name: 'Decline Bench Press (Barbell)',
+    primary_muscles: ['chest'],
+    secondary_muscles: ['triceps'],
+    category: 'push',
+    is_compound: true,
+    equipment: 'barbell',
+    default_weight: 135
+  },
+  {
+    id: 6,
+    name: 'Decline Bench Press (Dumbbell)',
+    primary_muscles: ['chest'],
+    secondary_muscles: ['triceps'],
+    category: 'push',
+    is_compound: true,
+    equipment: 'dumbbell',
+    default_weight: 50
+  },
+  {
+    id: 7,
+    name: 'Dips',
     primary_muscles: ['triceps'],
     secondary_muscles: ['chest', 'shoulders'],
     category: 'push',
@@ -104,8 +94,9 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'bodyweight',
     default_weight: 0
   },
+  // Push Exercises - Triceps
   {
-    id: 9,
+    id: 8,
     name: 'Tricep Pushdown (Rope)',
     primary_muscles: ['triceps'],
     secondary_muscles: [],
@@ -115,8 +106,8 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 50
   },
   {
-    id: 10,
-    name: 'Tricep Pushdown (Bar)',
+    id: 9,
+    name: 'Tricep Pushdown (Straight Bar)',
     primary_muscles: ['triceps'],
     secondary_muscles: [],
     category: 'push',
@@ -125,7 +116,27 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 40
   },
   {
+    id: 10,
+    name: 'Tricep Pushdown (V-Bar)',
+    primary_muscles: ['triceps'],
+    secondary_muscles: [],
+    category: 'push',
+    is_compound: false,
+    equipment: 'cable',
+    default_weight: 45
+  },
+  {
     id: 11,
+    name: 'Tricep Pushdown (Single Arm)',
+    primary_muscles: ['triceps'],
+    secondary_muscles: [],
+    category: 'push',
+    is_compound: false,
+    equipment: 'cable',
+    default_weight: 20
+  },
+  {
+    id: 12,
     name: 'Skull Crushers',
     primary_muscles: ['triceps'],
     secondary_muscles: [],
@@ -134,39 +145,71 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'barbell',
     default_weight: 30
   },
-  {
-    id: 12,
-    name: 'Lateral Raises',
-    primary_muscles: ['shoulders'],
-    secondary_muscles: [],
-    category: 'push',
-    is_compound: false,
-    equipment: 'dumbbell',
-    default_weight: 15
-  },
+  // Push Exercises - Shoulders
   {
     id: 13,
-    name: 'Front Raises',
+    name: 'Shoulder Press (Barbell)',
     primary_muscles: ['shoulders'],
-    secondary_muscles: [],
+    secondary_muscles: ['triceps'],
     category: 'push',
-    is_compound: false,
-    equipment: 'dumbbell',
-    default_weight: 15
+    is_compound: true,
+    equipment: 'barbell',
+    default_weight: 95
   },
   {
     id: 14,
-    name: 'Rear Delt Flyes',
+    name: 'Shoulder Press (Dumbbell)',
+    primary_muscles: ['shoulders'],
+    secondary_muscles: ['triceps'],
+    category: 'push',
+    is_compound: true,
+    equipment: 'dumbbell',
+    default_weight: 40
+  },
+  {
+    id: 15,
+    name: 'Lateral Raise (Dumbbell)',
     primary_muscles: ['shoulders'],
     secondary_muscles: [],
+    category: 'push',
+    is_compound: false,
+    equipment: 'dumbbell',
+    default_weight: 15
+  },
+  {
+    id: 16,
+    name: 'Lateral Raise (Cable)',
+    primary_muscles: ['shoulders'],
+    secondary_muscles: [],
+    category: 'push',
+    is_compound: false,
+    equipment: 'cable',
+    default_weight: 15
+  },
+  {
+    id: 17,
+    name: 'Front Raise (Dumbbell)',
+    primary_muscles: ['shoulders'],
+    secondary_muscles: [],
+    category: 'push',
+    is_compound: false,
+    equipment: 'dumbbell',
+    default_weight: 15
+  },
+  {
+    id: 18,
+    name: 'Rear Delt Fly (Machine)',
+    primary_muscles: ['shoulders'],
+    secondary_muscles: ['back'],
     category: 'push',
     is_compound: false,
     equipment: 'machine',
     default_weight: 40
   },
+  // Push Exercises - Chest Isolation
   {
-    id: 15,
-    name: 'Cable Flyes (Low to High)',
+    id: 19,
+    name: 'Cable Fly (Low to High)',
     primary_muscles: ['chest'],
     secondary_muscles: [],
     category: 'push',
@@ -175,8 +218,8 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 20
   },
   {
-    id: 16,
-    name: 'Cable Flyes (Mid)',
+    id: 70,
+    name: 'Cable Fly (High to Low)',
     primary_muscles: ['chest'],
     secondary_muscles: [],
     category: 'push',
@@ -185,8 +228,8 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 20
   },
   {
-    id: 17,
-    name: 'Pec Deck Fly',
+    id: 71,
+    name: 'Pec Deck',
     primary_muscles: ['chest'],
     secondary_muscles: [],
     category: 'push',
@@ -194,23 +237,13 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'machine',
     default_weight: 50
   },
-  {
-    id: 18,
-    name: 'Machine Shoulder Press',
-    primary_muscles: ['shoulders'],
-    secondary_muscles: ['triceps'],
-    category: 'push',
-    is_compound: true,
-    equipment: 'machine',
-    default_weight: 40
-  },
 
-  // Pull Exercises
+  // Pull Exercises - Back Compound
   {
     id: 20,
     name: 'Deadlift (Conventional)',
     primary_muscles: ['back', 'hamstrings'],
-    secondary_muscles: ['glutes', 'core', 'forearms'],
+    secondary_muscles: ['glutes', 'core'],
     category: 'pull',
     is_compound: true,
     equipment: 'barbell',
@@ -238,7 +271,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 23,
-    name: 'Pull-ups (Overhand)',
+    name: 'Pull-ups',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -248,7 +281,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 24,
-    name: 'Pull-ups (Underhand/Chin-ups)',
+    name: 'Chin-ups',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -258,7 +291,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 25,
-    name: 'Lat Pulldown (Wide Grip)',
+    name: 'Lat Pulldown (Wide)',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -268,7 +301,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 26,
-    name: 'Lat Pulldown (Close Grip)',
+    name: 'Lat Pulldown (Close)',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -278,7 +311,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 27,
-    name: 'Seated Cable Row (Neutral Grip)',
+    name: 'Seated Cable Row (Neutral)',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -288,7 +321,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 28,
-    name: 'Seated Cable Row (Wide Grip)',
+    name: 'Seated Cable Row (Wide)',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps'],
     category: 'pull',
@@ -298,7 +331,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 29,
-    name: 'Dumbbell Row (Single Arm)',
+    name: 'Dumbbell Row',
     primary_muscles: ['back'],
     secondary_muscles: ['biceps', 'core'],
     category: 'pull',
@@ -326,9 +359,10 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'cable',
     default_weight: 50
   },
+  // Pull Exercises - Biceps
   {
     id: 32,
-    name: 'Bicep Curls (Barbell)',
+    name: 'Barbell Curl',
     primary_muscles: ['biceps'],
     secondary_muscles: [],
     category: 'pull',
@@ -338,7 +372,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 33,
-    name: 'Bicep Curls (Dumbbell)',
+    name: 'Dumbbell Curl',
     primary_muscles: ['biceps'],
     secondary_muscles: [],
     category: 'pull',
@@ -348,7 +382,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 34,
-    name: 'Hammer Curls',
+    name: 'Hammer Curl',
     primary_muscles: ['biceps'],
     secondary_muscles: [],
     category: 'pull',
@@ -358,7 +392,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 35,
-    name: 'Preacher Curls',
+    name: 'Preacher Curl',
     primary_muscles: ['biceps'],
     secondary_muscles: [],
     category: 'pull',
@@ -368,6 +402,26 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 36,
+    name: 'Incline Dumbbell Curl',
+    primary_muscles: ['biceps'],
+    secondary_muscles: [],
+    category: 'pull',
+    is_compound: false,
+    equipment: 'dumbbell',
+    default_weight: 15
+  },
+  {
+    id: 37,
+    name: 'Cable Curl',
+    primary_muscles: ['biceps'],
+    secondary_muscles: [],
+    category: 'pull',
+    is_compound: false,
+    equipment: 'cable',
+    default_weight: 30
+  },
+  {
+    id: 38,
     name: 'Shrugs (Dumbbell)',
     primary_muscles: ['shoulders'],
     secondary_muscles: ['back'],
@@ -377,7 +431,7 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 50
   },
   {
-    id: 37,
+    id: 39,
     name: 'Shrugs (Barbell)',
     primary_muscles: ['shoulders'],
     secondary_muscles: ['back'],
@@ -386,21 +440,11 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'barbell',
     default_weight: 135
   },
-  {
-    id: 38,
-    name: 'Upright Rows',
-    primary_muscles: ['shoulders'],
-    secondary_muscles: ['back'],
-    category: 'pull',
-    is_compound: false,
-    equipment: 'barbell',
-    default_weight: 65
-  },
 
   // Leg Exercises
   {
     id: 40,
-    name: 'Squat (Back)',
+    name: 'Back Squat',
     primary_muscles: ['quadriceps', 'glutes'],
     secondary_muscles: ['hamstrings', 'core'],
     category: 'legs',
@@ -410,7 +454,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 41,
-    name: 'Squat (Front)',
+    name: 'Front Squat',
     primary_muscles: ['quadriceps'],
     secondary_muscles: ['glutes', 'core'],
     category: 'legs',
@@ -440,17 +484,7 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 44,
-    name: 'Lunges (Bodyweight)',
-    primary_muscles: ['quadriceps', 'glutes'],
-    secondary_muscles: ['hamstrings'],
-    category: 'legs',
-    is_compound: true,
-    equipment: 'bodyweight',
-    default_weight: 0
-  },
-  {
-    id: 45,
-    name: 'Lunges (Dumbbell)',
+    name: 'Walking Lunges',
     primary_muscles: ['quadriceps', 'glutes'],
     secondary_muscles: ['hamstrings'],
     category: 'legs',
@@ -459,14 +493,24 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 30
   },
   {
-    id: 46,
+    id: 45,
     name: 'Bulgarian Split Squat',
     primary_muscles: ['quadriceps', 'glutes'],
     secondary_muscles: [],
     category: 'legs',
     is_compound: true,
-    equipment: 'bodyweight',
-    default_weight: 0
+    equipment: 'dumbbell',
+    default_weight: 25
+  },
+  {
+    id: 46,
+    name: 'Hack Squat',
+    primary_muscles: ['quadriceps'],
+    secondary_muscles: ['glutes'],
+    category: 'legs',
+    is_compound: true,
+    equipment: 'machine',
+    default_weight: 90
   },
   {
     id: 47,
@@ -500,17 +544,17 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 50,
-    name: 'Calf Raises (Standing)',
+    name: 'Calf Raise (Standing)',
     primary_muscles: ['calves'],
     secondary_muscles: [],
     category: 'legs',
     is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
+    equipment: 'machine',
+    default_weight: 100
   },
   {
     id: 51,
-    name: 'Calf Raises (Seated)',
+    name: 'Calf Raise (Seated)',
     primary_muscles: ['calves'],
     secondary_muscles: [],
     category: 'legs',
@@ -530,13 +574,23 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 53,
-    name: 'Glute Bridge',
+    name: 'Hip Adductor',
     primary_muscles: ['glutes'],
-    secondary_muscles: ['hamstrings'],
+    secondary_muscles: [],
     category: 'legs',
     is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
+    equipment: 'machine',
+    default_weight: 80
+  },
+  {
+    id: 54,
+    name: 'Hip Abductor',
+    primary_muscles: ['glutes'],
+    secondary_muscles: [],
+    category: 'legs',
+    is_compound: false,
+    equipment: 'machine',
+    default_weight: 80
   },
 
   // Core Exercises
@@ -562,16 +616,6 @@ export const PREDEFINED_EXERCISES = [
   },
   {
     id: 62,
-    name: 'Knee Raises',
-    primary_muscles: ['core'],
-    secondary_muscles: [],
-    category: 'core',
-    is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
-  },
-  {
-    id: 63,
     name: 'Cable Crunch',
     primary_muscles: ['core'],
     secondary_muscles: [],
@@ -581,7 +625,7 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 50
   },
   {
-    id: 64,
+    id: 63,
     name: 'Ab Wheel Rollout',
     primary_muscles: ['core'],
     secondary_muscles: [],
@@ -591,8 +635,8 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 0
   },
   {
-    id: 65,
-    name: 'Russian Twists',
+    id: 64,
+    name: 'Russian Twist',
     primary_muscles: ['core'],
     secondary_muscles: [],
     category: 'core',
@@ -601,8 +645,8 @@ export const PREDEFINED_EXERCISES = [
     default_weight: 0
   },
   {
-    id: 66,
-    name: 'Cable Woodchoppers',
+    id: 65,
+    name: 'Cable Woodchopper',
     primary_muscles: ['core'],
     secondary_muscles: [],
     category: 'core',
@@ -610,36 +654,92 @@ export const PREDEFINED_EXERCISES = [
     equipment: 'cable',
     default_weight: 30
   },
-  {
-    id: 67,
-    name: 'Hanging Knee Raises',
-    primary_muscles: ['core'],
-    secondary_muscles: [],
-    category: 'core',
-    is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
-  },
-  {
-    id: 68,
-    name: 'Bicycle Crunches',
-    primary_muscles: ['core'],
-    secondary_muscles: [],
-    category: 'core',
-    is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
-  },
-  {
-    id: 69,
-    name: 'Dragon Flags',
-    primary_muscles: ['core'],
-    secondary_muscles: [],
-    category: 'core',
-    is_compound: false,
-    equipment: 'bodyweight',
-    default_weight: 0
-  }
 ] as const;
 
 export type PredefinedExercise = typeof PREDEFINED_EXERCISES[number];
+
+// Workout types
+export const WORKOUT_TYPES = ['Push', 'Pull', 'Chest/Back', 'Arms', 'Legs', 'Upper', 'Full', 'Core'] as const;
+export type WorkoutType = typeof WORKOUT_TYPES[number];
+
+// Curated exercise lists for each workout type (by exercise ID)
+export const WORKOUT_TYPE_EXERCISES: Record<WorkoutType, number[]> = {
+  'Push': [
+    // Chest - Bench variations
+    1, 2, 3, 4, 5, 6,
+    // Dips
+    7,
+    // Triceps - Cable pushdowns
+    8, 9, 10, 11,
+    // Skull crushers
+    12,
+    // Shoulders
+    13, 14, 15, 16,
+  ],
+  'Pull': [
+    // Back compound
+    20, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    // Back/Shoulder
+    31, 38, 39,
+    // Biceps
+    32, 33, 34, 35, 36, 37,
+  ],
+  'Chest/Back': [
+    // Chest
+    1, 2, 3, 4, 5, 6, 7, 19, 70, 71,
+    // Back
+    22, 23, 24, 25, 26, 27, 28, 29, 30,
+  ],
+  'Arms': [
+    // Triceps
+    7, 8, 9, 10, 11, 12,
+    // Biceps
+    32, 33, 34, 35, 36, 37,
+  ],
+  'Legs': [
+    // Quads/Compound
+    40, 41, 42, 44, 45, 46, 47,
+    // Hamstrings
+    43, 48, 49,
+    // Glutes
+    52, 53, 54,
+    // Calves
+    50, 51,
+  ],
+  'Upper': [
+    // Push - Chest
+    1, 2, 3, 4,
+    // Push - Shoulders
+    13, 14, 15,
+    // Push - Triceps
+    8, 12,
+    // Pull - Back
+    22, 25, 27, 29,
+    // Pull - Biceps
+    32, 33, 34,
+  ],
+  'Full': [
+    // Compound movements
+    1, 3, 13, 20, 22, 25, 40, 42, 43,
+    // Isolation
+    8, 15, 32, 47, 48,
+  ],
+  'Core': [
+    60, 61, 62, 63, 64, 65,
+  ],
+};
+
+// Helper function to get exercises for a workout type
+export function getExercisesForWorkoutType(workoutType: WorkoutType): PredefinedExercise[] {
+  const exerciseIds = WORKOUT_TYPE_EXERCISES[workoutType] || [];
+  return PREDEFINED_EXERCISES.filter(ex => exerciseIds.includes(ex.id));
+}
+
+// Featured exercises to display PRs for
+export const FEATURED_PR_EXERCISES = [
+  1,  // Bench Press (Barbell)
+  2,  // Bench Press (Dumbbell)
+  40, // Back Squat
+  33, // Dumbbell Curl
+  27, // Seated Cable Row (Neutral)
+] as const;

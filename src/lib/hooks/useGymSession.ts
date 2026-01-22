@@ -6,7 +6,6 @@ import {
   startWorkout as startWorkoutAction,
   logLift as logLiftAction,
   endWorkout as endWorkoutAction,
-  getActiveWorkout,
 } from '@/lib/actions/gym'
 import { calculate1RM } from '@/lib/gym-utils'
 
@@ -40,6 +39,7 @@ export interface UseGymSessionReturn {
   endWorkout: () => Promise<void>
   isWorkoutActive: boolean
   getSessionDuration: () => number
+  restoreFromDatabase: (dbWorkout: any) => void
 }
 
 export function useGymSession(): UseGymSessionReturn {
@@ -53,57 +53,46 @@ export function useGymSession(): UseGymSessionReturn {
 
   const [localActiveWorkout, setLocalActiveWorkout] = useState<GymSessionData | null>(null)
 
-  // Sync with SessionContext on mount and when activeSession changes
-  useEffect(() => {
-    const loadActiveWorkout = async () => {
-      // First check if there's an active workout in session context
-      if (activeSession?.type === 'workout' && activeSession.workoutId) {
-        const gymData: GymSessionData = {
-          workoutId: activeSession.workoutId,
-          workoutType: activeSession.workoutType || 'General',
-          loggedSets: activeSession.sessionData?.loggedSets || [],
-          startedAt: activeSession.startedAt,
-        }
-        setLocalActiveWorkout(gymData)
-      } else {
-        // If no active session, check database for any active workout
-        try {
-          const activeWorkout = await getActiveWorkout()
-          if (activeWorkout) {
-            // Convert database workout to session format
-            const gymData: GymSessionData = {
-              workoutId: activeWorkout.id,
-              workoutType: activeWorkout.type || 'General',
-              loggedSets: activeWorkout.lifts.map((lift: any) => ({
-                exercise: lift.exercise?.name || 'Unknown',
-                exerciseId: lift.exercise_id,
-                setNumber: lift.set_number,
-                reps: lift.reps,
-                weight: lift.weight,
-                estimated1RM: calculate1RM(lift.weight, lift.reps),
-              })),
-              startedAt: activeWorkout.started_at,
-            }
+  // Restore from database workout data (passed from parent)
+  const restoreFromDatabase = useCallback((dbWorkout: any) => {
+    if (!dbWorkout || localActiveWorkout) return
 
-            // Start session in context
-            startSession('workout', {
-              workoutType: activeWorkout.type || 'General',
-              workoutId: activeWorkout.id,
-              sessionData: gymData,
-            })
-
-            setLocalActiveWorkout(gymData)
-          } else {
-            setLocalActiveWorkout(null)
-          }
-        } catch (error) {
-          console.error('Failed to check for active workout:', error)
-          setLocalActiveWorkout(null)
-        }
-      }
+    const gymData: GymSessionData = {
+      workoutId: dbWorkout.id,
+      workoutType: dbWorkout.type || 'General',
+      loggedSets: dbWorkout.lifts?.map((lift: any) => ({
+        exercise: lift.exercise?.name || 'Unknown',
+        exerciseId: lift.exercise_id,
+        setNumber: lift.set_number,
+        reps: lift.reps,
+        weight: lift.weight,
+        estimated1RM: calculate1RM(lift.weight, lift.reps),
+      })) || [],
+      startedAt: dbWorkout.started_at,
     }
 
-    loadActiveWorkout()
+    // Start session in context
+    startSession('workout', {
+      workoutType: dbWorkout.type || 'General',
+      workoutId: dbWorkout.id,
+      sessionData: gymData,
+    })
+
+    setLocalActiveWorkout(gymData)
+  }, [localActiveWorkout, startSession])
+
+  // Sync with SessionContext on mount and when activeSession changes
+  useEffect(() => {
+    // Check if there's an active workout in session context (from localStorage)
+    if (activeSession?.type === 'workout' && activeSession.workoutId) {
+      const gymData: GymSessionData = {
+        workoutId: activeSession.workoutId,
+        workoutType: activeSession.workoutType || 'General',
+        loggedSets: activeSession.sessionData?.loggedSets || [],
+        startedAt: activeSession.startedAt,
+      }
+      setLocalActiveWorkout(gymData)
+    }
   }, [activeSession])
 
   const startWorkout = useCallback(
@@ -232,5 +221,6 @@ export function useGymSession(): UseGymSessionReturn {
     endWorkout,
     isWorkoutActive: localActiveWorkout !== null,
     getSessionDuration,
+    restoreFromDatabase,
   }
 }
