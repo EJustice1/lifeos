@@ -82,7 +82,23 @@ export async function startStudySession(bucketId: string) {
   return data
 }
 
-export async function endStudySession(sessionId: string, notes?: string) {
+export async function deleteStudySession(sessionId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('study_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+
+  // Ignore "not found" errors - session might have already been deleted or never created
+  if (error && error.code !== 'PGRST116') throw error
+  revalidatePath('/m/study')
+}
+
+export async function endStudySession(sessionId: string, notes?: string, endedAt?: string) {
   const supabase = await createClient()
 
   // Get the session to calculate duration
@@ -94,14 +110,17 @@ export async function endStudySession(sessionId: string, notes?: string) {
 
   if (!session) throw new Error('Session not found')
 
-  const now = new Date()
+  // Use provided endedAt timestamp or current time
+  const endTime = endedAt ? new Date(endedAt) : new Date()
   const started = new Date(session.started_at)
-  const durationMinutes = Math.round((now.getTime() - started.getTime()) / 60000)
+  const durationMinutes = Math.round((endTime.getTime() - started.getTime()) / 60000)
+
+  // Client-side handles sessions < 1 minute, so this should always have duration >= 1
 
   const { error } = await supabase
     .from('study_sessions')
     .update({
-      ended_at: now.toISOString(),
+      ended_at: endTime.toISOString(),
       duration_minutes: durationMinutes,
       notes,
     })
@@ -120,6 +139,11 @@ export async function logCompletedSession(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
+
+  // Don't save if no time was logged (this is for manual entry, so keep validation)
+  if (!durationMinutes || durationMinutes <= 0) {
+    throw new Error('Cannot log session with no time')
+  }
 
   const now = new Date()
   const started = new Date(now.getTime() - durationMinutes * 60000)

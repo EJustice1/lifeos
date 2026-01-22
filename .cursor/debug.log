@@ -1,0 +1,30 @@
+{"location":"gym-logger.tsx:274","message":"handleEndWorkout called","data":{"hasActiveWorkout":true,"workoutId":"06649318-411f-499e-bd65-dc617d408cd9","isWorkoutActive":true},"timestamp":1769056485159,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"gym-logger.tsx:329","message":"Before endWorkout call","data":{"workoutId":"06649318-411f-499e-bd65-dc617d408cd9"},"timestamp":1769056485159,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"useGymSession.ts:199","message":"endWorkout called","data":{"hasLocalActiveWorkout":true,"workoutId":"06649318-411f-499e-bd65-dc617d408cd9"},"timestamp":1769056485160,"sessionId":"debug-session","hypothesisId":"A,B,C"}
+{"location":"useGymSession.ts:211","message":"Before endWorkoutAction call","data":{"workoutId":"06649318-411f-499e-bd65-dc617d408cd9","endedAt":"2026-01-22T04:34:45.160Z"},"timestamp":1769056485160,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"useGymSession.ts:218","message":"After endWorkoutAction success","data":{"workoutId":"06649318-411f-499e-bd65-dc617d408cd9"},"timestamp":1769056485540,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"SessionContext.tsx:157","message":"endSession called","data":{"hadActiveSession":true,"sessionType":"workout"},"timestamp":1769056485540,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"SessionContext.tsx:165","message":"After setActiveSession(null)","data":{},"timestamp":1769056485541,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:226","message":"After endContextSession","data":{},"timestamp":1769056485541,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:233","message":"After setLocalActiveWorkout(null)","data":{},"timestamp":1769056485541,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"gym-logger.tsx:337","message":"After endWorkout call","data":{"isWorkoutActiveAfter":true},"timestamp":1769056485541,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"gym-logger.tsx:274","message":"handleEndWorkout called","data":{"hasActiveWorkout":true,"workoutId":"0b13e466-ab90-4ec8-8f0a-525b7de90880","isWorkoutActive":true},"timestamp":1769056490600,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"gym-logger.tsx:329","message":"Before endWorkout call","data":{"workoutId":"0b13e466-ab90-4ec8-8f0a-525b7de90880"},"timestamp":1769056490601,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"useGymSession.ts:199","message":"endWorkout called","data":{"hasLocalActiveWorkout":true,"workoutId":"0b13e466-ab90-4ec8-8f0a-525b7de90880"},"timestamp":1769056490601,"sessionId":"debug-session","hypothesisId":"A,B,C"}
+{"location":"useGymSession.ts:211","message":"Before endWorkoutAction call","data":{"workoutId":"0b13e466-ab90-4ec8-8f0a-525b7de90880","endedAt":"2026-01-22T04:34:50.601Z"},"timestamp":1769056490601,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"useGymSession.ts:218","message":"After endWorkoutAction success","data":{"workoutId":"0b13e466-ab90-4ec8-8f0a-525b7de90880"},"timestamp":1769056490920,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"SessionContext.tsx:157","message":"endSession called","data":{"hadActiveSession":true,"sessionType":"workout"},"timestamp":1769056490920,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"SessionContext.tsx:165","message":"After setActiveSession(null)","data":{},"timestamp":1769056490920,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:226","message":"After endContextSession","data":{},"timestamp":1769056490921,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:233","message":"After setLocalActiveWorkout(null)","data":{},"timestamp":1769056490921,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"gym-logger.tsx:337","message":"After endWorkout call","data":{"isWorkoutActiveAfter":true},"timestamp":1769056490921,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"gym-logger.tsx:329","message":"Before endWorkout call","data":{"workoutId":"671cdd10-f847-4f50-af73-c7183c5a5733"},"timestamp":1769056497986,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"gym-logger.tsx:274","message":"handleEndWorkout called","data":{"hasActiveWorkout":true,"workoutId":"671cdd10-f847-4f50-af73-c7183c5a5733","isWorkoutActive":true},"timestamp":1769056497985,"sessionId":"debug-session","hypothesisId":"D,E"}
+{"location":"useGymSession.ts:211","message":"Before endWorkoutAction call","data":{"workoutId":"671cdd10-f847-4f50-af73-c7183c5a5733","endedAt":"2026-01-22T04:34:57.986Z"},"timestamp":1769056497986,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"useGymSession.ts:199","message":"endWorkout called","data":{"hasLocalActiveWorkout":true,"workoutId":"671cdd10-f847-4f50-af73-c7183c5a5733"},"timestamp":1769056497986,"sessionId":"debug-session","hypothesisId":"A,B,C"}
+{"location":"useGymSession.ts:218","message":"After endWorkoutAction success","data":{"workoutId":"671cdd10-f847-4f50-af73-c7183c5a5733"},"timestamp":1769056498240,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"SessionContext.tsx:157","message":"endSession called","data":{"hadActiveSession":true,"sessionType":"workout"},"timestamp":1769056498240,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"SessionContext.tsx:165","message":"After setActiveSession(null)","data":{},"timestamp":1769056498241,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:226","message":"After endContextSession","data":{},"timestamp":1769056498241,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"useGymSession.ts:233","message":"After setLocalActiveWorkout(null)","data":{},"timestamp":1769056498241,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"gym-logger.tsx:337","message":"After endWorkout call","data":{"isWorkoutActiveAfter":true},"timestamp":1769056498242,"sessionId":"debug-session","hypothesisId":"D,E"}

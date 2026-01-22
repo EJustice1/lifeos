@@ -96,7 +96,15 @@ export function StudyTimer({
     if (!activeSession) return
 
     startTransition(async () => {
-      await endStudySession(activeSession)
+      try {
+        await endStudySession(activeSession)
+      } catch (error) {
+        // Silently handle validation errors (no time logged)
+        // Only log real errors
+        if (error instanceof Error && !error.message.includes('no time')) {
+          console.error('Failed to end study session:', error)
+        }
+      }
       setActiveSession(null)
       endSession()
       setIsRunning(false)

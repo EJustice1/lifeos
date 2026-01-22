@@ -11,39 +11,59 @@ interface MuscleGroupRadarChartProps {
 export function MuscleGroupRadarChart({ percentiles }: MuscleGroupRadarChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
   const chartInstance = useRef<Chart | null>(null)
+  const isRegistered = useRef(false)
+  const lastDataHash = useRef<string>('')
 
-  // Register Chart.js components
+  // Register Chart.js components once
   useEffect(() => {
-    Chart.register(...registerables)
+    if (!isRegistered.current) {
+      Chart.register(...registerables)
+      isRegistered.current = true
+    }
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy()
+        chartInstance.current = null
       }
     }
   }, [])
 
   useEffect(() => {
-    if (!chartRef.current || !percentiles) return
-
-    const ctx = chartRef.current.getContext('2d')
-    if (!ctx) return
-
-    // Destroy previous chart
-    if (chartInstance.current) {
-      chartInstance.current.destroy()
+    if (!chartRef.current || !percentiles) {
+      console.log('Radar chart: Missing ref or percentiles')
+      return
     }
 
-    // Debug log
-    console.log('Creating radar chart with percentiles:', percentiles)
+    // Create a hash of the data to detect actual changes
+    const dataHash = MUSCLE_GROUPS.map(mg => `${mg}:${percentiles[mg] || 0}`).join('|')
+    
+    // Skip render if data hasn't actually changed AND we've already rendered once
+    if (chartInstance.current && dataHash === lastDataHash.current) {
+      console.log('Radar chart: Skipping render, data unchanged')
+      return
+    }
 
-    // Capitalize muscle group names for display
-    const capitalize = (str: string) =>
-      str.charAt(0).toUpperCase() + str.slice(1)
+    const ctx = chartRef.current.getContext('2d')
+    if (!ctx) {
+      console.log('Radar chart: No context available')
+      return
+    }
 
+    // Destroy previous chart instance
+    if (chartInstance.current) {
+      chartInstance.current.destroy()
+      chartInstance.current = null
+    }
+
+    // Update hash
+    lastDataHash.current = dataHash
+
+    // Prepare chart data
+    const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
     const labels = MUSCLE_GROUPS.map(capitalize)
     const data = MUSCLE_GROUPS.map(mg => percentiles[mg] || 0)
 
-    console.log('Chart data:', { labels, data })
+    console.log('Rendering radar chart with data:', { labels, data })
 
     // Color code based on percentile thresholds
     const getColor = (value: number) => {
@@ -124,11 +144,7 @@ export function MuscleGroupRadarChart({ percentiles }: MuscleGroupRadarChartProp
       }
     })
 
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy()
-      }
-    }
+    console.log('Radar chart created successfully')
   }, [percentiles])
 
   if (!percentiles) {

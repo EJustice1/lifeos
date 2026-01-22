@@ -207,12 +207,22 @@ export default function GymProgressPage() {
 
 // Workout Calendar Component
 const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
-  const { calendar, currentMonthName } = useMemo(() => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
+  // Helper to format date in EST
+  const formatDateEST = (date: Date): string => {
+    const estDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const year = estDate.getFullYear();
+    const month = String(estDate.getMonth() + 1).padStart(2, '0');
+    const day = String(estDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-    // Get first day of current month
+  const { calendar, currentMonthName, todayEST } = useMemo(() => {
+    // Get current date in EST
+    const nowEST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const currentYear = nowEST.getFullYear();
+    const currentMonth = nowEST.getMonth();
+
+    // Get first day of current month in EST
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
 
@@ -248,24 +258,31 @@ const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
       weeks.push(currentWeek);
     }
 
-    const monthName = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthName = nowEST.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'America/New_York' });
 
-    return { calendar: weeks, currentMonthName: monthName };
+    return { calendar: weeks, currentMonthName: monthName, todayEST: formatDateEST(new Date()) };
   }, []);
 
   const workoutDateSet = useMemo(() => {
-    return new Set(workoutDates.map(date => new Date(date).toISOString().split('T')[0]));
+    // Workout dates from DB are already in YYYY-MM-DD format (EST)
+    return new Set(workoutDates);
   }, [workoutDates]);
 
   const isToday = (date: Date | null) => {
     if (!date) return false;
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return dateStr === todayEST;
   };
 
   const hasWorkout = (date: Date | null) => {
     if (!date) return false;
-    const dateStr = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return workoutDateSet.has(dateStr);
   };
 

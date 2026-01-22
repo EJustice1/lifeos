@@ -5,6 +5,7 @@ import { useSession } from '@/context/SessionContext'
 import {
   startStudySession as startStudySessionAction,
   endStudySession as endStudySessionAction,
+  deleteStudySession as deleteStudySessionAction,
 } from '@/lib/actions/study'
 
 export interface StudySessionData {
@@ -20,7 +21,7 @@ export interface UseStudySessionReturn {
   startSession: (bucketId: string) => Promise<void>
   updateTimer: (seconds: number) => void
   updateNotes: (notes: string) => void
-  endSession: (notes?: string) => Promise<void>
+  endSession: (notes?: string) => Promise<{ saved: boolean }>
   isSessionActive: boolean
   getSessionDuration: () => number
 }
@@ -124,24 +125,52 @@ export function useStudySession(): UseStudySessionReturn {
   )
 
   const endSession = useCallback(
-    async (notes?: string) => {
+    async (notes?: string): Promise<{ saved: boolean }> => {
       if (!localActiveSession) {
         throw new Error('No active session')
       }
 
-      try {
-        // Flush any pending timer updates
-        if (updateTimerDebounceRef.current) {
-          clearTimeout(updateTimerDebounceRef.current)
-          updateTimerDebounceRef.current = null
-        }
+      // Calculate actual elapsed time from start time (don't rely on debounced elapsedSeconds)
+      const actualElapsedSeconds = Math.floor(
+        (Date.now() - new Date(localActiveSession.startedAt).getTime()) / 1000
+      )
 
-        // End session in database
-        await endStudySessionAction(localActiveSession.sessionId, notes)
+      // Flush any pending timer updates
+      if (updateTimerDebounceRef.current) {
+        clearTimeout(updateTimerDebounceRef.current)
+        updateTimerDebounceRef.current = null
+      }
+
+      // Capture exact end time on client (before network delay)
+      const endedAt = new Date().toISOString()
+
+      // Don't save if less than 1 minute (60 seconds) - delete the session entry
+      if (actualElapsedSeconds < 60) {
+        try {
+          // First mark session as ended (so it's not detected as active anymore)
+          // Then delete it from database
+          await endStudySessionAction(localActiveSession.sessionId, notes, endedAt)
+          await deleteStudySessionAction(localActiveSession.sessionId)
+        } catch (error) {
+          console.error('Failed to end/delete short study session:', error)
+          // Continue anyway to clear local state
+        }
+        
+        // Clear session (no banner)
+        endContextSession()
+        setLocalActiveSession(null)
+        return { saved: false } // Indicate no data was saved
+      }
+
+      try {
+        // End session in database with client timestamp
+        await endStudySessionAction(localActiveSession.sessionId, notes, endedAt)
 
         // Clear session
         endContextSession()
         setLocalActiveSession(null)
+
+        return { saved: true } // Indicate data was saved successfully
       } catch (error) {
         console.error('Failed to end study session:', error)
         throw error

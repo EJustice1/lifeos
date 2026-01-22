@@ -276,58 +276,8 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
 
     startTransition(async () => {
       try {
-        // Use actual workout duration from timer
-        const duration = Math.round(workoutDuration / 60) // Convert seconds to minutes
-
-        // Calculate total volume
-        const totalVolume = loggedSets.reduce((sum, set) => sum + set.reps * set.weight, 0)
-
-        // Group exercises with detailed set information for history
-        const exerciseDetails = loggedSets.reduce((acc, set) => {
-          if (!acc[set.exercise]) {
-            acc[set.exercise] = {
-              sets: [],
-              totalSets: 0,
-              totalReps: 0,
-              totalVolume: 0
-            }
-          }
-          acc[set.exercise].sets.push({
-            setNumber: set.setNumber,
-            reps: set.reps,
-            weight: set.weight,
-            volume: set.reps * set.weight,
-            estimated1RM: set.estimated1RM
-          })
-          acc[set.exercise].totalSets++
-          acc[set.exercise].totalReps += set.reps
-          acc[set.exercise].totalVolume += set.reps * set.weight
-          return acc
-        }, {} as Record<string, {
-          sets: Array<{ setNumber: number; reps: number; weight: number; volume: number; estimated1RM: number }>;
-          totalSets: number;
-          totalReps: number;
-          totalVolume: number;
-        }>)
-
-        // Create workout history entry with detailed set data
-        const newWorkoutHistory: WorkoutHistory = {
-          id: activeWorkout.workoutId,
-          date: new Date().toISOString(),
-          type: activeWorkout.workoutType || 'General',
-          duration: duration,
-          totalVolume: totalVolume,
-          exercises: Object.entries(exerciseDetails).map(([name, data]) => ({
-            name,
-            totalSets: data.totalSets,
-            totalReps: data.totalReps,
-            totalVolume: data.totalVolume,
-            sets: data.sets // Store individual sets with details
-          }))
-        }
-
-        // End workout first to ensure database is updated
-        await endWorkout()
+        // End workout (will handle empty workouts internally)
+        const result = await endWorkout()
 
         // Mark history as not loaded so it refreshes next time
         setHistoryLoaded(false)
@@ -335,8 +285,10 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         // Invalidate workout history cache
         ClientCache.remove(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5))
 
-        // Show success confirmation
-        showToast('Workout completed successfully! 🎉', 'success')
+        // Only show success toast if data was actually saved
+        if (result.saved) {
+          showToast('Workout completed successfully! 🎉', 'success')
+        }
 
         // Update local state
         setWorkoutType('')
@@ -350,7 +302,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         showToast('Failed to end workout', 'error')
       }
     })
-  }, [activeWorkout, loggedSets, endWorkout, showToast, setActiveSection])
+  }, [activeWorkout, endWorkout, showToast, setActiveSection, setHistoryLoaded, setWorkoutType])
 
 
 

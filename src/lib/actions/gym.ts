@@ -14,13 +14,23 @@ export async function getExerciseById(exerciseId: number) {
   return PREDEFINED_EXERCISES.find(ex => ex.id === exerciseId)
 }
 
+// Helper to get date in EST timezone
+function getESTDate(date: Date = new Date()): string {
+  // Convert to EST (UTC-5) or EDT (UTC-4) depending on DST
+  const estDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const year = estDate.getFullYear()
+  const month = String(estDate.getMonth() + 1).padStart(2, '0')
+  const day = String(estDate.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Start a new workout
 export async function startWorkout(type?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getESTDate()
 
   const { data, error } = await supabase
     .from('workouts')
@@ -113,16 +123,38 @@ export async function logLift(
   }
 }
 
-// End a workout
-export async function endWorkout(workoutId: string) {
+// Delete a workout (for cleaning up empty workouts)
+export async function deleteWorkout(workoutId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
   const { error } = await supabase
     .from('workouts')
+    .delete()
+    .eq('id', workoutId)
+    .eq('user_id', user.id)
+
+  // Ignore "not found" errors - workout might have already been deleted or never created
+  if (error && error.code !== 'PGRST116') throw error
+
+  revalidatePath('/m/gym')
+}
+
+// End a workout
+export async function endWorkout(workoutId: string, endedAt?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Use provided endedAt timestamp or current time
+  const endTime = endedAt ? new Date(endedAt) : new Date()
+
+  // Always set ended_at (even if no sets, for proper deletion flow)
+  const { error } = await supabase
+    .from('workouts')
     .update({
-      ended_at: new Date().toISOString(),
+      ended_at: endTime.toISOString(),
     })
     .eq('id', workoutId)
     .eq('user_id', user.id)
@@ -514,7 +546,7 @@ async function checkAndSavePR(
 
   if (isNewPR) {
     // New PR!
-    const today = new Date().toISOString().split('T')[0]
+    const today = getESTDate()
 
     await supabase
       .from('personal_records')
@@ -898,7 +930,7 @@ export async function generateProgressSnapshot() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getESTDate()
 
   try {
     // Call the database function to generate snapshot

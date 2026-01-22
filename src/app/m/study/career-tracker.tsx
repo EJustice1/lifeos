@@ -83,7 +83,12 @@ export function CareerTracker({
 
   // Session state derived from hook
   const isRunning = isSessionActive
-  const seconds = activeStudySession?.elapsedSeconds || 0
+  
+  // Calculate seconds from start time for accuracy (survives tab backgrounding)
+  const [, setTick] = useState(0)
+  const seconds = activeStudySession?.startedAt
+    ? Math.floor((Date.now() - new Date(activeStudySession.startedAt).getTime()) / 1000)
+    : 0
 
   // UI mode state
   const [mode, setMode] = useState<'timer' | 'manual'>('timer')
@@ -108,12 +113,15 @@ export function CareerTracker({
   const [buckets, setBuckets] = useState(initialBuckets)
   const [todaySessions, setTodaySessions] = useState(initialSessions)
 
-  // Timer effect - increment seconds and update storage
+  // Timer effect - trigger re-renders and periodically update storage
   useEffect(() => {
     let interval: NodeJS.Timeout
     if (isRunning) {
       interval = setInterval(() => {
-        updateTimer(seconds + 1)
+        // Force re-render to recalculate seconds from start time
+        setTick(t => t + 1)
+        // Periodically update storage for session recovery
+        updateTimer(seconds)
       }, 1000)
     }
     return () => clearInterval(interval)
@@ -174,9 +182,16 @@ export function CareerTracker({
         }
         setTodaySessions(prev => [newSession, ...prev])
 
-        await endSession(notes || undefined)
+        const result = await endSession(notes || undefined)
         setNotes('')
-        showToast('Session saved!', 'success')
+        
+        // Only show success toast if data was actually saved
+        if (result.saved) {
+          showToast('Session saved!', 'success')
+        } else {
+          // Remove the temp session if nothing was saved
+          setTodaySessions(previousSessions)
+        }
       } catch (error) {
         setTodaySessions(previousSessions)
         showToast('Failed to save session. Please try again.', 'error')

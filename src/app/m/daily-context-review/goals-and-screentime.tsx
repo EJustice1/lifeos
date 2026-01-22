@@ -111,10 +111,11 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
   }
 
   const handleContinue = async () => {
-    // Save each study session
-    if (studySessions.length > 0) {
+    // Save each study session (only if duration > 0)
+    const validSessions = studySessions.filter(s => s.minutes > 0)
+    if (validSessions.length > 0) {
       setSavingSessions(true)
-      for (const session of studySessions) {
+      for (const session of validSessions) {
         try {
           await logCompletedSession(session.bucketId, session.minutes)
         } catch (error) {

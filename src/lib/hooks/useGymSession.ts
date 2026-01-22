@@ -6,6 +6,7 @@ import {
   startWorkout as startWorkoutAction,
   logLift as logLiftAction,
   endWorkout as endWorkoutAction,
+  deleteWorkout as deleteWorkoutAction,
 } from '@/lib/actions/gym'
 import { calculate1RM } from '@/lib/gym-utils'
 
@@ -36,7 +37,7 @@ export interface UseGymSessionReturn {
     exerciseName: string,
     rpe?: number
   ) => Promise<{ isNewPR: boolean }>
-  endWorkout: () => Promise<void>
+  endWorkout: () => Promise<{ saved: boolean }>
   isWorkoutActive: boolean
   getSessionDuration: () => number
   restoreFromDatabase: (dbWorkout: any) => void
@@ -196,19 +197,66 @@ export function useGymSession(): UseGymSessionReturn {
     [localActiveWorkout, updateSessionData]
   )
 
-  const endWorkout = useCallback(async () => {
+  const endWorkout = useCallback(async (): Promise<{ saved: boolean }> => {
+    // #region agent log
+    console.log('[DEBUG useGymSession.ts:199] endWorkout called', {hasLocalActiveWorkout:!!localActiveWorkout,workoutId:localActiveWorkout?.workoutId});
+    // #endregion
+    
     if (!localActiveWorkout) {
       throw new Error('No active workout')
     }
 
+    // Capture exact end time on client (before network delay)
+    const endedAt = new Date().toISOString()
+
+    // Don't save if no sets were logged - delete the empty workout entry
+    if (!localActiveWorkout.loggedSets || localActiveWorkout.loggedSets.length === 0) {
+      try {
+        // First mark workout as ended (so it's not detected as active anymore)
+        // Then delete the empty workout from database
+        await endWorkoutAction(localActiveWorkout.workoutId, endedAt)
+        await deleteWorkoutAction(localActiveWorkout.workoutId)
+      } catch (error) {
+        console.error('Failed to end/delete empty workout:', error)
+        // Continue anyway to clear local state
+      }
+      
+      // Clear session (no banner)
+      endContextSession()
+      setLocalActiveWorkout(null)
+      return { saved: false } // Indicate no data was saved
+    }
+
     try {
-      // End workout in database
-      await endWorkoutAction(localActiveWorkout.workoutId)
+      // #region agent log
+      console.log('[DEBUG useGymSession.ts:211] Before endWorkoutAction call', {workoutId:localActiveWorkout.workoutId,endedAt});
+      // #endregion
+
+      // End workout in database with client timestamp
+      await endWorkoutAction(localActiveWorkout.workoutId, endedAt)
+
+      // #region agent log
+      console.log('[DEBUG useGymSession.ts:218] After endWorkoutAction success', {workoutId:localActiveWorkout.workoutId});
+      // #endregion
 
       // Clear session
       endContextSession()
+      
+      // #region agent log
+      console.log('[DEBUG useGymSession.ts:226] After endContextSession');
+      // #endregion
+      
       setLocalActiveWorkout(null)
+      
+      // #region agent log
+      console.log('[DEBUG useGymSession.ts:233] After setLocalActiveWorkout(null)');
+      // #endregion
+
+      return { saved: true } // Indicate data was saved successfully
     } catch (error) {
+      // #region agent log
+      console.error('[DEBUG useGymSession.ts:239] endWorkout error caught', {error:error instanceof Error ? error.message : String(error),workoutId:localActiveWorkout.workoutId});
+      // #endregion
       console.error('Failed to end workout:', error)
       throw error
     }
