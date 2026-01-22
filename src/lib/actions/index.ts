@@ -1,5 +1,4 @@
 export * from './gym'
-export * from './finance'
 export * from './study'
 export * from './daily-review'
 export * from './digital'

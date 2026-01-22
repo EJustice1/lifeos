@@ -39,3 +39,17 @@ body {
   --mobile-button-padding-md: 1rem 1.5rem; /* px-4 py-3 */
   --mobile-button-padding-lg: 1.5rem 2.5rem; /* px-6 py-4 */
 }
+
+/* Animations */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}

@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { PREDEFINED_EXERCISES, MUSCLE_GROUPS, calculate1RM } from '@/lib/gym-utils'
+import { PREDEFINED_EXERCISES, MUSCLE_GROUPS, calculate1RM, MuscleGroup } from '@/lib/gym-utils'
 
 // Get all predefined exercises
 export async function getPredefinedExercises() {
@@ -144,6 +144,7 @@ export async function getRecentWorkoutsWithDetails(limit = 10) {
       `*,
       lifts(
         id,
+        exercise_id,
         reps,
         weight,
         set_number,
@@ -158,7 +159,7 @@ export async function getRecentWorkoutsWithDetails(limit = 10) {
   // Enrich with exercise details
   return data?.map(workout => ({
     ...workout,
-    lifts: workout.lifts?.map((lift: { exercise_id: number }) => ({
+    lifts: workout.lifts?.map((lift: any) => ({
       ...lift,
       exercise: PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
     })) || []
@@ -177,12 +178,12 @@ export async function getWorkoutWithLifts(workoutId: string) {
       `*,
       lifts(
         id,
+        exercise_id,
         reps,
         weight,
         set_number,
         rpe,
-        created_at,
-        exercise_id
+        created_at
       )`
     )
     .eq('id', workoutId)
@@ -194,7 +195,7 @@ export async function getWorkoutWithLifts(workoutId: string) {
   // Enrich with exercise details
   return {
     ...data,
-    lifts: data.lifts?.map((lift: { exercise_id: number }) => ({
+    lifts: data.lifts?.map((lift: any) => ({
       ...lift,
       exercise: PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
     })) || []
@@ -213,12 +214,12 @@ export async function getActiveWorkout() {
       `*,
       lifts(
         id,
+        exercise_id,
         reps,
         weight,
         set_number,
         rpe,
-        created_at,
-        exercise_id
+        created_at
       )`
     )
     .eq('user_id', user.id)
@@ -232,7 +233,7 @@ export async function getActiveWorkout() {
   // Enrich with exercise details
   return {
     ...data,
-    lifts: data.lifts?.map((lift: { exercise_id: number }) => ({
+    lifts: data.lifts?.map((lift: any) => ({
       ...lift,
       exercise: PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
     })) || []
@@ -288,6 +289,7 @@ export async function getPersonalRecords() {
     .select('*')
     .eq('user_id', user.id)
     .order('estimated_1rm', { ascending: false })
+    .limit(20)
 
   // Enrich with exercise details
   return data?.map(pr => ({
@@ -406,4 +408,570 @@ async function checkAndSavePR(
   }
 
   return { isNewPR: false }
+}
+
+// Get PR for a specific exercise
+export async function getExercisePR(exerciseId: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('personal_records')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('exercise_id', exerciseId)
+    .single()
+
+  if (!data) return null
+
+  return {
+    ...data,
+    exercise: PREDEFINED_EXERCISES.find(ex => ex.id === data.exercise_id)
+  }
+}
+
+// Get performance history for an exercise (for charts)
+export async function getExercisePerformanceHistory(exerciseId: number, days = 90) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - days)
+
+  // Query the materialized view (limit to prevent excessive data)
+  const { data } = await supabase
+    .from('exercise_performance_history')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('exercise_id', exerciseId)
+    .gte('date', cutoffDate.toISOString().split('T')[0])
+    .order('date', { ascending: true })
+    .limit(200)
+
+  return data || []
+}
+
+// Get weekly muscle group volume with weighted sets (1.0 primary / 0.5 secondary)
+// Now uses last 7 days instead of current week
+export async function getWeeklyMuscleGroupVolume() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Get last 7 days
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  sevenDaysAgo.setHours(0, 0, 0, 0)
+
+  // Get all lifts from last 7 days (with limit for safety)
+  const { data: lifts } = await supabase
+    .from('lifts')
+    .select('exercise_id, workout_id')
+    .eq('user_id', user.id)
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .limit(500)
+
+  if (!lifts || lifts.length === 0) {
+    // Return zeros for all muscle groups
+    const result: Record<string, number> = {}
+    MUSCLE_GROUPS.forEach(mg => { result[mg] = 0 })
+    return result
+  }
+
+  // Count sets per muscle group with weighting
+  const muscleGroupSets: Record<string, number> = {}
+  MUSCLE_GROUPS.forEach(mg => { muscleGroupSets[mg] = 0 })
+
+  lifts.forEach(lift => {
+    const exercise = PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
+    if (!exercise) return
+
+    // Primary muscles get 1.0 weight
+    exercise.primary_muscles.forEach(mg => {
+      muscleGroupSets[mg] = (muscleGroupSets[mg] || 0) + 1.0
+    })
+
+    // Secondary muscles get 0.5 weight
+    exercise.secondary_muscles.forEach(mg => {
+      muscleGroupSets[mg] = (muscleGroupSets[mg] || 0) + 0.5
+    })
+  })
+
+  return muscleGroupSets
+}
+
+// Get muscle group targets
+export async function getMuscleGroupTargets() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('muscle_group_targets')
+    .select('*')
+    .eq('user_id', user.id)
+
+  if (!data || data.length === 0) {
+    // Return defaults if not set
+    const defaults: Record<string, number> = {}
+    MUSCLE_GROUPS.forEach(mg => { defaults[mg] = 12 })
+    return defaults
+  }
+
+  // Convert array to object
+  const targets: Record<string, number> = {}
+  data.forEach(row => {
+    targets[row.muscle_group] = row.target_sets_per_week
+  })
+
+  // Fill in any missing muscle groups with default
+  MUSCLE_GROUPS.forEach(mg => {
+    if (!(mg in targets)) {
+      targets[mg] = 12
+    }
+  })
+
+  return targets
+}
+
+// Update muscle group target
+export async function updateMuscleGroupTarget(muscleGroup: MuscleGroup, targetSets: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Validate inputs
+  if (!MUSCLE_GROUPS.includes(muscleGroup)) {
+    throw new Error('Invalid muscle group')
+  }
+  if (targetSets < 0 || targetSets > 30) {
+    throw new Error('Target sets must be between 0 and 30')
+  }
+
+  const { error } = await supabase
+    .from('muscle_group_targets')
+    .upsert({
+      user_id: user.id,
+      muscle_group: muscleGroup,
+      target_sets_per_week: targetSets,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id,muscle_group'
+    })
+
+  if (error) throw error
+
+  revalidatePath('/m/gym')
+  revalidatePath('/m/gym/targets')
+}
+
+// Get muscle group percentiles for radar chart (with caching)
+export async function getMuscleGroupPercentiles() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Try to get from cache first
+  try {
+    const { data: cachedData } = await supabase
+      .rpc('get_gym_cache', {
+        user_id_param: user.id,
+        cache_key_param: 'gym_muscle_percentiles'
+      })
+
+    if (cachedData) {
+      return cachedData as Record<string, number>
+    }
+  } catch (error) {
+    console.warn('Cache read failed, computing fresh data:', error)
+  }
+
+  // Get weekly volume
+  const weeklyVolume = await getWeeklyMuscleGroupVolume()
+
+  // Get targets
+  const targets = await getMuscleGroupTargets()
+
+  // If no data, return zeros (not null) so chart still renders
+  if (!weeklyVolume || !targets) {
+    const percentiles: Record<string, number> = {}
+    MUSCLE_GROUPS.forEach(mg => {
+      percentiles[mg] = 0
+    })
+    return percentiles
+  }
+
+  // Calculate percentiles
+  const percentiles: Record<string, number> = {}
+  MUSCLE_GROUPS.forEach(mg => {
+    const actual = weeklyVolume[mg] || 0
+    const target = targets[mg] || 12
+    const percentile = target > 0 ? Math.min(100, (actual / target) * 100) : 0
+    percentiles[mg] = Math.round(percentile)
+  })
+
+  // Cache the result for 5 minutes
+  try {
+    await supabase.rpc('set_gym_cache', {
+      user_id_param: user.id,
+      cache_key_param: 'gym_muscle_percentiles',
+      cache_data_param: percentiles,
+      ttl_minutes: 5
+    })
+  } catch (error) {
+    console.warn('Cache write failed:', error)
+  }
+
+  return percentiles
+}
+
+// Progress Tracking Functions
+
+// Get comprehensive progress data for the gym progress page
+export async function getProgressData(timeRange: 'month' | 'quarter' | 'year' | 'all' = 'month') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Calculate date range
+  const endDate = new Date()
+  const startDate = new Date()
+
+  switch (timeRange) {
+    case 'month':
+      startDate.setMonth(startDate.getMonth() - 1)
+      break
+    case 'quarter':
+      startDate.setMonth(startDate.getMonth() - 3)
+      break
+    case 'year':
+      startDate.setFullYear(startDate.getFullYear() - 1)
+      break
+    case 'all':
+      // No start date limit for 'all'
+      startDate.setFullYear(startDate.getFullYear() - 10)
+      break
+  }
+
+  const startDateStr = startDate.toISOString().split('T')[0]
+  const endDateStr = endDate.toISOString().split('T')[0]
+
+  try {
+    // Get progress history data (limited to prevent slowness)
+    const { data: progressHistory } = await supabase
+      .from('gym_progress_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', startDateStr)
+      .lte('date', endDateStr)
+      .order('date', { ascending: false })
+      .limit(500)
+
+    // Get recent workouts (limited)
+    const { data: workouts } = await supabase
+      .from('workouts')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', startDateStr)
+      .lte('date', endDateStr)
+      .order('date', { ascending: false })
+      .limit(100)
+
+    // Get personal records (limited)
+    const { data: personalRecords } = await supabase
+      .from('personal_records')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+      .limit(50)
+
+    // Calculate metrics
+    const totalWorkouts = workouts?.length || 0
+    const totalVolume = workouts?.reduce((sum, workout) => sum + (workout.total_volume || 0), 0) || 0
+
+    // Calculate strength score (0-100 based on PRs)
+    const strengthScore = personalRecords && personalRecords.length > 0
+      ? Math.min(100, personalRecords.length * 5 + (totalWorkouts / 10))
+      : 0
+
+    // Calculate consistency score (0-100 based on workout frequency)
+    const consistencyScore = totalWorkouts > 0
+      ? Math.min(100, (totalWorkouts / getExpectedWorkouts(timeRange)) * 100)
+      : 0
+
+    return {
+      totalWorkouts,
+      totalVolume,
+      strengthScore: Math.round(strengthScore),
+      consistencyScore: Math.round(consistencyScore),
+      progressHistory: progressHistory || [],
+      workouts: workouts || [],
+      personalRecords: personalRecords || []
+    }
+  } catch (error) {
+    console.error('Error fetching progress data:', error)
+    return null
+  }
+}
+
+// Helper function to get expected workouts for consistency calculation
+function getExpectedWorkouts(timeRange: 'month' | 'quarter' | 'year' | 'all'): number {
+  switch (timeRange) {
+    case 'month': return 8 // 2 workouts per week
+    case 'quarter': return 24 // 2 workouts per week
+    case 'year': return 104 // 2 workouts per week
+    case 'all': return 104 // Use 1 year as baseline
+    default: return 104
+  }
+}
+
+// Get progress history for a specific exercise
+export async function getExerciseProgressHistory(exerciseId: number, timeRange: 'month' | 'quarter' | 'year' | 'all' = 'month') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  // Calculate date range
+  const endDate = new Date()
+  const startDate = new Date()
+
+  switch (timeRange) {
+    case 'month':
+      startDate.setMonth(startDate.getMonth() - 1)
+      break
+    case 'quarter':
+      startDate.setMonth(startDate.getMonth() - 3)
+      break
+    case 'year':
+      startDate.setFullYear(startDate.getFullYear() - 1)
+      break
+    case 'all':
+      startDate.setFullYear(startDate.getFullYear() - 10)
+      break
+  }
+
+  const startDateStr = startDate.toISOString().split('T')[0]
+  const endDateStr = endDate.toISOString().split('T')[0]
+
+  const { data } = await supabase
+    .from('gym_progress_history')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('exercise_id', exerciseId)
+    .gte('date', startDateStr)
+    .lte('date', endDateStr)
+    .order('date', { ascending: true })
+
+  return data || []
+}
+
+// Generate and save a progress snapshot
+export async function generateProgressSnapshot() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const today = new Date().toISOString().split('T')[0]
+
+  try {
+    // Call the database function to generate snapshot
+    const { data: snapshotData, error } = await supabase
+      .rpc('generate_gym_progress_snapshot', { user_id_param: user.id })
+
+    if (error) throw error
+
+    if (snapshotData) {
+      // Save the snapshot to the database
+      const { error: saveError } = await supabase
+        .from('gym_progress_snapshots')
+        .insert({
+          user_id: user.id,
+          date: today,
+          snapshot_data: snapshotData
+        })
+
+      if (saveError) throw saveError
+    }
+
+    return snapshotData
+  } catch (error) {
+    console.error('Error generating progress snapshot:', error)
+    throw error
+  }
+}
+
+// Get progress snapshots for a date range
+export async function getProgressSnapshots(startDate: string, endDate: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('gym_progress_snapshots')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: false })
+
+  return data || []
+}
+
+// Get strength standards for comparison
+export async function getStrengthStandards(exerciseId: number, gender: 'male' | 'female' = 'male', weightClass: 'light' | 'medium' | 'heavy' = 'medium') {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('gym_strength_standards')
+    .select('*')
+    .eq('exercise_id', exerciseId)
+    .eq('gender', gender)
+    .eq('weight_class', weightClass)
+    .single()
+
+  return data
+}
+
+// Backfill historical progress data from existing workouts
+export async function backfillGymProgressHistory() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  try {
+    const { data, error } = await supabase
+      .rpc('backfill_gym_progress_history', { user_id_param: user.id })
+
+    if (error) throw error
+
+    return data || 0
+  } catch (error) {
+    console.error('Error backfilling progress history:', error)
+    throw error
+  }
+}
+
+// Calculate strength balance metrics
+export async function calculateStrengthBalanceMetrics() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Get recent progress data (last 3 months)
+  const startDate = new Date()
+  startDate.setMonth(startDate.getMonth() - 3)
+  const startDateStr = startDate.toISOString().split('T')[0]
+
+  const { data: progressData } = await supabase
+    .from('gym_progress_history')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('date', startDateStr)
+    .order('date', { ascending: false })
+
+  if (!progressData || progressData.length === 0) return null
+
+  // Calculate metrics by muscle group
+  const pushExercises = [1, 2, 3] // Bench Press, Incline Dumbbell Press, Overhead Press
+  const pullExercises = [6, 7, 8] // Deadlift, Barbell Row, Pull-up
+  const legExercises = [11, 12, 13] // Squat, Leg Press, Romanian Deadlift
+  const coreExercises = [23, 24] // Plank, Cable Crunch
+
+  const pushMax = Math.max(...progressData.filter(p => pushExercises.includes(p.exercise_id)).map(p => p.one_rep_max || 0), 0)
+  const pullMax = Math.max(...progressData.filter(p => pullExercises.includes(p.exercise_id)).map(p => p.one_rep_max || 0), 0)
+  const legMax = Math.max(...progressData.filter(p => legExercises.includes(p.exercise_id)).map(p => p.one_rep_max || 0), 0)
+  const coreMax = Math.max(...progressData.filter(p => coreExercises.includes(p.exercise_id)).map(p => p.one_rep_max || 0), 0)
+
+  // Calculate ratios and scores
+  const pushPullRatio = pullMax > 0 ? pushMax / pullMax : 0
+  const upperLowerRatio = legMax > 0 ? ((pushMax + pullMax) / 2) / legMax : 0
+  const strengthBalanceScore = Math.min(100, Math.round(
+    (0.4 * (pushPullRatio >= 0.7 && pushPullRatio <= 1.0 ? 100 : 50)) +
+    (0.6 * (upperLowerRatio >= 0.5 && upperLowerRatio <= 0.7 ? 100 : 50))
+  ))
+
+  return {
+    pushMax,
+    pullMax,
+    legMax,
+    coreMax,
+    pushPullRatio,
+    upperLowerRatio,
+    strengthBalanceScore,
+    pushStrength: pushMax,
+    pullStrength: pullMax,
+    legStrength: legMax,
+    coreStrength: coreMax
+  }
+}
+
+// Get progress trends and projections
+export async function getProgressTrends() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Get progress data for the last 6 months
+  const startDate = new Date()
+  startDate.setMonth(startDate.getMonth() - 6)
+  const startDateStr = startDate.toISOString().split('T')[0]
+
+  const { data: progressData } = await supabase
+    .from('gym_progress_history')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('date', startDateStr)
+    .order('date', { ascending: true })
+
+  if (!progressData || progressData.length < 2) return null
+
+  // Simple linear regression to calculate trends
+  const calculateTrend = (data: { date: string; one_rep_max: number }[]) => {
+    if (data.length < 2) return { slope: 0, intercept: 0, rSquared: 0 }
+
+    const n = data.length
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0
+
+    data.forEach((point, index) => {
+      const x = index
+      const y = point.one_rep_max
+      sumX += x
+      sumY += y
+      sumXY += x * y
+      sumX2 += x * x
+      sumY2 += y * y
+    })
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
+    const intercept = (sumY - slope * sumX) / n
+    const rSquared = Math.pow((n * sumXY - sumX * sumY) / Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY)), 2)
+
+    return { slope, intercept, rSquared }
+  }
+
+  // Group by exercise and calculate trends
+  const exerciseTrends: Record<number, any> = {}
+  const exercises = [...new Set(progressData.map(p => p.exercise_id))]
+
+  exercises.forEach(exerciseId => {
+    const exerciseData = progressData.filter(p => p.exercise_id === exerciseId)
+    const trend = calculateTrend(exerciseData.map(p => ({ date: p.date, one_rep_max: p.one_rep_max })))
+
+    exerciseTrends[exerciseId] = {
+      ...trend,
+      current: exerciseData[exerciseData.length - 1]?.one_rep_max || 0,
+      start: exerciseData[0]?.one_rep_max || 0,
+      change: (exerciseData[exerciseData.length - 1]?.one_rep_max || 0) - (exerciseData[0]?.one_rep_max || 0),
+      percentChange: exerciseData[0]?.one_rep_max
+        ? ((exerciseData[exerciseData.length - 1]?.one_rep_max || 0) - (exerciseData[0]?.one_rep_max || 0)) / (exerciseData[0]?.one_rep_max || 0) * 100
+        : 0
+    }
+  })
+
+  return {
+    exerciseTrends,
+    overallTrend: calculateTrend(progressData.map(p => ({ date: p.date, one_rep_max: p.one_rep_max })))
+  }
 }

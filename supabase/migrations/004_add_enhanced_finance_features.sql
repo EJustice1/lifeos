@@ -4,7 +4,7 @@
 -- Create stock price cache table
 CREATE TABLE IF NOT EXISTS stock_price_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   symbol TEXT NOT NULL,
   price DECIMAL(15, 4) NOT NULL,
   currency TEXT DEFAULT 'USD',
@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_price_cache_expires ON stock_price_cache(ex
 -- Create enhanced recurring transactions table
 CREATE TABLE IF NOT EXISTS enhanced_recurring_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   transaction_type TEXT NOT NULL CHECK (transaction_type IN ('cash', 'stock')),
   cash_type TEXT CHECK (cash_type IN ('deposit', 'withdrawal')),
@@ -68,7 +68,7 @@ BEGIN
     -- Create the table
     CREATE TABLE stock_price_cache (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
       symbol TEXT NOT NULL,
       price DECIMAL(15, 4) NOT NULL,
       currency TEXT DEFAULT 'USD',
@@ -102,7 +102,7 @@ $$ LANGUAGE plpgsql;
 
 -- Create function to calculate next occurrence for recurring transactions
 CREATE OR REPLACE FUNCTION calculate_next_occurrence(
-  current_date TIMESTAMPTZ,
+  base_date TIMESTAMPTZ,
   frequency TEXT,
   start_date TIMESTAMPTZ
 ) RETURNS TIMESTAMPTZ AS $$
@@ -110,19 +110,19 @@ DECLARE
   next_date TIMESTAMPTZ;
 BEGIN
   IF frequency = 'daily' THEN
-    next_date := current_date + INTERVAL '1 day';
+    next_date := base_date + INTERVAL '1 day';
   ELSIF frequency = 'weekly' THEN
-    next_date := current_date + INTERVAL '1 week';
+    next_date := base_date + INTERVAL '1 week';
   ELSIF frequency = 'biweekly' THEN
-    next_date := current_date + INTERVAL '2 weeks';
+    next_date := base_date + INTERVAL '2 weeks';
   ELSIF frequency = 'monthly' THEN
-    next_date := current_date + INTERVAL '1 month';
+    next_date := base_date + INTERVAL '1 month';
   ELSIF frequency = 'quarterly' THEN
-    next_date := current_date + INTERVAL '3 months';
+    next_date := base_date + INTERVAL '3 months';
   ELSIF frequency = 'yearly' THEN
-    next_date := current_date + INTERVAL '1 year';
+    next_date := base_date + INTERVAL '1 year';
   ELSE
-    next_date := current_date + INTERVAL '1 month'; -- Default to monthly
+    next_date := base_date + INTERVAL '1 month'; -- Default to monthly
   END IF;
 
   -- Ensure next date is in the future
@@ -131,7 +131,7 @@ BEGIN
   END IF;
 
   -- If start date is in the future, use that as the first occurrence
-  IF start_date > NOW() AND (next_date < start_date OR current_date < start_date) THEN
+  IF start_date > NOW() AND (next_date < start_date OR base_date < start_date) THEN
     next_date := start_date;
   END IF;
 

@@ -1,12 +1,76 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useDailyReview } from './DailyReviewContext'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
-import { MobileSlider } from '@/components/mobile/inputs/MobileSlider'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { ExecutionSlider } from '@/components/mobile/inputs/ExecutionSlider'
+import { OverrideConfirmationModal } from '@/components/mobile/modals/OverrideConfirmationModal'
+import { getUserSettings } from '@/lib/actions/settings'
+import {
+  calculateExecutionRange,
+  EXECUTION_LEVELS,
+  findExecutionLevel,
+  ValidationResult,
+} from '@/lib/execution-validator'
 
 export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
-  const { formData, setFormData, contextData } = useDailyReview()
+  const { formData, setFormData, contextData, yesterdayGoals, completedGoals } = useDailyReview()
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
+  const [showOverrideModal, setShowOverrideModal] = useState(false)
+  const [hasAskedOverride, setHasAskedOverride] = useState(false)
+  const [studyTarget, setStudyTarget] = useState(120)
+  const [workoutTarget, setWorkoutTarget] = useState(1)
+
+
+  // Fetch user settings for targets
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const settings = await getUserSettings()
+        if (settings) {
+          setStudyTarget(settings.daily_study_target_minutes)
+          setWorkoutTarget(settings.daily_workout_target)
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error)
+      }
+    }
+
+    fetchSettings()
+  }, [])
+
+  // Run validation algorithm when metrics change
+  useEffect(() => {
+    if (!contextData) return
+
+    const result = calculateExecutionRange({
+      studyMinutes: contextData.studyMinutes,
+      studyTarget: studyTarget,
+      workoutsCompleted: contextData.workoutsCompleted,
+      workoutsTarget: workoutTarget,
+      productiveScreenMinutes: formData.productiveScreenMinutes,
+      distractedScreenMinutes: formData.distractedScreenMinutes,
+      yesterdayGoalsCompleted: completedGoals.size,
+      yesterdayGoalsTotal: yesterdayGoals.length,
+    })
+
+    setValidationResult(result)
+
+    // Store suggested score in form data
+    setFormData({ executionScoreSuggested: result.suggestedScore })
+
+    console.log('Execution validation result:', result)
+  }, [
+    contextData,
+    studyTarget,
+    workoutTarget,
+    formData.productiveScreenMinutes,
+    formData.distractedScreenMinutes,
+    completedGoals,
+    yesterdayGoals.length,
+  ])
+
 
   if (!contextData) {
     return (
@@ -16,26 +80,57 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
     )
   }
 
-  // Format study hours
+  // Format study time
   const studyHours = Math.floor(contextData.studyMinutes / 60)
   const studyMinutes = contextData.studyMinutes % 60
   const studyText = studyHours > 0
     ? `${studyHours}h ${studyMinutes}m`
     : `${studyMinutes}m`
 
-  // Format screen time
-  const screenHours = Math.floor(contextData.screenTimeMinutes / 60)
-  const screenMinutes = contextData.screenTimeMinutes % 60
-  const screenText = screenHours > 0
-    ? `${screenHours}h ${screenMinutes}m`
-    : `${screenMinutes}m`
+  // Calculate total screen time from user input
+  const totalScreenMinutes = formData.productiveScreenMinutes + formData.distractedScreenMinutes
+  const totalScreenHours = Math.floor(totalScreenMinutes / 60)
+  const totalScreenMins = totalScreenMinutes % 60
+  const totalScreenText = totalScreenHours > 0
+    ? `${totalScreenHours}h ${totalScreenMins}m`
+    : `${totalScreenMins}m`
+
+  // Get current selected level
+  const selectedLevel = findExecutionLevel(formData.executionScore)
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center mb-6">Todays Reality</h1>
+      <h1 className="text-2xl font-bold text-center mb-6">Today&apos;s Execution</h1>
 
-      <MobileCard title="The Good">
-        <div className="space-y-4">
+      {/* Condensed Summary */}
+      <MobileCard title="Summary">
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-zinc-400">Goals Completed:</span>
+            <span className="text-white font-semibold">
+              {completedGoals.size}/{yesterdayGoals.length}
+            </span>
+          </div>
+          {yesterdayGoals.length > 0 && (
+            <div className="space-y-1">
+              {yesterdayGoals.map((goal, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className={completedGoals.has(i) ? 'text-emerald-400' : 'text-zinc-500'}>
+                    {completedGoals.has(i) ? '✓' : '○'}
+                  </span>
+                  <span className={completedGoals.has(i) ? 'text-zinc-400 line-through' : 'text-zinc-400'}>
+                    {goal}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </MobileCard>
+
+      {/* Today's Metrics - Neutral Display */}
+      <MobileCard title="Today's Metrics">
+        <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-zinc-300">Study Time:</span>
             <span className="text-white font-semibold">{studyText}</span>
@@ -46,39 +141,83 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
               {contextData.workoutsCompleted}/{contextData.workoutsTotal} workouts
             </span>
           </div>
-        </div>
-      </MobileCard>
-
-      <MobileCard title="The Bad">
-        <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-zinc-300">Screen Time:</span>
-            <span className="text-white font-semibold">{screenText}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-zinc-300">Spent:</span>
-            <span className="text-white font-semibold">
-              ${contextData.spendingAmount.toFixed(2)}
-            </span>
+            <span className="text-zinc-300">Total Screentime:</span>
+            <span className="text-white font-semibold">{totalScreenText}</span>
           </div>
         </div>
       </MobileCard>
 
       <MobileCard title="Execution Score">
-        <p className="text-zinc-400 text-sm mb-4">
-          Reviewing todays data, how do you rate your execution?
-        </p>
-        <MobileSlider
-          label="Execution Score"
-          min={0}
-          max={100}
-          value={formData.executionScore}
-          onChange={(value) => setFormData({ executionScore: value })}
-          showValue
-        />
-        <div className="flex justify-between text-xs text-zinc-500 mt-2">
-          <span>Let the day happen</span>
-          <span>Perfect execution</span>
+        {/* Validation Alert */}
+        {validationResult && validationResult.locked && (
+          <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg">
+            <p className="text-sm text-red-300">{validationResult.suggestions.join('. ')}</p>
+            <p className="text-xs text-red-400 mt-1">
+              Maximum allowed: {findExecutionLevel(validationResult.maxScore).label}
+            </p>
+          </div>
+        )}
+
+        {/* Suggested Score */}
+        {validationResult && (
+          <div className="mb-3 text-center">
+            <span className="text-xs text-zinc-400">
+              Suggested:{' '}
+              <span className={`font-semibold ${findExecutionLevel(validationResult.suggestedScore).color}`}>
+                {findExecutionLevel(validationResult.suggestedScore).label}
+              </span>
+            </span>
+          </div>
+        )}
+
+        {/* Custom Stepped Slider */}
+        {validationResult && (
+          <ExecutionSlider
+            value={formData.executionScore}
+            levels={EXECUTION_LEVELS}
+            maxValue={validationResult.maxScore}
+            isOverrideEnabled={formData.executionScoreLocked}
+            onChange={(score) => {
+              setFormData({ executionScore: score })
+              // Clear locked flag if user changes score back down
+              if (formData.executionScoreLocked && score <= validationResult.maxScore) {
+                setFormData({ executionScoreLocked: false })
+                setHasAskedOverride(false)
+              }
+            }}
+            onAttemptLocked={() => {
+              // Only show modal once per session or if user hasn't locked override
+              if (!hasAskedOverride && !formData.executionScoreLocked) {
+                setShowOverrideModal(true)
+                setHasAskedOverride(true)
+              }
+            }}
+          />
+        )}
+
+        {/* Criteria Display (Truth Check) */}
+        <div className="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+          <div className="mb-3">
+            <div className={`font-bold ${selectedLevel.color}`}>
+              {selectedLevel.label} ({selectedLevel.range})
+            </div>
+            <div className="text-xs text-zinc-400">{selectedLevel.description}</div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-zinc-300">Did you:</p>
+            {selectedLevel.criteria.map((criterion, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-purple-400 mt-0.5">•</span>
+                <span className="text-sm text-zinc-400">{criterion}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-zinc-700">
+            <p className="text-xs italic text-zinc-400">"{selectedLevel.mindset}"</p>
+          </div>
         </div>
       </MobileCard>
 
@@ -86,10 +225,27 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
         variant="primary"
         size="lg"
         onClick={onNext}
-        className="w-full mt-8"
+        className="w-full"
       >
         Continue to Internal State
       </PrimaryButton>
+
+      {/* Override Confirmation Modal */}
+      {showOverrideModal && validationResult && (
+        <OverrideConfirmationModal
+          currentScore={formData.executionScore}
+          maxAllowed={validationResult.maxScore}
+          onConfirm={() => {
+            setFormData({ executionScoreLocked: true })
+            setShowOverrideModal(false)
+          }}
+          onCancel={() => {
+            const maxLevel = findExecutionLevel(validationResult.maxScore)
+            setFormData({ executionScore: maxLevel.value })
+            setShowOverrideModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }

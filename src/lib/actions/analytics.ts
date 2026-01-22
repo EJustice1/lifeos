@@ -99,12 +99,7 @@ export async function getLifeBalanceData() {
   const startDate = thirtyDaysAgo.toISOString().split('T')[0]
 
   // Fetch recent activity from all domains
-  const [accounts, workouts, sessions, screenTime, reviews] = await Promise.all([
-    supabase
-      .from('accounts')
-      .select('balance')
-      .eq('user_id', user.id)
-      .eq('is_active', true),
+  const [workouts, sessions, screenTime, reviews] = await Promise.all([
     supabase
       .from('workouts')
       .select('id')
@@ -126,10 +121,6 @@ export async function getLifeBalanceData() {
       .eq('user_id', user.id)
       .gte('date', startDate),
   ])
-
-  // Finance score - based on having tracked assets
-  const totalAssets = accounts.data?.reduce((sum, a) => sum + a.balance, 0) ?? 0
-  const financeScore = Math.min(100, totalAssets > 0 ? 70 + Math.log10(totalAssets) * 5 : 20)
 
   // Gym score - workouts per week (target: 4/week over 4 weeks = 16)
   const workoutCount = workouts.data?.length ?? 0
@@ -160,7 +151,6 @@ export async function getLifeBalanceData() {
   const healthScore = ((avgMood + avgEnergy) / 2) * 10
 
   return {
-    finance: Math.round(financeScore),
     gym: Math.round(gymScore),
     career: Math.round(careerScore),
     digital: Math.round(digitalScore),

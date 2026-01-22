@@ -103,7 +103,6 @@ export const useSwipeGestures = (
 
 // Navigation routes for swipe gestures
 const NAV_ROUTES = [
-  '/m/finance',
   '/m/gym',
   '/m/study',
   '/m/daily-review',

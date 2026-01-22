@@ -34,242 +34,6 @@ export interface Database {
         }
       }
 
-      // Financial: Accounts (bank, investment, crypto, etc.)
-      accounts: {
-        Row: {
-          id: string
-          user_id: string
-          created_at: string
-          name: string
-          type: 'cash' | 'checking' | 'savings' | 'investment' | 'crypto' | 'other'
-          balance: number
-          currency: string
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          created_at?: string
-          name: string
-          type: 'cash' | 'checking' | 'savings' | 'investment' | 'crypto' | 'other'
-          balance?: number
-          currency?: string
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          created_at?: string
-          name?: string
-          type?: 'cash' | 'checking' | 'savings' | 'investment' | 'crypto' | 'other'
-          balance?: number
-          currency?: string
-          is_active?: boolean
-        }
-      }
-
-      // Financial: Recurring Expenses/Income
-      recurring_transactions: {
-        Row: {
-          id: string
-          user_id: string
-          created_at: string
-          name: string
-          type: 'income' | 'expense'
-          amount: number
-          category: string
-          description: string | null
-          account_id: string | null
-          start_date: string
-          end_date: string | null
-          frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
-          day_of_month: number | null
-          day_of_week: number | null
-          is_active: boolean
-          last_processed: string | null
-          next_occurrence: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          created_at?: string
-          name: string
-          type: 'income' | 'expense'
-          amount: number
-          category: string
-          description?: string | null
-          account_id?: string | null
-          start_date: string
-          end_date?: string | null
-          frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
-          day_of_month?: number | null
-          day_of_week?: number | null
-          is_active?: boolean
-          last_processed?: string | null
-          next_occurrence?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          created_at?: string
-          name?: string
-          type?: 'income' | 'expense'
-          amount?: number
-          category?: string
-          description?: string | null
-          account_id?: string | null
-          start_date?: string
-          end_date?: string | null
-          frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
-          day_of_month?: number | null
-          day_of_week?: number | null
-          is_active?: boolean
-          last_processed?: string | null
-          next_occurrence?: string | null
-        }
-      }
-
-      // Financial: Stock Holdings
-      stock_holdings: {
-        Row: {
-          id: string
-          user_id: string
-          created_at: string
-          symbol: string
-          company_name: string
-          shares: number
-          average_price: number
-          current_price: number | null
-          last_updated: string | null
-          account_id: string | null
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          created_at?: string
-          symbol: string
-          company_name: string
-          shares: number
-          average_price: number
-          current_price?: number | null
-          last_updated?: string | null
-          account_id?: string | null
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          created_at?: string
-          symbol?: string
-          company_name?: string
-          shares?: number
-          average_price?: number
-          current_price?: number | null
-          last_updated?: string | null
-          account_id?: string | null
-          is_active?: boolean
-        }
-      }
-
-      // Financial: Manual Cash Adjustments
-      cash_adjustments: {
-        Row: {
-          id: string
-          user_id: string
-          created_at: string
-          date: string
-          amount: number
-          reason: string
-          account_id: string | null
-          notes: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          created_at?: string
-          date: string
-          amount: number
-          reason: string
-          account_id?: string | null
-          notes?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          created_at?: string
-          date?: string
-          amount?: number
-          reason?: string
-          account_id?: string | null
-          notes?: string | null
-        }
-      }
-
-      // Financial: Transactions
-      transactions: {
-        Row: {
-          id: string
-          user_id: string
-          account_id: string | null
-          created_at: string
-          date: string
-          type: 'income' | 'expense' | 'transfer'
-          amount: number
-          category: string
-          description: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          account_id?: string | null
-          created_at?: string
-          date: string
-          type: 'income' | 'expense' | 'transfer'
-          amount: number
-          category: string
-          description?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          account_id?: string | null
-          created_at?: string
-          date?: string
-          type?: 'income' | 'expense' | 'transfer'
-          amount?: number
-          category?: string
-          description?: string | null
-        }
-      }
-
-      // Financial: Net worth snapshots (daily/weekly tracking)
-      net_worth_snapshots: {
-        Row: {
-          id: string
-          user_id: string
-          date: string
-          total_assets: number
-          total_cash: number
-          total_investments: number
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          date: string
-          total_assets: number
-          total_cash: number
-          total_investments: number
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          date?: string
-          total_assets?: number
-          total_cash?: number
-          total_investments?: number
-        }
-      }
 
       // Gym: Lifts (replaces workout_sets)
       lifts: {
@@ -546,7 +310,104 @@ export interface Database {
           tags?: string[]
           created_at?: string
         }
-      }
+      },
+
+      // Gym progress tracking tables
+      gym_progress_history: {
+        Row: {
+          id: string
+          user_id: string
+          exercise_id: number
+          date: string
+          one_rep_max: number
+          estimated_from_reps: number | null
+          estimated_from_weight: number | null
+          workout_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          exercise_id: number
+          date: string
+          one_rep_max: number
+          estimated_from_reps?: number | null
+          estimated_from_weight?: number | null
+          workout_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          exercise_id?: number
+          date?: string
+          one_rep_max?: number
+          estimated_from_reps?: number | null
+          estimated_from_weight?: number | null
+          workout_id?: string | null
+          created_at?: string
+        }
+      },
+
+      gym_progress_snapshots: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          snapshot_data: any
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          snapshot_data: any
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          snapshot_data?: any
+          created_at?: string
+        }
+      },
+
+      gym_strength_standards: {
+        Row: {
+          id: string
+          exercise_id: number
+          gender: 'male' | 'female' | 'unisex'
+          weight_class: 'light' | 'medium' | 'heavy'
+          beginner: number
+          intermediate: number
+          advanced: number
+          elite: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          exercise_id: number
+          gender: 'male' | 'female' | 'unisex'
+          weight_class: 'light' | 'medium' | 'heavy'
+          beginner: number
+          intermediate: number
+          advanced: number
+          elite: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          exercise_id?: number
+          gender?: 'male' | 'female' | 'unisex'
+          weight_class?: 'light' | 'medium' | 'heavy'
+          beginner?: number
+          intermediate?: number
+          advanced?: number
+          elite?: number
+          created_at?: string
+        }
+      },
 
       // Daily context reviews
       daily_context_reviews: {
@@ -557,7 +418,7 @@ export interface Database {
           execution_score: number
           focus_quality: number
           physical_vitality: number
-          friction_factors: string[]
+          unfocused_factors: string[]
           lesson_learned: string | null
           highlights: string | null
           created_at: string
@@ -569,7 +430,7 @@ export interface Database {
           execution_score: number
           focus_quality: number
           physical_vitality: number
-          friction_factors?: string[]
+          unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
           created_at?: string
@@ -581,7 +442,7 @@ export interface Database {
           execution_score?: number
           focus_quality?: number
           physical_vitality?: number
-          friction_factors?: string[]
+          unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
           created_at?: string
@@ -593,17 +454,14 @@ export interface Database {
 
 // Convenience types
 export type Profile = Database['public']['Tables']['profiles']['Row']
-export type Account = Database['public']['Tables']['accounts']['Row']
-export type Transaction = Database['public']['Tables']['transactions']['Row']
-export type NetWorthSnapshot = Database['public']['Tables']['net_worth_snapshots']['Row']
-export type RecurringTransaction = Database['public']['Tables']['recurring_transactions']['Row']
-export type StockHolding = Database['public']['Tables']['stock_holdings']['Row']
-export type CashAdjustment = Database['public']['Tables']['cash_adjustments']['Row']
 // Exercise type removed - using predefined exercises instead
 export type Workout = Database['public']['Tables']['workouts']['Row']
 export type Lift = Database['public']['Tables']['lifts']['Row']
 // WorkoutSet type removed - replaced with Lifts
 export type PersonalRecord = Database['public']['Tables']['personal_records']['Row']
+export type GymProgressHistory = Database['public']['Tables']['gym_progress_history']['Row']
+export type GymProgressSnapshot = Database['public']['Tables']['gym_progress_snapshots']['Row']
+export type GymStrengthStandard = Database['public']['Tables']['gym_strength_standards']['Row']
 export type Bucket = Database['public']['Tables']['buckets']['Row']
 export type StudySession = Database['public']['Tables']['study_sessions']['Row']
 export type ScreenTime = Database['public']['Tables']['screen_time']['Row']

@@ -14,7 +14,7 @@ export async function getDailyContextData() {
   const todayStr = today.toISOString().split('T')[0]
 
   // Fetch all data sources in parallel for today
-  const [workouts, studySessions, screenTime, transactions] = await Promise.all([
+  const [workouts, studySessions, screenTime] = await Promise.all([
     supabase
       .from('workouts')
       .select('id, date, ended_at')
@@ -30,12 +30,6 @@ export async function getDailyContextData() {
       .select('date, distracted_minutes')
       .eq('user_id', user.id)
       .eq('date', todayStr),
-    supabase
-      .from('transactions')
-      .select('amount')
-      .eq('user_id', user.id)
-      .eq('date', todayStr)
-      .eq('type', 'expense'),
   ])
 
   // Calculate totals
@@ -43,7 +37,6 @@ export async function getDailyContextData() {
   const completedWorkouts = workouts.data?.filter(w => w.ended_at !== null).length ?? 0
   const totalWorkouts = workouts.data?.length ?? 0
   const totalDistractedMinutes = screenTime.data?.reduce((sum, st) => sum + (st.distracted_minutes || 0), 0) ?? 0
-  const totalSpending = transactions.data?.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0) ?? 0
 
   return {
     date: todayStr,
@@ -53,7 +46,6 @@ export async function getDailyContextData() {
     workoutsTotal: totalWorkouts,
     screenTimeHours: Math.round(totalDistractedMinutes / 60),
     screenTimeMinutes: totalDistractedMinutes,
-    spendingAmount: Math.round(totalSpending * 100) / 100,
   }
 }
 
@@ -63,26 +55,39 @@ export async function submitDailyContextReview(
   executionScore: number,
   focusQuality: number,
   physicalVitality: number,
-  frictionFactors: string[],
+  unfocusedFactors: string[],
   lessonLearned: string | null,
   highlights: string | null,
+  tomorrowGoals: string[] = [],
+  productiveScreenMinutes: number = 0,
+  distractedScreenMinutes: number = 0,
+  executionScoreSuggested?: number,
+  executionScoreLocked: boolean = false
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')
 
+  // Upsert daily context review (insert or update if exists)
   const { error } = await supabase
     .from('daily_context_reviews')
-    .insert([{
+    .upsert({
       user_id: user.id,
       date: date,
       execution_score: executionScore,
       focus_quality: focusQuality,
       physical_vitality: physicalVitality,
-      friction_factors: frictionFactors,
+      unfocused_factors: unfocusedFactors,
       lesson_learned: lessonLearned,
       highlights: highlights,
-    }])
+      tomorrow_goals: tomorrowGoals,
+      productive_screen_minutes: productiveScreenMinutes,
+      distracted_screen_minutes: distractedScreenMinutes,
+      execution_score_suggested: executionScoreSuggested,
+      execution_score_locked: executionScoreLocked,
+    }, {
+      onConflict: 'user_id,date'
+    })
 
   if (error) {
     console.error('Supabase insert error:', {
@@ -92,6 +97,28 @@ export async function submitDailyContextReview(
       hint: error.hint
     })
     throw error
+  }
+
+  // Sync screentime data to screen_time table (bidirectional sync)
+  if (productiveScreenMinutes > 0 || distractedScreenMinutes > 0) {
+    const { error: screenTimeError } = await supabase
+      .from('screen_time')
+      .upsert({
+        user_id: user.id,
+        date: date,
+        productive_minutes: productiveScreenMinutes,
+        distracted_minutes: distractedScreenMinutes,
+        mobile_minutes: 0,
+        desktop_minutes: 0,
+        source: 'daily_review',
+      }, {
+        onConflict: 'user_id,date'
+      })
+
+    if (screenTimeError) {
+      console.error('Error syncing screentime:', screenTimeError)
+      // Don't throw - screentime sync failure shouldn't fail the whole review
+    }
   }
 
   return { success: true }

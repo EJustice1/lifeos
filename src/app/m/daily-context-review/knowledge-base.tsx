@@ -5,7 +5,7 @@ import { useDailyReview } from './DailyReviewContext'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 
-export default function KnowledgeBase({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => void }) {
+export default function KnowledgeBase({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { formData, setFormData } = useDailyReview()
   const [showLesson, setShowLesson] = useState(!!formData.lessonLearned)
 
@@ -71,10 +71,10 @@ export default function KnowledgeBase({ onSubmit, onBack }: { onSubmit: () => vo
         <PrimaryButton
           variant="primary"
           size="lg"
-          onClick={onSubmit}
+          onClick={onNext}
           className="flex-1"
         >
-          Complete Daily Review
+          Next
         </PrimaryButton>
       </div>
     </div>

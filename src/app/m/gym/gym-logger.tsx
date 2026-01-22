@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import Link from 'next/link'
 import { useGymSession, type LoggedSet } from '@/lib/hooks/useGymSession'
 import { calculate1RM } from '@/lib/gym-utils'
 import { getRecentWorkoutsWithDetails } from '@/lib/actions/gym'
@@ -272,8 +273,13 @@ export function GymLogger({
   const [reps, setReps] = useState(8)
   const [weight, setWeight] = useState(135)
   const [workoutType, setWorkoutType] = useState<string>('')
-  const [activeSection, setActiveSection] = useState<'workout' | 'history' | 'progress'>('workout')
+  const [activeSection, setActiveSection] = useState<'workout' | 'history'>('workout')
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>(initialWorkoutHistory)
+
+  // Sync workout history state with prop updates
+  useEffect(() => {
+    setWorkoutHistory(initialWorkoutHistory)
+  }, [initialWorkoutHistory])
 
   // Function to refresh workout history from database
   const refreshWorkoutHistory = async () => {
@@ -583,12 +589,12 @@ export function GymLogger({
               </button>
 
               {/* Progress Button */}
-              <button
-                onClick={() => setActiveSection('progress')}
-                className="p-6 rounded-xl text-lg font-semibold bg-purple-900/50 text-purple-300 hover:bg-purple-900/70 transition-all col-span-2"
+              <Link
+                href="/m/gym/progress"
+                className="p-6 rounded-xl text-lg font-semibold bg-purple-900/50 text-purple-300 hover:bg-purple-900/70 transition-all col-span-2 text-center"
               >
                 Progress & Strength
-              </button>
+              </Link>
             </div>
 
           </div>
@@ -799,73 +805,7 @@ export function GymLogger({
             )}
           </MobileCard>
         </div>
-      ) : (
-        /* PRs & Strength Radar Section */
-        <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
-
-          <MobileCard className="flex-1">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Progress & Strength</h2>
-              <button
-                onClick={() => setActiveSection('workout')}
-                className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {personalRecords.length === 0 ? (
-              <p className="text-zinc-400 text-center py-8">No personal records yet. Complete workouts and set new PRs to track your progress.</p>
-            ) : (
-              <div className="space-y-6">
-                {/* PRs List */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Personal Records</h3>
-                  <div className="space-y-3">
-                    {personalRecords.map((pr, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
-                        <div>
-                          <p className="font-medium">{pr.exercise}</p>
-                          <p className="text-sm text-zinc-400">{pr.workoutType} • {new Date(pr.date).toLocaleDateString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-emerald-400 font-bold text-lg">{pr.oneRepMax} lbs</p>
-                          <p className="text-xs text-zinc-500">1RM</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Strength Radar Chart */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Strength Balance</h3>
-                  <div className="h-64 relative">
-                    <StrengthRadarChart personalRecords={personalRecords} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </MobileCard>
-        </div>
-      )}
-
-
-      <style jsx>{`
-        @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-          }
-          to {
-            transform: translateY(0);
-          }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-      `}</style>
+      ) : null}
     </section>
   )
 }
