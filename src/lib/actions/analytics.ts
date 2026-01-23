@@ -27,8 +27,8 @@ export async function getSpikeChartData(days = 30) {
       .gte('date', startDateStr)
       .order('date'),
     supabase
-      .from('daily_reviews')
-      .select('date, mood')
+      .from('daily_context_reviews')
+      .select('date, physical_vitality')
       .eq('user_id', user.id)
       .gte('date', startDateStr)
       .order('date'),
@@ -63,10 +63,10 @@ export async function getSpikeChartData(days = 30) {
     }
   })
 
-  // Add mood data
+  // Add physical vitality data as mood proxy
   reviews.data?.forEach(r => {
     if (dateMap[r.date]) {
-      dateMap[r.date].mood = r.mood
+      dateMap[r.date].mood = r.physical_vitality
     }
   })
 
@@ -116,8 +116,8 @@ export async function getLifeBalanceData() {
       .eq('user_id', user.id)
       .gte('date', startDate),
     supabase
-      .from('daily_reviews')
-      .select('mood, energy, tags')
+      .from('daily_context_reviews')
+      .select('physical_vitality, friction_factors')
       .eq('user_id', user.id)
       .gte('date', startDate),
   ])
@@ -136,19 +136,18 @@ export async function getLifeBalanceData() {
   const totalScreen = totalProductive + totalDistracted
   const digitalScore = totalScreen > 0 ? Math.round((totalProductive / totalScreen) * 100) : 50
 
-  // Social score - based on "Social" tag in reviews
-  const socialTags = reviews.data?.filter(r => r.tags?.includes('Social')).length ?? 0
+  // Social score - based on "social" friction factor (inverse - less social friction = higher score)
   const totalReviews = reviews.data?.length ?? 1
-  const socialScore = Math.min(100, (socialTags / totalReviews) * 150 + 30)
+  const socialFrictionCount = reviews.data?.filter(r => 
+    r.friction_factors?.some((f: string) => f.toLowerCase().includes('social'))
+  ).length ?? 0
+  const socialScore = Math.min(100, Math.max(30, 100 - (socialFrictionCount / totalReviews) * 70))
 
-  // Health score - average mood and energy
-  const avgMood = reviews.data && reviews.data.length > 0
-    ? reviews.data.reduce((sum, r) => sum + r.mood, 0) / reviews.data.length
+  // Health score - average physical vitality
+  const avgVitality = reviews.data && reviews.data.length > 0
+    ? reviews.data.reduce((sum, r) => sum + r.physical_vitality, 0) / reviews.data.length
     : 5
-  const avgEnergy = reviews.data && reviews.data.length > 0
-    ? reviews.data.reduce((sum, r) => sum + r.energy, 0) / reviews.data.length
-    : 5
-  const healthScore = ((avgMood + avgEnergy) / 2) * 10
+  const healthScore = avgVitality * 10
 
   return {
     gym: Math.round(gymScore),
@@ -172,8 +171,8 @@ export async function getDetailedCorrelations() {
   // Fetch all data sources
   const [reviews, workouts, sessions, screenTime] = await Promise.all([
     supabase
-      .from('daily_reviews')
-      .select('date, mood, energy, perceived_success')
+      .from('daily_context_reviews')
+      .select('date, physical_vitality, execution_score')
       .eq('user_id', user.id)
       .gte('date', startDate),
     supabase
@@ -212,9 +211,9 @@ export async function getDetailedCorrelations() {
         productiveMinutes: 0, distractedMinutes: 0
       }
     }
-    dailyData[r.date].mood = r.mood
-    dailyData[r.date].energy = r.energy
-    dailyData[r.date].success = r.perceived_success
+    dailyData[r.date].mood = r.physical_vitality
+    dailyData[r.date].energy = r.physical_vitality
+    dailyData[r.date].success = r.execution_score
   })
 
   workouts.data?.forEach(w => {
@@ -355,112 +354,4 @@ export async function getDetailedCorrelations() {
 
   // Sort by absolute correlation strength
   return correlations.sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation))
-}
-
-// Get growth trends data for net worth and strength
-export async function getGrowthTrends(months = 12) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const startDate = new Date()
-  startDate.setMonth(startDate.getMonth() - months)
-  const startDateStr = startDate.toISOString().split('T')[0]
-
-  // Fetch net worth history and PR history
-  const [netWorthHistory, prHistory] = await Promise.all([
-    supabase
-      .from('net_worth_snapshots')
-      .select('date, total_assets')
-      .eq('user_id', user.id)
-      .gte('date', startDateStr)
-      .order('date'),
-    supabase
-      .from('personal_records')
-      .select('date, weight, exercise:exercises(name)')
-      .eq('user_id', user.id)
-      .gte('date', startDateStr)
-      .order('date'),
-  ])
-
-  // Process net worth by month
-  const netWorthByMonth: Record<string, number> = {}
-  netWorthHistory.data?.forEach(snapshot => {
-    const month = snapshot.date.substring(0, 7) // YYYY-MM
-    netWorthByMonth[month] = snapshot.total_assets
-  })
-
-  // Generate all months in range
-  const netWorthData: Array<{ month: string; value: number }> = []
-  let lastValue = 0
-  for (let i = 0; i < months; i++) {
-    const date = new Date()
-    date.setMonth(date.getMonth() - (months - 1 - i))
-    const month = date.toISOString().substring(0, 7)
-    const value = netWorthByMonth[month] ?? lastValue
-    lastValue = value
-    netWorthData.push({ month, value })
-  }
-
-  // Calculate net worth YoY change
-  const firstNetWorth = netWorthData[0]?.value || 0
-  const lastNetWorth = netWorthData[netWorthData.length - 1]?.value || 0
-  const netWorthChange = firstNetWorth > 0
-    ? Math.round(((lastNetWorth - firstNetWorth) / firstNetWorth) * 100)
-    : 0
-
-  // Process PRs - calculate total for all lifts by month
-  const prsByMonth: Record<string, Record<string, number>> = {}
-
-  prHistory.data?.forEach(pr => {
-    const month = pr.date.substring(0, 7)
-    // Supabase returns joined data - exercise could be object or array
-    const exercise = pr.exercise as { name: string } | { name: string }[] | null
-    const exerciseName = (Array.isArray(exercise) ? exercise[0]?.name : exercise?.name) || 'Unknown'
-
-    if (!prsByMonth[month]) prsByMonth[month] = {}
-    // Use the exercise name as the key to track all lifts
-    const exerciseKey = exerciseName.toLowerCase().replace(/\s+/g, '_')
-    prsByMonth[month][exerciseKey] = Math.max(prsByMonth[month][exerciseKey] || 0, pr.weight)
-  })
-
-  // Generate strength data by month - sum all lifts
-  const strengthData: Array<{ month: string; total: number }> = []
-  const runningTotal: Record<string, number> = {}
-
-  for (let i = 0; i < months; i++) {
-    const date = new Date()
-    date.setMonth(date.getMonth() - (months - 1 - i))
-    const month = date.toISOString().substring(0, 7)
-
-    if (prsByMonth[month]) {
-      // Update running total with all lifts from this month
-      Object.entries(prsByMonth[month]).forEach(([exerciseKey, weight]) => {
-        runningTotal[exerciseKey] = Math.max(runningTotal[exerciseKey] || 0, weight)
-      })
-    }
-
-    strengthData.push({
-      month,
-      total: Object.values(runningTotal).reduce((sum, weight) => sum + weight, 0)
-    })
-  }
-
-  // Calculate strength change
-  const firstStrength = strengthData[0]?.total || 0
-  const lastStrength = strengthData[strengthData.length - 1]?.total || 0
-  const strengthChange = lastStrength - firstStrength
-
-  return {
-    netWorth: {
-      data: netWorthData,
-      change: netWorthChange,
-      current: lastNetWorth,
-    },
-    strength: {
-      data: strengthData,
-      change: strengthChange,
-      current: lastStrength,
-    },
-  }
 }
