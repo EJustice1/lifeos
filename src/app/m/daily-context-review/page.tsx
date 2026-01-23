@@ -11,6 +11,7 @@ import KnowledgeBase from './knowledge-base'
 import TomorrowGoals from './tomorrow-goals'
 import { DailyReviewProvider, useDailyReview, DailyReviewRow, DailyReviewFormData } from './DailyReviewContext'
 import { DailyContextReviewSummary } from './review-summary'
+import Link from 'next/link'
 
 interface DailyContextData {
   date: string
@@ -231,6 +232,14 @@ export default function DailyContextReviewPage() {
     case 'LOADING':
       return (
         <div className="flex items-center justify-center h-screen bg-zinc-900">
+          <Link 
+            href="/" 
+            className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </Link>
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
             <p className="text-zinc-400">Loading daily review...</p>
@@ -241,6 +250,14 @@ export default function DailyContextReviewPage() {
     case 'ERROR':
       return (
         <div className="flex flex-col items-center justify-center h-screen p-4 text-center bg-zinc-900">
+          <Link 
+            href="/" 
+            className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </Link>
           <div className="bg-red-900/50 p-6 rounded-lg border border-red-500 mb-4">
             <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Daily Review</h2>
             <p className="text-red-300 mb-4">{state.message}</p>
@@ -268,17 +285,35 @@ export default function DailyContextReviewPage() {
 
     case 'VIEWING_SUMMARY':
       return (
-        <DailyContextReviewSummary 
-          review={state.review}
-          contextData={contextData}
-          onEdit={handleEdit}
-        />
+        <>
+          <Link 
+            href="/" 
+            className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </Link>
+          <DailyContextReviewSummary 
+            review={state.review}
+            contextData={contextData}
+            onEdit={handleEdit}
+          />
+        </>
       );
 
     case 'EDITING_FORM':
       return (
         <DailyReviewProvider initialData={{ contextData, existingReview }} key="form-provider">
           <div className="min-h-screen bg-zinc-900 p-4">
+            <Link 
+              href="/" 
+              className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Link>
             <DailyReviewForm 
               currentStep={state.step}
               onNextStep={handleNextStep}
@@ -294,6 +329,14 @@ export default function DailyContextReviewPage() {
       return (
         <DailyReviewProvider initialData={{ contextData, existingReview }} key="form-provider">
           <div className="min-h-screen bg-zinc-900 p-4">
+            <Link 
+              href="/" 
+              className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Link>
             <DailyReviewForm 
               currentStep={state.step}
               onNextStep={handleNextStep}

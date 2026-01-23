@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { getUserSettings, updateUserSettings } from '@/lib/actions/settings'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const [studyTarget, setStudyTarget] = useState<number>(120)
@@ -65,6 +66,15 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--mobile-bg)] text-white p-4 pb-24">
+      {/* Back to root button */}
+      <Link 
+        href="/" 
+        className="fixed top-4 right-4 z-50 w-10 h-10 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </Link>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center pt-4 pb-2">
