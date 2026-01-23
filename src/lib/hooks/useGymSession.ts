@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useSession } from '@/context/SessionContext'
+import { useCallback } from 'react'
+import { useUnifiedSession, type BaseSessionData } from './useUnifiedSession'
 import {
   startWorkout as startWorkoutAction,
   logLift as logLiftAction,
   endWorkout as endWorkoutAction,
   deleteWorkout as deleteWorkoutAction,
+  getActiveWorkout,
 } from '@/lib/actions/gym'
 import { calculate1RM } from '@/lib/gym-utils'
 
@@ -20,7 +21,7 @@ export interface LoggedSet {
   isNewPR?: boolean
 }
 
-export interface GymSessionData {
+export interface GymSessionData extends BaseSessionData {
   workoutId: string
   workoutType: string
   loggedSets: LoggedSet[]
@@ -41,91 +42,93 @@ export interface UseGymSessionReturn {
   isWorkoutActive: boolean
   getSessionDuration: () => number
   restoreFromDatabase: (dbWorkout: any) => void
+  /** Session status for UI feedback */
+  status: 'idle' | 'starting' | 'active' | 'ending' | 'recovering'
+  /** Sync with database (useful after potential stale state) */
+  syncWithDatabase: () => Promise<void>
+}
+
+/**
+ * Transform database workout to local session format
+ */
+function transformDbWorkout(dbWorkout: any): GymSessionData {
+  return {
+    id: dbWorkout.id,
+    workoutId: dbWorkout.id,
+    workoutType: dbWorkout.type || 'General',
+    loggedSets: dbWorkout.lifts?.map((lift: any) => ({
+      exercise: lift.exercise?.name || 'Unknown',
+      exerciseId: lift.exercise_id,
+      setNumber: lift.set_number,
+      reps: lift.reps,
+      weight: lift.weight,
+      estimated1RM: calculate1RM(lift.weight, lift.reps),
+    })) || [],
+    startedAt: dbWorkout.started_at,
+  }
 }
 
 export function useGymSession(): UseGymSessionReturn {
   const {
-    activeSession,
+    session: activeWorkout,
+    status,
     startSession,
-    endSession: endContextSession,
-    updateSessionData,
+    endSession,
+    updateSession,
     getSessionDuration,
-  } = useSession()
-
-  const [localActiveWorkout, setLocalActiveWorkout] = useState<GymSessionData | null>(null)
-
-  // Restore from database workout data (passed from parent)
-  const restoreFromDatabase = useCallback((dbWorkout: any) => {
-    if (!dbWorkout || localActiveWorkout) return
-
-    const gymData: GymSessionData = {
-      workoutId: dbWorkout.id,
-      workoutType: dbWorkout.type || 'General',
-      loggedSets: dbWorkout.lifts?.map((lift: any) => ({
-        exercise: lift.exercise?.name || 'Unknown',
-        exerciseId: lift.exercise_id,
-        setNumber: lift.set_number,
-        reps: lift.reps,
-        weight: lift.weight,
-        estimated1RM: calculate1RM(lift.weight, lift.reps),
-      })) || [],
-      startedAt: dbWorkout.started_at,
-    }
-
-    // Start session in context
-    startSession('workout', {
-      workoutType: dbWorkout.type || 'General',
-      workoutId: dbWorkout.id,
-      sessionData: gymData,
-    })
-
-    setLocalActiveWorkout(gymData)
-  }, [localActiveWorkout, startSession])
-
-  // Sync with SessionContext on mount and when activeSession changes
-  useEffect(() => {
-    // Check if there's an active workout in session context (from localStorage)
-    if (activeSession?.type === 'workout' && activeSession.workoutId) {
-      const gymData: GymSessionData = {
-        workoutId: activeSession.workoutId,
-        workoutType: activeSession.workoutType || 'General',
-        loggedSets: activeSession.sessionData?.loggedSets || [],
-        startedAt: activeSession.startedAt,
-      }
-      setLocalActiveWorkout(gymData)
-    }
-  }, [activeSession])
-
-  const startWorkout = useCallback(
-    async (type: string) => {
-      try {
-        // Create workout in database
-        const workout = await startWorkoutAction(type || undefined)
-
-        // Initialize session data
-        const initialData: GymSessionData = {
-          workoutId: workout.id,
-          workoutType: type || 'General',
-          loggedSets: [],
-          startedAt: new Date().toISOString(),
-        }
-
-        // Start session in context with initial data
-        startSession('workout', {
-          workoutType: type || 'General',
-          workoutId: workout.id,
-          sessionData: initialData,
-        })
-
-        setLocalActiveWorkout(initialData)
-      } catch (error) {
-        console.error('Failed to start workout:', error)
-        throw error
-      }
+    restoreFromDatabase: unifiedRestore,
+    isActive,
+    syncWithDatabase,
+  } = useUnifiedSession<GymSessionData, string>({
+    type: 'workout',
+    
+    // Check database for active workout
+    checkActiveSession: async () => {
+      const dbWorkout = await getActiveWorkout()
+      return dbWorkout
     },
-    [startSession]
-  )
+    
+    // Start a new workout in the database
+    onStart: async (workoutType: string) => {
+      const workout = await startWorkoutAction(workoutType || undefined)
+      return workout
+    },
+    
+    // End workout in database
+    onEnd: async (workoutId: string, endedAt: string) => {
+      await endWorkoutAction(workoutId, endedAt)
+    },
+    
+    // Delete empty workout
+    onDelete: async (workoutId: string) => {
+      await deleteWorkoutAction(workoutId)
+    },
+    
+    // Transform DB format to local format
+    transformFromDb: transformDbWorkout,
+    
+    // Extract metadata for localStorage
+    getMetadata: (session) => ({
+      workoutId: session.workoutId,
+      workoutType: session.workoutType,
+    }),
+    
+    // Only save if there are logged sets
+    shouldSaveSession: (session) => {
+      return session.loggedSets && session.loggedSets.length > 0
+    },
+  })
 
+  /**
+   * Start a new workout
+   */
+  const startWorkout = useCallback(async (type: string) => {
+    await startSession(type)
+  }, [startSession])
+
+  /**
+   * Log a set with optimistic update
+   */
   const logSet = useCallback(
     async (
       exerciseId: number,
@@ -134,16 +137,16 @@ export function useGymSession(): UseGymSessionReturn {
       exerciseName: string,
       rpe?: number
     ): Promise<{ isNewPR: boolean }> => {
-      if (!localActiveWorkout) {
+      if (!activeWorkout) {
         throw new Error('No active workout')
       }
 
-      const currentExerciseSets = localActiveWorkout.loggedSets.filter(
+      const currentExerciseSets = activeWorkout.loggedSets.filter(
         (s) => s.exerciseId === exerciseId
       )
       const setNumber = currentExerciseSets.length + 1
 
-      // Optimistically update local state
+      // Create new set
       const newSet: LoggedSet = {
         exercise: exerciseName,
         exerciseId,
@@ -154,121 +157,64 @@ export function useGymSession(): UseGymSessionReturn {
         isNewPR: false,
       }
 
-      const updatedSets = [...localActiveWorkout.loggedSets, newSet]
-      const updatedWorkout: GymSessionData = {
-        ...localActiveWorkout,
-        loggedSets: updatedSets,
-      }
-
-      // Update local state immediately (optimistic)
-      setLocalActiveWorkout(updatedWorkout)
+      // Optimistically update local state
+      updateSession((prev) => ({
+        ...prev,
+        loggedSets: [...prev.loggedSets, newSet],
+      }))
 
       try {
         // Save to database
-        const result = await logLiftAction(localActiveWorkout.workoutId, exerciseId, weight, reps, rpe)
+        const result = await logLiftAction(activeWorkout.workoutId, exerciseId, weight, reps, rpe)
 
-        // Update with actual PR status
+        // Update with actual PR status if it's a new PR
         if (result.isNewPR) {
-          newSet.isNewPR = true
-          const finalSets = updatedSets.map((s) =>
-            s === newSet ? { ...s, isNewPR: true } : s
-          )
-          const finalWorkout: GymSessionData = {
-            ...localActiveWorkout,
-            loggedSets: finalSets,
-          }
-          setLocalActiveWorkout(finalWorkout)
-
-          // Update session data in localStorage
-          updateSessionData(finalWorkout)
-        } else {
-          // Update session data in localStorage
-          updateSessionData(updatedWorkout)
+          updateSession((prev) => ({
+            ...prev,
+            loggedSets: prev.loggedSets.map((s, i) =>
+              i === prev.loggedSets.length - 1 ? { ...s, isNewPR: true } : s
+            ),
+          }))
         }
 
         return { isNewPR: result.isNewPR }
       } catch (error) {
-        // Rollback on error
-        setLocalActiveWorkout(localActiveWorkout)
+        // Rollback on error - remove the optimistically added set
+        updateSession((prev) => ({
+          ...prev,
+          loggedSets: prev.loggedSets.slice(0, -1),
+        }))
         console.error('Failed to log set:', error)
         throw error
       }
     },
-    [localActiveWorkout, updateSessionData]
+    [activeWorkout, updateSession]
   )
 
+  /**
+   * End the current workout
+   * Uses atomic operations from useUnifiedSession to prevent race conditions
+   */
   const endWorkout = useCallback(async (): Promise<{ saved: boolean }> => {
-    // #region agent log
-    console.log('[DEBUG useGymSession.ts:199] endWorkout called', {hasLocalActiveWorkout:!!localActiveWorkout,workoutId:localActiveWorkout?.workoutId});
-    // #endregion
-    
-    if (!localActiveWorkout) {
-      throw new Error('No active workout')
-    }
+    return endSession()
+  }, [endSession])
 
-    // Capture exact end time on client (before network delay)
-    const endedAt = new Date().toISOString()
-
-    // Don't save if no sets were logged - delete the empty workout entry
-    if (!localActiveWorkout.loggedSets || localActiveWorkout.loggedSets.length === 0) {
-      try {
-        // First mark workout as ended (so it's not detected as active anymore)
-        // Then delete the empty workout from database
-        await endWorkoutAction(localActiveWorkout.workoutId, endedAt)
-        await deleteWorkoutAction(localActiveWorkout.workoutId)
-      } catch (error) {
-        console.error('Failed to end/delete empty workout:', error)
-        // Continue anyway to clear local state
-      }
-      
-      // Clear session (no banner)
-      endContextSession()
-      setLocalActiveWorkout(null)
-      return { saved: false } // Indicate no data was saved
-    }
-
-    try {
-      // #region agent log
-      console.log('[DEBUG useGymSession.ts:211] Before endWorkoutAction call', {workoutId:localActiveWorkout.workoutId,endedAt});
-      // #endregion
-
-      // End workout in database with client timestamp
-      await endWorkoutAction(localActiveWorkout.workoutId, endedAt)
-
-      // #region agent log
-      console.log('[DEBUG useGymSession.ts:218] After endWorkoutAction success', {workoutId:localActiveWorkout.workoutId});
-      // #endregion
-
-      // Clear session
-      endContextSession()
-      
-      // #region agent log
-      console.log('[DEBUG useGymSession.ts:226] After endContextSession');
-      // #endregion
-      
-      setLocalActiveWorkout(null)
-      
-      // #region agent log
-      console.log('[DEBUG useGymSession.ts:233] After setLocalActiveWorkout(null)');
-      // #endregion
-
-      return { saved: true } // Indicate data was saved successfully
-    } catch (error) {
-      // #region agent log
-      console.error('[DEBUG useGymSession.ts:239] endWorkout error caught', {error:error instanceof Error ? error.message : String(error),workoutId:localActiveWorkout.workoutId});
-      // #endregion
-      console.error('Failed to end workout:', error)
-      throw error
-    }
-  }, [localActiveWorkout, endContextSession])
+  /**
+   * Restore session from database data (for page load recovery)
+   */
+  const restoreFromDatabase = useCallback((dbWorkout: any) => {
+    unifiedRestore(dbWorkout)
+  }, [unifiedRestore])
 
   return {
-    activeWorkout: localActiveWorkout,
+    activeWorkout,
     startWorkout,
     logSet,
     endWorkout,
-    isWorkoutActive: localActiveWorkout !== null,
+    isWorkoutActive: isActive,
     getSessionDuration,
     restoreFromDatabase,
+    status,
+    syncWithDatabase,
   }
 }

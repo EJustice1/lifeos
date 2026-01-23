@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { getUserSettings, updateUserSettings } from '@/lib/actions/settings'
+import { endAllActiveStudySessions } from '@/lib/actions/study'
+import { endAllActiveWorkouts } from '@/lib/actions/gym'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import Link from 'next/link'
@@ -11,6 +13,7 @@ export default function SettingsPage() {
   const [workoutTarget, setWorkoutTarget] = useState<number>(1)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [cleaning, setCleaning] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -50,6 +53,43 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Unexpected error occurred' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCleanupSessions = async () => {
+    if (!confirm('This will end all active sessions (study and gym). Are you sure?')) {
+      return
+    }
+
+    setCleaning(true)
+    setMessage(null)
+
+    try {
+      const [studyResult, gymResult] = await Promise.all([
+        endAllActiveStudySessions(),
+        endAllActiveWorkouts()
+      ])
+
+      const totalEnded = studyResult.count + gymResult.count
+
+      if (totalEnded > 0) {
+        setMessage({ 
+          type: 'success', 
+          text: `Successfully ended ${totalEnded} orphaned session${totalEnded === 1 ? '' : 's'}!` 
+        })
+      } else {
+        setMessage({ 
+          type: 'success', 
+          text: 'No orphaned sessions found. Everything is clean!' 
+        })
+      }
+
+      setTimeout(() => setMessage(null), 5000)
+    } catch (error) {
+      console.error('Error cleaning up sessions:', error)
+      setMessage({ type: 'error', text: 'Failed to clean up sessions' })
+    } finally {
+      setCleaning(false)
     }
   }
 
@@ -250,6 +290,32 @@ export default function SettingsPage() {
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </PrimaryButton>
+
+        {/* Maintenance Section */}
+        <MobileCard title="Maintenance">
+          <p className="text-sm text-zinc-400 mb-4">
+            Clean up orphaned or stuck sessions
+          </p>
+
+          <div className="space-y-3">
+            <div className="p-3 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+              <p className="text-xs text-amber-300 mb-2">
+                ⚠️ Use this if you have a session that won't end or is stuck showing incorrect time.
+              </p>
+              <p className="text-xs text-zinc-400">
+                This will forcefully end all active study and gym sessions in the database.
+              </p>
+            </div>
+
+            <button
+              onClick={handleCleanupSessions}
+              disabled={cleaning}
+              className="w-full py-3 px-4 rounded-lg bg-amber-600/20 border border-amber-600/50 text-amber-300 hover:bg-amber-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {cleaning ? 'Cleaning up...' : 'Clean Up Orphaned Sessions'}
+            </button>
+          </div>
+        </MobileCard>
       </div>
     </div>
   )

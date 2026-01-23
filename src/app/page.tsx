@@ -51,6 +51,12 @@ export default async function Home() {
                   >
                     Daily Review
                   </Link>
+                  <Link
+                    href="/m/settings"
+                    className="block w-full bg-purple-600 hover:bg-purple-500 rounded-lg p-3 text-center transition-colors"
+                  >
+                    Settings
+                  </Link>
                 </div>
               </div>
             </div>

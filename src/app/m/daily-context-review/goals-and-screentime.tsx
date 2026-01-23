@@ -7,7 +7,7 @@ import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { TimeInput } from '@/components/mobile/inputs/TimeInput'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { createClient } from '@/lib/supabase/client'
-import { getBuckets, logCompletedSession } from '@/lib/actions/study'
+import { getBuckets, logCompletedSession, getTodaySessions, deleteStudySession, updateStudySession } from '@/lib/actions/study'
 
 export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
   const { formData, setFormData, yesterdayGoals, setYesterdayGoals, completedGoals, setCompletedGoals } = useDailyReview()
@@ -15,15 +15,21 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
   const [totalScreenMinutes, setTotalScreenMinutes] = useState(0)
   
   // Study sessions state
-  const [studySessions, setStudySessions] = useState<Array<{
-    bucketId: string
-    minutes: number
+  const [existingSessions, setExistingSessions] = useState<Array<{
+    id: string
+    bucket_id: string
+    duration_minutes: number
+    bucket: { id: string; name: string; color: string } | null
   }>>([])
   const [buckets, setBuckets] = useState<Array<{id: string, name: string, color: string}>>([])
   const [currentBucketId, setCurrentBucketId] = useState('')
   const [currentDuration, setCurrentDuration] = useState(0)
   const [loadingBuckets, setLoadingBuckets] = useState(true)
+  const [loadingSessions, setLoadingSessions] = useState(true)
   const [savingSessions, setSavingSessions] = useState(false)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editDuration, setEditDuration] = useState(0)
+  const [showAddSession, setShowAddSession] = useState(false)
 
   useEffect(() => {
     async function fetchYesterdayGoals() {
@@ -58,20 +64,27 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
     fetchYesterdayGoals()
   }, [setYesterdayGoals])
 
-  // Fetch buckets
+  // Fetch buckets and today's sessions
   useEffect(() => {
-    async function fetchBuckets() {
+    async function fetchData() {
       try {
-        const data = await getBuckets()
-        setBuckets(data)
-        if (data.length > 0) setCurrentBucketId(data[0].id)
+        const [bucketsData, sessionsData] = await Promise.all([
+          getBuckets(),
+          getTodaySessions()
+        ])
+        
+        setBuckets(bucketsData)
+        if (bucketsData.length > 0) setCurrentBucketId(bucketsData[0].id)
+        
+        setExistingSessions(sessionsData)
       } catch (error) {
-        console.error('Error fetching buckets:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoadingBuckets(false)
+        setLoadingSessions(false)
       }
     }
-    fetchBuckets()
+    fetchData()
   }, [])
 
   // Update form data when total screen time changes
@@ -96,38 +109,78 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
     setCompletedGoals(newCompleted)
   }
 
-  const addStudySession = () => {
+  const addStudySession = async () => {
     if (currentBucketId && currentDuration > 0) {
-      setStudySessions([...studySessions, { 
-        bucketId: currentBucketId,
-        minutes: currentDuration 
-      }])
-      setCurrentDuration(0)
+      setSavingSessions(true)
+      try {
+        // Use midnight start for daily review entries (more intuitive)
+        await logCompletedSession(currentBucketId, currentDuration, undefined, {
+          useMidnightStart: true
+        })
+        // Refresh sessions
+        const sessionsData = await getTodaySessions()
+        setExistingSessions(sessionsData)
+        setCurrentDuration(0)
+        setShowAddSession(false) // Hide form after adding
+      } catch (error) {
+        console.error('Error saving study session:', error)
+      } finally {
+        setSavingSessions(false)
+      }
     }
   }
 
-  const removeStudySession = (index: number) => {
-    setStudySessions(studySessions.filter((_, i) => i !== index))
-  }
-
-  const handleContinue = async () => {
-    // Save each study session (only if duration > 0)
-    const validSessions = studySessions.filter(s => s.minutes > 0)
-    if (validSessions.length > 0) {
-      setSavingSessions(true)
-      for (const session of validSessions) {
-        try {
-          await logCompletedSession(session.bucketId, session.minutes)
-        } catch (error) {
-          console.error('Error saving study session:', error)
-        }
-      }
+  const deleteSession = async (sessionId: string) => {
+    if (!confirm('Delete this session?')) return
+    
+    setSavingSessions(true)
+    try {
+      await deleteStudySession(sessionId)
+      // Refresh sessions
+      const sessionsData = await getTodaySessions()
+      setExistingSessions(sessionsData)
+    } catch (error) {
+      console.error('Error deleting session:', error)
+    } finally {
       setSavingSessions(false)
     }
+  }
+
+  const startEditSession = (sessionId: string, currentMinutes: number) => {
+    setEditingSessionId(sessionId)
+    setEditDuration(currentMinutes)
+  }
+
+  const cancelEditSession = () => {
+    setEditingSessionId(null)
+    setEditDuration(0)
+  }
+
+  const saveEditSession = async () => {
+    if (!editingSessionId || editDuration <= 0) return
     
-    // Proceed to next screen
+    setSavingSessions(true)
+    try {
+      await updateStudySession(editingSessionId, editDuration)
+      // Refresh sessions
+      const sessionsData = await getTodaySessions()
+      setExistingSessions(sessionsData)
+      setEditingSessionId(null)
+      setEditDuration(0)
+    } catch (error) {
+      console.error('Error updating session:', error)
+    } finally {
+      setSavingSessions(false)
+    }
+  }
+
+  const handleContinue = () => {
+    // No need to save sessions here anymore - they're saved immediately
     onNext()
   }
+
+  // Calculate total study time
+  const totalStudyMinutes = existingSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -183,81 +236,167 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
       {/* Study Sessions */}
       <MobileCard title="Study Sessions">
         <p className="text-xs text-zinc-400 mb-3">
-          Add study sessions completed today
+          Review and manage today's study sessions
         </p>
         
-        <div className="space-y-3">
-          {/* Bucket Dropdown */}
-          {!loadingBuckets && buckets.length > 0 && (
-            <MobileSelect
-              label="Subject"
-              value={currentBucketId}
-              onChange={(e) => setCurrentBucketId(e.target.value)}
-              options={buckets.map(bucket => ({
-                value: bucket.id,
-                label: bucket.name
-              }))}
-            />
-          )}
-          
-          {loadingBuckets && (
-            <div className="text-sm text-zinc-400">Loading subjects...</div>
-          )}
-          
-          {!loadingBuckets && buckets.length === 0 && (
-            <div className="text-sm text-yellow-400">
-              No study subjects found. Create one in the Study section first.
-            </div>
-          )}
-          
-          {/* Duration Input */}
-          <TimeInput
-            label="Duration"
-            value={currentDuration}
-            onChange={setCurrentDuration}
-          />
-          
-          {/* Add Button */}
-          <PrimaryButton
-            variant="secondary"
-            size="sm"
-            onClick={addStudySession}
-            disabled={!currentBucketId || currentDuration === 0}
-          >
-            Add Session
-          </PrimaryButton>
-        </div>
-        
-        {/* Sessions List */}
-        {studySessions.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {studySessions.map((session, i) => (
-              <div key={i} className="flex justify-between items-center p-2 bg-zinc-800 rounded">
-                <div className="flex-1">
-                  <div className="text-sm text-white">
-                    {buckets.find(b => b.id === session.bucketId)?.name}
-                  </div>
-                  <div className="text-xs text-zinc-400">
-                    {session.minutes}m
-                  </div>
+        {loadingSessions ? (
+          <div className="text-sm text-zinc-400">Loading sessions...</div>
+        ) : (
+          <>
+            {/* Existing Sessions List */}
+            {existingSessions.length > 0 ? (
+              <div className="space-y-2">
+                {existingSessions.map((session) => {
+                  const bucketData = Array.isArray(session.bucket) ? session.bucket[0] : session.bucket
+                  const bucketName = bucketData?.name ?? 'Unknown'
+                  
+                  return (
+                    <div key={session.id} className="bg-zinc-800 rounded-lg p-3">
+                      {editingSessionId === session.id ? (
+                        <div className="space-y-2">
+                          <div className="text-xs text-zinc-400 mb-1">{bucketName}</div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={editDuration}
+                              onChange={(e) => setEditDuration(parseInt(e.target.value) || 0)}
+                              className="flex-1 bg-zinc-700 rounded px-2 py-1 text-white"
+                              min="1"
+                            />
+                            <span className="text-zinc-400 text-sm">min</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={saveEditSession}
+                              disabled={savingSessions || editDuration <= 0}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded px-3 py-1.5 text-sm font-semibold transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditSession}
+                              disabled={savingSessions}
+                              className="flex-1 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded px-3 py-1.5 text-sm font-semibold transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-white">{bucketName}</div>
+                            <div className="text-xs text-zinc-400">
+                              {session.duration_minutes}m
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEditSession(session.id, session.duration_minutes)}
+                              disabled={savingSessions}
+                              className="p-1.5 hover:bg-zinc-700 rounded transition-colors disabled:opacity-50"
+                              title="Edit duration"
+                            >
+                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => deleteSession(session.id)}
+                              disabled={savingSessions}
+                              className="p-1.5 hover:bg-zinc-700 rounded transition-colors disabled:opacity-50"
+                              title="Delete session"
+                            >
+                              <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                
+                {/* Total */}
+                <div className="pt-2 border-t border-zinc-700 text-sm flex justify-between">
+                  <span className="text-zinc-400">Total Study Time:</span>
+                  <span className="text-emerald-400 font-semibold">
+                    {Math.floor(totalStudyMinutes / 60)}h {totalStudyMinutes % 60}m
+                  </span>
                 </div>
-                <button onClick={() => removeStudySession(i)} className="p-1">
-                  <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
-            ))}
+            ) : (
+              <p className="text-sm text-zinc-500 text-center py-4">No study sessions logged today</p>
+            )}
             
-            {/* Total */}
-            <div className="pt-2 border-t border-zinc-700 text-sm">
-              <span className="text-zinc-400">Total: </span>
-              <span className="text-white font-semibold">
-                {Math.floor(studySessions.reduce((sum, s) => sum + s.minutes, 0) / 60)}h{' '}
-                {studySessions.reduce((sum, s) => sum + s.minutes, 0) % 60}m
-              </span>
-            </div>
-          </div>
+            {/* Add Session Button (when form is hidden) */}
+            {!showAddSession && (
+              <div className="pt-3 border-t border-zinc-800">
+                <PrimaryButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAddSession(true)}
+                  className="w-full"
+                >
+                  + Add Study Session
+                </PrimaryButton>
+              </div>
+            )}
+            
+            {/* Add New Session Form (when visible) */}
+            {showAddSession && (
+              <div className="space-y-3 pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs text-zinc-400 font-semibold">Add New Session</h4>
+                  <button
+                    onClick={() => setShowAddSession(false)}
+                    className="text-xs text-zinc-500 hover:text-zinc-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              
+              {!loadingBuckets && buckets.length > 0 && (
+                <MobileSelect
+                  label="Subject"
+                  value={currentBucketId}
+                  onChange={(e) => setCurrentBucketId(e.target.value)}
+                  options={buckets.map(bucket => ({
+                    value: bucket.id,
+                    label: bucket.name
+                  }))}
+                />
+              )}
+              
+              {loadingBuckets && (
+                <div className="text-sm text-zinc-400">Loading subjects...</div>
+              )}
+              
+              {!loadingBuckets && buckets.length === 0 && (
+                <div className="text-sm text-yellow-400">
+                  No study subjects found. Create one in the Study section first.
+                </div>
+              )}
+              
+              <TimeInput
+                label="Duration"
+                value={currentDuration}
+                onChange={setCurrentDuration}
+              />
+              
+                <PrimaryButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={addStudySession}
+                  disabled={!currentBucketId || currentDuration === 0 || savingSessions}
+                  loading={savingSessions}
+                >
+                  Add Session
+                </PrimaryButton>
+              </div>
+            )}
+          </>
         )}
       </MobileCard>
 
@@ -275,11 +414,9 @@ export default function GoalsAndScreentime({ onNext }: { onNext: () => void }) {
         variant="primary"
         size="lg"
         onClick={handleContinue}
-        disabled={savingSessions}
-        loading={savingSessions}
         className="w-full"
       >
-        {savingSessions ? 'Saving...' : 'Continue to Context Snapshot'}
+        Continue to Context Snapshot
       </PrimaryButton>
     </div>
   )

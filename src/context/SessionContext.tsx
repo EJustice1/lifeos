@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import {
   saveSessionMetadata,
   loadSessionMetadata,
@@ -23,6 +23,18 @@ interface ActiveSession {
   sessionData?: any       // Module-specific data (sets, timer state, etc.)
 }
 
+/**
+ * Backup structure for atomic operations with rollback
+ */
+export interface SessionBackup {
+  session: ActiveSession | null
+  localStorage: {
+    metadata: SessionMetadata | null
+    workoutData: any
+    studyData: any
+  }
+}
+
 interface SessionContextType {
   activeSession: ActiveSession | null
   startSession: (
@@ -40,6 +52,16 @@ interface SessionContextType {
   clearExpiredSessions: () => void
   updateSessionData: (data: any) => void
   recoverActiveSession: () => ActiveSession | null
+  
+  // New atomic operation methods
+  /** Create a backup of current session state for rollback */
+  createBackup: () => SessionBackup
+  /** Restore session state from a backup */
+  restoreFromBackup: (backup: SessionBackup) => void
+  /** Clear session state immediately (for atomic operations, skips localStorage sync) */
+  clearSessionImmediate: () => void
+  /** Set session directly (for recovery/restore operations) */
+  setSessionDirect: (session: ActiveSession | null) => void
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
@@ -49,6 +71,9 @@ const MAX_SESSION_AGE_HOURS = 24
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
+  
+  // Ref to skip localStorage sync during atomic operations
+  const skipLocalStorageSync = useRef(false)
 
   // Load session from localStorage on initial render using new storage utilities
   useEffect(() => {
@@ -114,6 +139,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // Auto-save active session to localStorage when it changes
   useEffect(() => {
+    // Skip sync if we're in the middle of an atomic operation
+    if (skipLocalStorageSync.current) {
+      skipLocalStorageSync.current = false
+      return
+    }
+    
     if (activeSession) {
       // Save metadata
       const metadata: SessionMetadata = {
@@ -218,6 +249,64 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Create a backup of current session state for atomic operations
+   * This captures both React state and localStorage for rollback capability
+   */
+  const createBackup = useCallback((): SessionBackup => {
+    return {
+      session: activeSession,
+      localStorage: {
+        metadata: loadSessionMetadata(),
+        workoutData: loadSessionData('workout'),
+        studyData: loadSessionData('study'),
+      },
+    }
+  }, [activeSession])
+
+  /**
+   * Restore session state from a backup (rollback)
+   * Used when an atomic operation fails and we need to revert
+   */
+  const restoreFromBackup = useCallback((backup: SessionBackup) => {
+    // Restore localStorage first
+    if (backup.localStorage.metadata) {
+      saveSessionMetadata(backup.localStorage.metadata)
+      if (backup.localStorage.workoutData) {
+        saveSessionData('workout', backup.localStorage.workoutData)
+      }
+      if (backup.localStorage.studyData) {
+        saveSessionData('study', backup.localStorage.studyData)
+      }
+    } else {
+      clearAllSessionData()
+    }
+    
+    // Skip the auto-sync effect for this state change (we already restored localStorage)
+    skipLocalStorageSync.current = true
+    setActiveSession(backup.session)
+  }, [])
+
+  /**
+   * Clear session state immediately without triggering localStorage sync
+   * Used for the first step of atomic end operations
+   */
+  const clearSessionImmediate = useCallback(() => {
+    // Clear localStorage directly
+    clearAllSessionData()
+    
+    // Skip the auto-sync effect (we already cleared localStorage)
+    skipLocalStorageSync.current = true
+    setActiveSession(null)
+  }, [])
+
+  /**
+   * Set session directly, useful for recovery/restore operations
+   */
+  const setSessionDirect = useCallback((session: ActiveSession | null) => {
+    setActiveSession(session)
+  }, [])
+
   return (
     <SessionContext.Provider
       value={{
@@ -228,6 +317,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         clearExpiredSessions,
         updateSessionData,
         recoverActiveSession,
+        createBackup,
+        restoreFromBackup,
+        clearSessionImmediate,
+        setSessionDirect,
       }}>
       {children}
     </SessionContext.Provider>

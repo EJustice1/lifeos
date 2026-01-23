@@ -30,6 +30,28 @@ export async function startWorkout(type?: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // CRITICAL: End any existing active workouts before starting a new one
+  // This ensures only ONE active workout exists at a time
+  const { data: existingWorkouts } = await supabase
+    .from('workouts')
+    .select('id, started_at')
+    .eq('user_id', user.id)
+    .is('ended_at', null)
+
+  if (existingWorkouts && existingWorkouts.length > 0) {
+    const now = new Date()
+    // End all active workouts
+    for (const workout of existingWorkouts) {
+      await supabase
+        .from('workouts')
+        .update({
+          ended_at: now.toISOString(),
+        })
+        .eq('id', workout.id)
+        .eq('user_id', user.id)
+    }
+  }
+
   const today = getESTDate()
 
   const { data, error } = await supabase
@@ -146,6 +168,22 @@ export async function endWorkout(workoutId: string, endedAt?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
+
+  // Get the workout to check if it exists and is not already ended
+  const { data: workout } = await supabase
+    .from('workouts')
+    .select('ended_at')
+    .eq('id', workoutId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!workout) throw new Error('Workout not found')
+
+  // If already ended, this is a no-op (prevents double-ending)
+  if (workout.ended_at) {
+    console.warn(`Workout ${workoutId} is already ended`)
+    return
+  }
 
   // Use provided endedAt timestamp or current time
   const endTime = endedAt ? new Date(endedAt) : new Date()
@@ -330,6 +368,7 @@ export async function getWorkoutWithLifts(workoutId: string) {
 }
 
 // Get active workout (where ended_at is null)
+// Returns the most recent active workout
 export async function getActiveWorkout() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -353,7 +392,7 @@ export async function getActiveWorkout() {
     .is('ended_at', null)
     .order('started_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle() // Use maybeSingle to handle 0 or 1 results gracefully
 
   if (!data) return null
 
@@ -365,6 +404,47 @@ export async function getActiveWorkout() {
       exercise: PREDEFINED_EXERCISES.find(ex => ex.id === lift.exercise_id)
     })) || []
   }
+}
+
+/**
+ * Force end all active workouts for the current user
+ * This is a cleanup function to handle orphaned workouts
+ */
+export async function endAllActiveWorkouts() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: activeWorkouts } = await supabase
+    .from('workouts')
+    .select('id, started_at')
+    .eq('user_id', user.id)
+    .is('ended_at', null)
+
+  if (!activeWorkouts || activeWorkouts.length === 0) {
+    return { count: 0 }
+  }
+
+  const now = new Date()
+  let endedCount = 0
+
+  for (const workout of activeWorkouts) {
+    const { error } = await supabase
+      .from('workouts')
+      .update({
+        ended_at: now.toISOString(),
+      })
+      .eq('id', workout.id)
+      .eq('user_id', user.id)
+
+    if (!error) {
+      endedCount++
+    }
+  }
+
+  revalidatePath('/m/gym')
+  
+  return { count: endedCount }
 }
 
 // Get gym statistics
