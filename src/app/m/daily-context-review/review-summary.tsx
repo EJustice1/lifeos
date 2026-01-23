@@ -113,13 +113,13 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
         <div className="flex gap-4">
           <div className="flex-1 text-center">
             <div className="text-2xl font-bold text-green-400">
-              {Math.floor(review.productive_screen_minutes / 60)}h {review.productive_screen_minutes % 60}m
+              {Math.floor((review.productive_screen_minutes ?? 0) / 60)}h {(review.productive_screen_minutes ?? 0) % 60}m
             </div>
             <div className="text-xs text-zinc-400">Productive</div>
           </div>
           <div className="flex-1 text-center">
             <div className="text-2xl font-bold text-red-400">
-              {Math.floor(review.distracted_screen_minutes / 60)}h {review.distracted_screen_minutes % 60}m
+              {Math.floor((review.distracted_screen_minutes ?? 0) / 60)}h {(review.distracted_screen_minutes ?? 0) % 60}m
             </div>
             <div className="text-xs text-zinc-400">Distracted</div>
           </div>
@@ -128,13 +128,13 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
           <div 
             className="bg-green-500"
             style={{ 
-              width: `${(review.productive_screen_minutes / (review.productive_screen_minutes + review.distracted_screen_minutes)) * 100}%` 
+              width: `${((review.productive_screen_minutes ?? 0) / ((review.productive_screen_minutes ?? 0) + (review.distracted_screen_minutes ?? 0))) * 100}%` 
             }}
           />
           <div 
             className="bg-red-500"
             style={{ 
-              width: `${(review.distracted_screen_minutes / (review.productive_screen_minutes + review.distracted_screen_minutes)) * 100}%` 
+              width: `${((review.distracted_screen_minutes ?? 0) / ((review.productive_screen_minutes ?? 0) + (review.distracted_screen_minutes ?? 0))) * 100}%` 
             }}
           />
         </div>
