@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Settings',
     description: 'App settings and preferences',
     start_url: '/m/settings',
+    scope: '/m/settings/',
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#000000',

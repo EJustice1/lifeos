@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Gym',
     description: 'Track your workouts and fitness progress',
     start_url: '/m/gym',
+    scope: '/m/gym/',
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#000000',

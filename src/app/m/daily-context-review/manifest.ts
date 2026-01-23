@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Daily Review',
     description: 'Daily context review and reflection',
     start_url: '/m/daily-context-review',
+    scope: '/m/daily-context-review/',
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#000000',
