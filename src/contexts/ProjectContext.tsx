@@ -73,6 +73,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       color: data.color || '#3b82f6',
       status: 'active',
       target_date: data.target_date || null,
+      completed_at: null,
       archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
