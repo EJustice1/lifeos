@@ -5,6 +5,7 @@ import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { getTasks, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import type { Task } from '@/types/database'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
+import { getReviewDate } from '@/lib/utils/review-date'
 
 export default function TaskReviewStep() {
   const [allTasks, setAllTasks] = useState<Task[]>([])
@@ -18,8 +19,8 @@ export default function TaskReviewStep() {
   async function loadTodayTasks() {
     try {
       setLoading(true)
-      const today = new Date().toISOString().split('T')[0]
-      const tasksData = await getTasks({ scheduled_date: today })
+      const reviewDate = getReviewDate()
+      const tasksData = await getTasks({ scheduled_date: reviewDate })
       // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
       const relevantTasks = tasksData.filter(t => 
         ['today', 'in_progress', 'completed'].includes(t.status)

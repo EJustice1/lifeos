@@ -6,6 +6,7 @@ import { useSpring, animated } from '@react-spring/web'
 import type { Task } from '@/types/database'
 import { getTasks, moveTaskToDate, moveToBacklog, deleteTask, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
+import { getReviewDate } from '@/lib/utils/review-date'
 
 interface ConsciousRolloverProps {
   onAllProcessed?: (rolledOverIds: string[]) => void
@@ -26,8 +27,8 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
   async function loadTodayTasks() {
     try {
       setLoading(true)
-      const today = new Date().toISOString().split('T')[0]
-      const allTasksData = await getTasks({ scheduled_date: today })
+      const reviewDate = getReviewDate()
+      const allTasksData = await getTasks({ scheduled_date: reviewDate })
       // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
       const relevantTasks = allTasksData.filter(t => 
         ['today', 'in_progress', 'completed'].includes(t.status)

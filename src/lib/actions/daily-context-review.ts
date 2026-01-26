@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getReviewDate } from '@/lib/utils/review-date'
 
 // Get daily context data for the context snapshot screen
 // Aggregates data from multiple sources for today
@@ -9,9 +10,8 @@ export async function getDailyContextData() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Get today's date
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  // Get review date (before 9am = yesterday, after 9am = today)
+  const todayStr = getReviewDate()
 
   // Fetch all data sources in parallel for today
   const [workouts, studySessions, screenTime] = await Promise.all([
@@ -125,9 +125,8 @@ export async function getExistingDailyContextReview() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Get today's date
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  // Get review date (before 9am = yesterday, after 9am = today)
+  const todayStr = getReviewDate()
 
   const { data } = await supabase
     .from('daily_context_reviews')
