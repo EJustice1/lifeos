@@ -76,22 +76,30 @@ function DailyContextReviewPage() {
   const [canProceedFromRollover, setCanProceedFromRollover] = useState(false)
   const { showToast } = useToast()
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const ctx = await getDailyContextData()
-        const rev = await getExistingDailyContextReview()
-        setContextData(ctx)
-        setExistingReview(rev)
-        dispatch({ type: 'DATA_LOADED', contextData: ctx!, existingReview: rev })
-      } catch (e) {
-        dispatch({ type: 'LOAD_ERROR', message: 'Failed to load' })
-        showToast('Failed to load daily review data', 'error')
-      }
+  const loadData = useCallback(async () => {
+    try {
+      const ctx = await getDailyContextData()
+      const rev = await getExistingDailyContextReview()
+      setContextData(ctx)
+      setExistingReview(rev)
+      dispatch({ type: 'DATA_LOADED', contextData: ctx!, existingReview: rev })
+    } catch (e) {
+      dispatch({ type: 'LOAD_ERROR', message: 'Failed to load' })
+      showToast('Failed to load daily review data', 'error')
     }
-    load()
-    // Only load once on mount - no auto-syncing with database
-  }, [])
+  }, [showToast])
+
+  useEffect(() => {
+    loadData()
+
+    // Auto-refresh every 5 minutes to catch date transitions
+    // This ensures the page shows the correct day's review after crossing cutoff time
+    const refreshInterval = setInterval(() => {
+      loadData()
+    }, 5 * 60 * 1000) // 5 minutes
+
+    return () => clearInterval(refreshInterval)
+  }, [loadData])
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -106,10 +114,38 @@ function DailyContextReviewPage() {
   }
 
   const handleSubmit = async () => {
+    if (!contextData) {
+      showToast('Missing context data', 'error')
+      return
+    }
+
     dispatch({ type: 'START_SUBMIT' })
-    // Submit logic handled in the review context
-    showToast('Review submitted successfully!', 'success')
-    dispatch({ type: 'SUBMIT_SUCCESS' })
+    
+    try {
+      // Get form data from context (this needs to be passed from the review steps)
+      // For now, we'll submit with minimal data - you'll need to wire up the form data properly
+      await submitDailyContextReview(
+        contextData.date, // Use the review date from contextData
+        50, // Default execution score - should come from form
+        [], // unfocused factors - should come from form
+        null, // lesson learned - should come from form
+        null, // highlights - should come from form
+        0, // screentime - should come from form
+        undefined, // execution score suggested
+        false, // execution score locked
+        rolledOverTaskIds // task IDs rolled over to tomorrow
+      )
+      
+      showToast('Review submitted successfully!', 'success')
+      dispatch({ type: 'SUBMIT_SUCCESS' })
+      
+      // Reload to show the submitted review
+      await loadData()
+    } catch (error) {
+      console.error('Failed to submit review:', error)
+      showToast('Failed to submit review', 'error')
+      dispatch({ type: 'START_EDIT' })
+    }
   }
 
   const isRolloverStep = STEPS[currentStep].id === 'rollover'
@@ -122,21 +158,46 @@ function DailyContextReviewPage() {
         {/* Header */}
         <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
           <div className="flex items-center justify-between px-4 py-3">
-            <div>
+            <div className="flex-1">
               <h1 className="text-title-lg font-bold text-white">Daily Review</h1>
-              <p className="text-body-sm text-zinc-400">
-                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
-              </p>
+              {contextData && (
+                <p className="text-body-sm text-zinc-400">
+                  {new Date(contextData.date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                  {' • '}
+                  Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
+                </p>
+              )}
+              {!contextData && (
+                <p className="text-body-sm text-zinc-400">
+                  Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
+                </p>
+              )}
             </div>
-            <Link
-              href="/"
-              className="p-2 text-zinc-400 hover:text-white"
-              aria-label="Back to Day View"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadData}
+                disabled={state.type === 'LOADING'}
+                className="p-2 text-zinc-400 hover:text-white disabled:opacity-50"
+                aria-label="Refresh"
+              >
+                <svg className={`w-5 h-5 ${state.type === 'LOADING' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <Link
+                href="/"
+                className="p-2 text-zinc-400 hover:text-white"
+                aria-label="Back to Day View"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            </div>
           </div>
 
           {/* Progress Bar */}

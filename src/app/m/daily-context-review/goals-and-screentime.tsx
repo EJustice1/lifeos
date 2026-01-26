@@ -6,6 +6,7 @@ import { getTasks, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import type { Task } from '@/types/database'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { getReviewDate } from '@/lib/utils/review-date'
+import { getReviewCutoffHour } from '@/lib/actions/settings'
 
 export default function TaskReviewStep() {
   const [allTasks, setAllTasks] = useState<Task[]>([])
@@ -19,7 +20,8 @@ export default function TaskReviewStep() {
   async function loadTodayTasks() {
     try {
       setLoading(true)
-      const reviewDate = getReviewDate()
+      const cutoffHour = await getReviewCutoffHour()
+      const reviewDate = getReviewDate(cutoffHour)
       const tasksData = await getTasks({ scheduled_date: reviewDate })
       // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
       const relevantTasks = tasksData.filter(t => 

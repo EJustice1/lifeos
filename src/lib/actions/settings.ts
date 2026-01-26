@@ -7,6 +7,7 @@ export interface UserSettings {
   user_id: string
   daily_study_target_minutes: number
   daily_workout_target: number
+  daily_review_cutoff_hour: number
   created_at: string
   updated_at: string
 }
@@ -50,6 +51,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
             user_id: user.id,
             daily_study_target_minutes: 120,
             daily_workout_target: 1,
+            daily_review_cutoff_hour: 9,
           },
         ])
         .select()
@@ -71,11 +73,35 @@ export async function getUserSettings(): Promise<UserSettings | null> {
 }
 
 /**
+ * Get just the review cutoff hour setting
+ */
+export async function getReviewCutoffHour(): Promise<number> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return 9 // Default if not authenticated
+    
+    const { data } = await supabase
+      .from('user_settings')
+      .select('daily_review_cutoff_hour')
+      .eq('user_id', user.id)
+      .single()
+    
+    return data?.daily_review_cutoff_hour ?? 9
+  } catch (error) {
+    console.error('Error fetching review cutoff hour:', error)
+    return 9 // Default on error
+  }
+}
+
+/**
  * Update user settings
  */
 export async function updateUserSettings(
   studyTargetMinutes: number,
-  workoutTarget: number
+  workoutTarget: number,
+  reviewCutoffHour: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
@@ -105,12 +131,20 @@ export async function updateUserSettings(
       }
     }
 
+    if (reviewCutoffHour < 0 || reviewCutoffHour > 23) {
+      return {
+        success: false,
+        error: 'Review cutoff hour must be between 0 and 23',
+      }
+    }
+
     // Try to update existing settings
     const { error: updateError } = await supabase
       .from('user_settings')
       .update({
         daily_study_target_minutes: studyTargetMinutes,
         daily_workout_target: workoutTarget,
+        daily_review_cutoff_hour: reviewCutoffHour,
       })
       .eq('user_id', user.id)
 
@@ -123,6 +157,7 @@ export async function updateUserSettings(
             user_id: user.id,
             daily_study_target_minutes: studyTargetMinutes,
             daily_workout_target: workoutTarget,
+            daily_review_cutoff_hour: reviewCutoffHour,
           },
         ])
 

@@ -10,8 +10,17 @@ export async function getDailyContextData() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Get review date (before 9am = yesterday, after 9am = today)
-  const todayStr = getReviewDate()
+  // Get user's review cutoff hour setting
+  const { data: settings } = await supabase
+    .from('user_settings')
+    .select('daily_review_cutoff_hour')
+    .eq('user_id', user.id)
+    .single()
+  
+  const cutoffHour = settings?.daily_review_cutoff_hour ?? 9
+
+  // Get review date based on user's cutoff hour
+  const todayStr = getReviewDate(cutoffHour)
 
   // Fetch all data sources in parallel for today
   const [workouts, studySessions, screenTime] = await Promise.all([
@@ -119,20 +128,29 @@ export async function submitDailyContextReview(
   return { success: true }
 }
 
-// Get existing daily context review for today
+// Get existing daily context review for the current review period
 export async function getExistingDailyContextReview() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Get review date (before 9am = yesterday, after 9am = today)
-  const todayStr = getReviewDate()
+  // Get user's review cutoff hour setting
+  const { data: settings } = await supabase
+    .from('user_settings')
+    .select('daily_review_cutoff_hour')
+    .eq('user_id', user.id)
+    .single()
+  
+  const cutoffHour = settings?.daily_review_cutoff_hour ?? 9
+
+  // Get review date based on user's cutoff hour
+  const reviewDateStr = getReviewDate(cutoffHour)
 
   const { data } = await supabase
     .from('daily_context_reviews')
     .select('*')
     .eq('user_id', user.id)
-    .eq('date', todayStr)
+    .eq('date', reviewDateStr)
     .single()
 
   return data

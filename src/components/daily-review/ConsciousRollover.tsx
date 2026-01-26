@@ -7,6 +7,7 @@ import type { Task } from '@/types/database'
 import { getTasks, moveTaskToDate, moveToBacklog, deleteTask, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { getReviewDate } from '@/lib/utils/review-date'
+import { getReviewCutoffHour } from '@/lib/actions/settings'
 
 interface ConsciousRolloverProps {
   onAllProcessed?: (rolledOverIds: string[]) => void
@@ -27,7 +28,8 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
   async function loadTodayTasks() {
     try {
       setLoading(true)
-      const reviewDate = getReviewDate()
+      const cutoffHour = await getReviewCutoffHour()
+      const reviewDate = getReviewDate(cutoffHour)
       const allTasksData = await getTasks({ scheduled_date: reviewDate })
       // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
       const relevantTasks = allTasksData.filter(t => 

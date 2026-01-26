@@ -10,6 +10,7 @@ import Link from 'next/link'
 export default function SettingsPage() {
   const [studyTarget, setStudyTarget] = useState<number>(120)
   const [workoutTarget, setWorkoutTarget] = useState<number>(1)
+  const [reviewCutoffHour, setReviewCutoffHour] = useState<number>(9)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [cleaning, setCleaning] = useState(false)
@@ -22,6 +23,7 @@ export default function SettingsPage() {
         if (settings) {
           setStudyTarget(settings.daily_study_target_minutes)
           setWorkoutTarget(settings.daily_workout_target)
+          setReviewCutoffHour(settings.daily_review_cutoff_hour)
         }
       } catch (error) {
         console.error('Error loading settings:', error)
@@ -39,7 +41,7 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      const result = await updateUserSettings(studyTarget, workoutTarget)
+      const result = await updateUserSettings(studyTarget, workoutTarget, reviewCutoffHour)
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Settings saved successfully!' })
@@ -254,6 +256,74 @@ export default function SettingsPage() {
                   {sessions}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Review Cutoff */}
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Daily Review Cutoff</h3>
+          <p className="text-body-sm text-zinc-400 mb-4">
+            Hour when daily review switches from previous day to current day
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label htmlFor="review-cutoff" className="text-zinc-300 font-medium">
+                Cutoff Time
+              </label>
+              <span className="text-purple-400 font-semibold">
+                {reviewCutoffHour === 0 ? '12:00 AM' : reviewCutoffHour === 12 ? '12:00 PM' : reviewCutoffHour < 12 ? `${reviewCutoffHour}:00 AM` : `${reviewCutoffHour - 12}:00 PM`}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setReviewCutoffHour(Math.max(0, reviewCutoffHour - 1))}
+                className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-purple-500 transition-colors flex items-center justify-center text-xl"
+              >
+                −
+              </button>
+
+              <input
+                id="review-cutoff"
+                type="number"
+                value={reviewCutoffHour}
+                onChange={(e) => setReviewCutoffHour(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+                className="flex-1 h-12 px-4 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center focus:outline-none focus:border-purple-500 transition-colors"
+                min="0"
+                max="23"
+              />
+
+              <button
+                onClick={() => setReviewCutoffHour(Math.min(23, reviewCutoffHour + 1))}
+                className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-purple-500 transition-colors flex items-center justify-center text-xl"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Quick presets */}
+            <div className="flex gap-2">
+              {[6, 7, 8, 9, 10].map((hour) => (
+                <button
+                  key={hour}
+                  onClick={() => setReviewCutoffHour(hour)}
+                  className={`flex-1 py-2 px-3 rounded-lg text-label-sm font-medium transition-colors ${
+                    reviewCutoffHour === hour
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {hour}:00
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+              <p className="text-label-sm text-zinc-400">
+                Before {reviewCutoffHour === 0 ? '12:00 AM' : reviewCutoffHour === 12 ? '12:00 PM' : reviewCutoffHour < 12 ? `${reviewCutoffHour}:00 AM` : `${reviewCutoffHour - 12}:00 PM`}, daily review shows data from yesterday. After, it shows today's data.
+              </p>
             </div>
           </div>
         </div>
