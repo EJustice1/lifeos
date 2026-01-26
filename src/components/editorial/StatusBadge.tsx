@@ -31,38 +31,38 @@ export function StatusBadge({
   className = ''
 }: StatusBadgeProps) {
   const statusStyles = {
-    // Task statuses
-    active: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    today: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    backlog: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    completed: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
-    in_progress: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    // Task statuses - Subtle backgrounds
+    active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+    today: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
+    backlog: 'bg-purple-500/15 text-purple-400 border-purple-500/40',
+    completed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+    cancelled: 'bg-red-500/15 text-red-400 border-red-500/40',
+    in_progress: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
     // Life goal categories
-    health: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    career: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    relationships: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
-    finance: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    personal: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    health: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+    career: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
+    relationships: 'bg-pink-500/15 text-pink-400 border-pink-500/40',
+    finance: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+    personal: 'bg-purple-500/15 text-purple-400 border-purple-500/40',
   }
 
   const solidStyles = {
-    active: 'bg-emerald-500 text-white',
-    today: 'bg-blue-500 text-white',
-    backlog: 'bg-purple-500 text-white',
-    completed: 'bg-emerald-500 text-white',
-    cancelled: 'bg-red-500 text-white',
-    in_progress: 'bg-yellow-500 text-white',
-    health: 'bg-emerald-500 text-white',
-    career: 'bg-blue-500 text-white',
-    relationships: 'bg-pink-400 text-white',
-    finance: 'bg-yellow-500 text-white',
-    personal: 'bg-purple-500 text-white',
+    active: 'bg-emerald-500/80 text-white border-emerald-500',
+    today: 'bg-blue-500/80 text-white border-blue-500',
+    backlog: 'bg-purple-500/80 text-white border-purple-500',
+    completed: 'bg-emerald-500/80 text-white border-emerald-500',
+    cancelled: 'bg-red-500/80 text-white border-red-500',
+    in_progress: 'bg-amber-500/80 text-white border-amber-500',
+    health: 'bg-emerald-500/80 text-white border-emerald-500',
+    career: 'bg-blue-500/80 text-white border-blue-500',
+    relationships: 'bg-pink-500/80 text-white border-pink-500',
+    finance: 'bg-amber-500/80 text-white border-amber-500',
+    personal: 'bg-purple-500/80 text-white border-purple-500',
   }
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-label-sm',
-    md: 'px-2.5 py-1 text-label-md',
+    sm: 'px-2.5 py-1 text-label-sm',
+    md: 'px-3 py-1.5 text-label-md',
   }
 
   const variantClass = variant === 'subtle' ? statusStyles[status] : solidStyles[status]
@@ -70,7 +70,7 @@ export function StatusBadge({
 
   return (
     <span
-      className={`inline-flex items-center rounded font-medium ${sizeClasses[size]} ${variantClass} ${borderClass} ${className}`}
+      className={`inline-flex items-center rounded-lg font-semibold ${sizeClasses[size]} ${variantClass} ${borderClass} ${className}`}
     >
       {label || status}
     </span>

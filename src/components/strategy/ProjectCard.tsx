@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo } from 'react'
 import type { Project, Task } from '@/types/database'
 import { TaskListItem } from './TaskListItem'
 import { CollapsibleSection, StatusBadge, Divider } from '@/components/editorial'
@@ -8,10 +8,9 @@ import { CollapsibleSection, StatusBadge, Divider } from '@/components/editorial
 interface ProjectCardProps {
   project: Project
   tasks: Task[]
-  onUpdate?: () => void
 }
 
-export function ProjectCard({ project, tasks, onUpdate }: ProjectCardProps) {
+function ProjectCardComponent({ project, tasks }: ProjectCardProps) {
   const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled')
   const completedTasks = tasks.filter(t => t.status === 'completed')
 
@@ -71,7 +70,7 @@ export function ProjectCard({ project, tasks, onUpdate }: ProjectCardProps) {
           ) : (
             <div className="space-y-0">
               {activeTasks.map(task => (
-                <TaskListItem key={task.id} task={task} onUpdate={onUpdate} />
+                <TaskListItem key={task.id} task={task} />
               ))}
 
               {completedTasks.length > 0 && (
@@ -81,7 +80,7 @@ export function ProjectCard({ project, tasks, onUpdate }: ProjectCardProps) {
                   </summary>
                   <div className="mt-2 space-y-0 opacity-60">
                     {completedTasks.map(task => (
-                      <TaskListItem key={task.id} task={task} onUpdate={onUpdate} showPromoteButton={false} />
+                      <TaskListItem key={task.id} task={task} showPromoteButton={false} />
                     ))}
                   </div>
                 </details>
@@ -93,3 +92,5 @@ export function ProjectCard({ project, tasks, onUpdate }: ProjectCardProps) {
     </div>
   )
 }
+
+export const ProjectCard = memo(ProjectCardComponent)

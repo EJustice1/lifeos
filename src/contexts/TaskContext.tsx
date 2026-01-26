@@ -246,7 +246,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshTasks])
 
-  // Filtering helpers
+  // Memoize filtered task views
   const getTodayTasks = useCallback((): Task[] => {
     const today = new Date().toISOString().split('T')[0]
     return tasks.filter(
@@ -260,7 +260,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const getTasksByDate = useCallback(
     (date: string): Task[] => {
-      return tasks.filter(t => t.scheduled_date === date && t.status !== 'cancelled')
+      return tasks.filter(t => 
+        t.scheduled_date === date && 
+        t.status !== 'cancelled' && 
+        t.status !== 'backlog'
+      )
     },
     [tasks]
   )

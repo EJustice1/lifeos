@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createLifeGoal } from '@/lib/actions/tasks'
+import { useGoals } from '@/contexts/GoalContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import type { LifeGoal } from '@/types/database'
 
@@ -12,6 +12,7 @@ interface LifeGoalFormModalProps {
 }
 
 export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormModalProps) {
+  const { createGoal } = useGoals()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<LifeGoal['category']>('personal')
@@ -25,7 +26,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
 
     try {
       setLoading(true)
-      await createLifeGoal({
+      await createGoal({
         title: title.trim(),
         description: description.trim() || undefined,
         category,

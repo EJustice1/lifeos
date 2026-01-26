@@ -1,19 +1,18 @@
 'use client'
 
+import { memo } from 'react'
 import type { Task } from '@/types/database'
 import { PromoteToTodayButton } from './PromoteToTodayButton'
-import { deleteTask } from '@/lib/actions/tasks'
-import { useState } from 'react'
+import { useTasks } from '@/contexts/TaskContext'
 import { ListItem, StatusBadge } from '@/components/editorial'
 
 interface TaskListItemProps {
   task: Task
-  onUpdate?: () => void
   showPromoteButton?: boolean
 }
 
-export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskListItemProps) {
-  const [deleting, setDeleting] = useState(false)
+function TaskListItemComponent({ task, showPromoteButton = true }: TaskListItemProps) {
+  const { deleteTask } = useTasks()
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -21,13 +20,9 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
     if (!confirm('Delete this task?')) return
 
     try {
-      setDeleting(true)
       await deleteTask(task.id)
-      onUpdate?.()
     } catch (error) {
       console.error('Failed to delete task:', error)
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -79,13 +74,12 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
           <StatusBadge status={task.status} size="sm" />
 
           {showPromoteButton && task.status !== 'today' && task.status !== 'completed' && (
-            <PromoteToTodayButton taskId={task.id} onPromoted={onUpdate} compact />
+            <PromoteToTodayButton taskId={task.id} compact />
           )}
 
           <button
             onClick={handleDelete}
-            disabled={deleting}
-            className="p-2 text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+            className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
             aria-label="Delete task"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,3 +91,5 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
     />
   )
 }
+
+export const TaskListItem = memo(TaskListItemComponent)

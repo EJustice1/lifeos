@@ -41,29 +41,23 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-24">
-      {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
-        <div className="px-4 py-4">
-          <h1 className="text-headline-lg font-bold text-white mb-4">Tasks</h1>
-          
-          {/* Segmented Control */}
-          <SegmentedControl
-            options={[
-              { id: 'today', label: 'Today' },
-              { id: 'backlog', label: 'Backlog' },
-            ]}
-            value={activeView}
-            onChange={(value) => setActiveView(value as 'today' | 'backlog')}
-            className="w-full"
-          />
-        </div>
+    <div className="min-h-screen bg-zinc-950">
+      {/* Mobile-optimized header */}
+      <div className="sticky top-0 z-40 bg-zinc-950/95 backdrop-blur-sm">
+        {/* Segmented Control - full width */}
+        <SegmentedControl
+          options={[
+            { id: 'today', label: 'Today' },
+            { id: 'backlog', label: 'Backlog' },
+          ]}
+          value={activeView}
+          onChange={(value) => setActiveView(value as 'today' | 'backlog')}
+          className="w-full"
+        />
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-6">
-        {activeView === 'today' ? <TodayView /> : <BacklogView />}
-      </div>
+      {/* Content - no padding, components handle it */}
+      {activeView === 'today' ? <TodayView /> : <BacklogView />}
     </div>
   )
 }

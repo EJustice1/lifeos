@@ -1,16 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { promoteToToday } from '@/lib/actions/tasks'
+import { useTasks } from '@/contexts/TaskContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 
 interface PromoteToTodayButtonProps {
   taskId: string
-  onPromoted?: () => void
   compact?: boolean
 }
 
-export function PromoteToTodayButton({ taskId, onPromoted, compact = false }: PromoteToTodayButtonProps) {
+export function PromoteToTodayButton({ taskId, compact = false }: PromoteToTodayButtonProps) {
+  const { promoteTaskToToday } = useTasks()
   const [loading, setLoading] = useState(false)
 
   const handlePromote = async (e: React.MouseEvent) => {
@@ -19,9 +19,8 @@ export function PromoteToTodayButton({ taskId, onPromoted, compact = false }: Pr
     try {
       setLoading(true)
       triggerHapticFeedback(HapticPatterns.MEDIUM)
-      await promoteToToday(taskId)
+      await promoteTaskToToday(taskId)
       triggerHapticFeedback(HapticPatterns.SUCCESS)
-      onPromoted?.()
     } catch (error) {
       console.error('Failed to promote task:', error)
       triggerHapticFeedback(HapticPatterns.FAILURE)

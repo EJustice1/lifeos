@@ -1,59 +1,41 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getLifeGoals, getProjects, getTasks } from '@/lib/actions/tasks'
+import { useGoals } from '@/contexts/GoalContext'
+import { useProjects } from '@/contexts/ProjectContext'
+import { useTasks } from '@/contexts/TaskContext'
 import { LifeGoalFormModal } from '@/components/modals/LifeGoalFormModal'
 import { ProjectFormModal } from '@/components/modals/ProjectFormModal'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import type { LifeGoal, Project, Task } from '@/types/database'
 
 export default function VisionPage() {
-  const [goals, setGoals] = useState<LifeGoal[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const { goals, loading: goalsLoading } = useGoals()
+  const { projects, loading: projectsLoading } = useProjects()
+  const { tasks, loading: tasksLoading } = useTasks()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [selectedGoalForProject, setSelectedGoalForProject] = useState<string | undefined>()
   const router = useRouter()
 
+  const loading = goalsLoading || projectsLoading || tasksLoading
+
   useEffect(() => {
     async function checkAuth() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         router.push('/auth/login')
       } else {
         setIsAuthenticated(true)
-        loadData()
       }
     }
     checkAuth()
   }, [router])
-
-  async function loadData() {
-    try {
-      setLoading(true)
-      const [goalsData, projectsData, tasksData] = await Promise.all([
-        getLifeGoals(false),
-        getProjects(undefined, false),
-        getTasks(),
-      ])
-      setGoals(goalsData)
-      setProjects(projectsData)
-      setTasks(tasksData)
-    } catch (error) {
-      console.error('Failed to load vision data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const toggleGoal = (goalId: string) => {
     setExpandedGoals(prev => {
@@ -67,33 +49,36 @@ export default function VisionPage() {
     })
   }
 
-  const toggleProject = (projectId: string) => {
-    setExpandedProjects(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId)
-      } else {
-        newSet.add(projectId)
-      }
-      return newSet
-    })
+  // Memoize project grouping
+  const projectsByGoal = useMemo(() => 
+    projects.reduce((acc, project) => {
+      const goalId = project.life_goal_id || 'orphaned'
+      if (!acc[goalId]) acc[goalId] = []
+      acc[goalId].push(project)
+      return acc
+    }, {} as Record<string, typeof projects>),
+    [projects]
+  )
+
+  // Memoize task grouping
+  const tasksByProject = useMemo(() => 
+    tasks.reduce((acc, task) => {
+      const projectId = task.project_id || 'orphaned'
+      if (!acc[projectId]) acc[projectId] = []
+      acc[projectId].push(task)
+      return acc
+    }, {} as Record<string, typeof tasks>),
+    [tasks]
+  )
+
+  // Category colors
+  const categoryColors: Record<string, string> = {
+    health: '#10b981',
+    career: '#3b82f6',
+    personal: '#a855f7',
+    finance: '#f59e0b',
+    relationships: '#ec4899',
   }
-
-  // Group projects by goal
-  const projectsByGoal = projects.reduce((acc, project) => {
-    const goalId = project.life_goal_id || 'orphaned'
-    if (!acc[goalId]) acc[goalId] = []
-    acc[goalId].push(project)
-    return acc
-  }, {} as Record<string, Project[]>)
-
-  // Group tasks by project
-  const tasksByProject = tasks.reduce((acc, task) => {
-    const projectId = task.project_id || 'orphaned'
-    if (!acc[projectId]) acc[projectId] = []
-    acc[projectId].push(task)
-    return acc
-  }, {} as Record<string, Task[]>)
 
   if (loading || !isAuthenticated) {
     return (
@@ -105,246 +90,177 @@ export default function VisionPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 pb-24">
-      {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
-        <div className="px-4 py-4">
-          <h1 className="text-headline-lg font-bold text-white mb-1">Goals</h1>
-          <p className="text-body-sm text-zinc-400">Your life goals and projects</p>
+      {/* NO CARDS - Bold category zones */}
+
+      {/* Massive header */}
+      <div className="px-6 pt-12 pb-8">
+        <h1 className="text-[4rem] leading-none font-black text-white mb-3">
+          GOALS
+        </h1>
+        <div className="flex items-center gap-6 mt-6">
+          <div>
+            <div className="text-[3rem] leading-none font-black text-white">{goals.length}</div>
+            <div className="text-sm text-zinc-500 font-bold uppercase tracking-wide">Life Goals</div>
+          </div>
+          <div>
+            <div className="text-[3rem] leading-none font-black text-blue-400">{projects.length}</div>
+            <div className="text-sm text-zinc-500 font-bold uppercase tracking-wide">Projects</div>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-6 space-y-4">
-        {goals.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-            <h3 className="text-title-lg font-semibold text-white mb-2">No Life Goals Yet</h3>
-            <p className="text-zinc-400">Create your first life goal to get started</p>
-          </div>
-        ) : (
-          goals.map(goal => {
+      {/* Goals - category colored zones */}
+      {goals.length === 0 ? (
+        <div className="px-6 py-24 text-center">
+          <div className="text-[4rem] mb-6">🎯</div>
+          <h3 className="text-3xl font-black text-white mb-3">No Goals Yet</h3>
+          <p className="text-lg text-zinc-500 mb-8">Create your first life goal</p>
+          <button
+            onClick={() => {
+              triggerHapticFeedback(HapticPatterns.LIGHT)
+              setShowGoalModal(true)
+            }}
+            className="px-8 py-4 bg-white text-black font-black text-lg rounded-lg hover:bg-zinc-200 transition-all active:scale-95"
+          >
+            CREATE GOAL
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {goals.map(goal => {
             const goalProjects = projectsByGoal[goal.id] || []
-            const isGoalExpanded = expandedGoals.has(goal.id)
+            const isExpanded = expandedGoals.has(goal.id)
+            const categoryColor = goal.category ? categoryColors[goal.category] : '#71717a'
+
+            // Calculate total tasks for this goal
+            const totalTasks = goalProjects.reduce((sum, p) => sum + (tasksByProject[p.id] || []).length, 0)
+            const completedTasks = goalProjects.reduce((sum, p) =>
+              sum + (tasksByProject[p.id] || []).filter(t => t.status === 'completed').length, 0
+            )
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
             return (
-              <div key={goal.id} className="bg-zinc-900 rounded-lg border border-purple-500/30 overflow-hidden">
-                {/* Goal Header */}
-                <div className="flex items-center">
-                  <button
-                    onClick={() => toggleGoal(goal.id)}
-                    className="flex-1 px-4 py-4 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <svg
-                        className={`w-5 h-5 text-purple-400 transition-transform ${
-                          isGoalExpanded ? 'rotate-90' : ''
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      <div className="flex-1 text-left">
-                        <div className="font-semibold text-white text-title-md">{goal.title}</div>
-                        {goal.description && (
-                          <div className="text-body-sm text-zinc-400 mt-1">{goal.description}</div>
-                        )}
-                        {goal.category && (
-                          <div className="mt-2 inline-block px-2 py-1 bg-purple-500/10 text-purple-400 text-label-sm rounded">
-                            {goal.category}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-zinc-800 text-zinc-400 text-body-sm rounded">
-                        {goalProjects.length} projects
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      triggerHapticFeedback(HapticPatterns.LIGHT)
-                      setSelectedGoalForProject(goal.id)
-                      setShowProjectModal(true)
-                    }}
-                    className="px-4 py-4 text-purple-400 hover:text-purple-300 transition-colors"
-                    aria-label="Add project to this goal"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <div key={goal.id}>
+                {/* Goal header - simplified */}
+                <button
+                  onClick={() => toggleGoal(goal.id)}
+                  className="w-full px-6 py-8 transition-all hover:opacity-90"
+                  style={{
+                    backgroundColor: `${categoryColor}15`,
+                    borderLeft: `8px solid ${categoryColor}`
+                  }}
+                >
+                  <div className="flex items-center gap-5">
+                    <svg
+                      className="w-8 h-8 transition-transform flex-shrink-0"
+                      style={{
+                        color: categoryColor,
+                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                      }}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                     </svg>
-                  </button>
-                </div>
+                    <div className="text-left flex-1">
+                      <div className="text-3xl font-black text-white leading-tight">{goal.title}</div>
+                      {goal.category && (
+                        <span className="text-sm font-black uppercase tracking-wider mt-2 inline-block" style={{ color: categoryColor }}>
+                          {goal.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
 
-                {/* Goal Projects */}
-                {isGoalExpanded && goalProjects.length > 0 && (
-                  <div className="px-4 pb-4 space-y-2 ml-8">
+                {/* Projects under goal */}
+                {isExpanded && goalProjects.length > 0 && (
+                  <div className="pl-12 py-4 space-y-2" style={{ backgroundColor: `${categoryColor}05` }}>
                     {goalProjects.map(project => {
                       const projectTasks = tasksByProject[project.id] || []
-                      const completedTasks = projectTasks.filter(t => t.status === 'completed')
-                      const isProjectExpanded = expandedProjects.has(project.id)
+                      const projectCompleted = projectTasks.filter(t => t.status === 'completed').length
+                      const projectProgress = projectTasks.length > 0
+                        ? Math.round((projectCompleted / projectTasks.length) * 100)
+                        : 0
 
                       return (
-                        <div key={project.id} className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-                          {/* Project Header */}
-                          <button
-                            onClick={() => toggleProject(project.id)}
-                            className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-700/50 transition-colors"
-                          >
-                            <div className="flex items-center gap-3 flex-1">
-                              <svg
-                                className={`w-4 h-4 text-blue-400 transition-transform ${
-                                  isProjectExpanded ? 'rotate-90' : ''
-                                }`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                              <div className="flex-1 text-left">
-                                <div className="font-medium text-white">{project.title}</div>
-                                {project.description && (
-                                  <div className="text-label-sm text-zinc-500 mt-1">{project.description}</div>
-                                )}
-                              </div>
-                            </div>
-                            <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-label-sm rounded">
-                              {projectTasks.length} tasks
-                            </span>
-                          </button>
-
-                          {/* Project Task Summary */}
-                          {isProjectExpanded && (
-                            <div className="px-4 pb-3 ml-6">
-                              <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-body-sm text-zinc-400">Task Progress</span>
-                                  <span className="text-body-sm font-semibold text-white">
-                                    {completedTasks.length}/{projectTasks.length}
-                                  </span>
-                                </div>
+                        <div
+                          key={project.id}
+                          className="py-4 px-6 border-l-4 transition-all hover:opacity-80"
+                          style={{ borderLeftColor: categoryColor }}
+                        >
+                          <div className="flex items-baseline justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="text-xl font-bold text-white">{project.title}</div>
+                              {project.description && (
+                                <div className="text-sm text-zinc-500 mt-1">{project.description}</div>
+                              )}
+                              <div className="flex items-center gap-3 mt-3">
+                                <span className="text-xs font-bold text-zinc-600 uppercase">
+                                  {projectTasks.length} tasks
+                                </span>
                                 {projectTasks.length > 0 && (
-                                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                  <div className="flex-1 max-w-[200px] h-1 bg-zinc-800 overflow-hidden">
                                     <div
-                                      className="h-full bg-emerald-500 transition-all"
+                                      className="h-full"
                                       style={{
-                                        width: `${(completedTasks.length / projectTasks.length) * 100}%`
+                                        backgroundColor: categoryColor,
+                                        width: `${projectProgress}%`
                                       }}
                                     />
                                   </div>
                                 )}
-                                {projectTasks.length === 0 && (
-                                  <p className="text-label-sm text-zinc-500 text-center py-2">No tasks yet</p>
-                                )}
                               </div>
                             </div>
-                          )}
+                            <div className="text-2xl font-black" style={{ color: categoryColor }}>
+                              {projectProgress}%
+                            </div>
+                          </div>
                         </div>
                       )
                     })}
                   </div>
                 )}
 
-                {/* Empty state for no projects */}
-                {isGoalExpanded && goalProjects.length === 0 && (
-                  <div className="px-4 pb-4 text-center">
-                    <p className="text-sm text-zinc-500">No projects yet</p>
-                  </div>
+                {/* Add project button */}
+                {isExpanded && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      triggerHapticFeedback(HapticPatterns.LIGHT)
+                      setSelectedGoalForProject(goal.id)
+                      setShowProjectModal(true)
+                    }}
+                    className="w-full py-4 px-6 text-left font-bold uppercase tracking-wider text-sm transition-all hover:opacity-60"
+                    style={{
+                      color: categoryColor,
+                      backgroundColor: `${categoryColor}05`
+                    }}
+                  >
+                    + Add Project
+                  </button>
                 )}
               </div>
             )
-          })
-        )}
+          })}
+        </div>
+      )}
 
-        {/* Add Goal Button */}
+      {/* Create goal button - bold */}
+      <div className="px-6 mt-8">
         <button
           onClick={() => {
             triggerHapticFeedback(HapticPatterns.LIGHT)
             setShowGoalModal(true)
           }}
-          className="w-full py-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-white font-semibold"
+          className="w-full py-6 bg-white text-black font-black text-xl rounded-lg hover:bg-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-3"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
           </svg>
-          Create New Goal
+          CREATE NEW GOAL
         </button>
-
-        {/* Orphaned Projects */}
-        {projectsByGoal['orphaned'] && projectsByGoal['orphaned'].length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-title-md font-semibold text-zinc-400 mb-3 px-2">Unassigned Projects</h3>
-            <div className="space-y-2">
-              {projectsByGoal['orphaned'].map(project => {
-                const projectTasks = tasksByProject[project.id] || []
-                const completedTasks = projectTasks.filter(t => t.status === 'completed')
-                const isProjectExpanded = expandedProjects.has(project.id)
-
-                return (
-                  <div key={project.id} className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-                    <button
-                      onClick={() => toggleProject(project.id)}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-700/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <svg
-                          className={`w-4 h-4 text-zinc-400 transition-transform ${
-                            isProjectExpanded ? 'rotate-90' : ''
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <div className="flex-1 text-left">
-                          <div className="font-medium text-white">{project.title}</div>
-                          {project.description && (
-                            <div className="text-label-sm text-zinc-500 mt-1">{project.description}</div>
-                          )}
-                        </div>
-                      </div>
-                      <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-label-sm rounded">
-                        {projectTasks.length} tasks
-                      </span>
-                    </button>
-
-                    {isProjectExpanded && (
-                      <div className="px-4 pb-3">
-                        <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-body-sm text-zinc-400">Task Progress</span>
-                            <span className="text-body-sm font-semibold text-white">
-                              {completedTasks.length}/{projectTasks.length}
-                            </span>
-                          </div>
-                          {projectTasks.length > 0 && (
-                            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-emerald-500 transition-all"
-                                style={{
-                                  width: `${(completedTasks.length / projectTasks.length) * 100}%`
-                                }}
-                              />
-                            </div>
-                          )}
-                          {projectTasks.length === 0 && (
-                            <p className="text-label-sm text-zinc-500 text-center py-2">No tasks yet</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Life Goal Modal */}
@@ -353,7 +269,6 @@ export default function VisionPage() {
         onClose={() => setShowGoalModal(false)}
         onSuccess={() => {
           setShowGoalModal(false)
-          loadData()
         }}
       />
 
@@ -368,7 +283,6 @@ export default function VisionPage() {
         onSuccess={() => {
           setShowProjectModal(false)
           setSelectedGoalForProject(undefined)
-          loadData()
         }}
       />
     </div>

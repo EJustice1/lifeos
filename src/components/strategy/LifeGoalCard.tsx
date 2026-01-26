@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo } from 'react'
 import type { LifeGoal, Project, Task } from '@/types/database'
 import { ProjectCard } from './ProjectCard'
 import { CollapsibleSection, ContentBlock, DataGrid, StatusBadge, Divider } from '@/components/editorial'
@@ -9,10 +9,9 @@ interface LifeGoalCardProps {
   goal: LifeGoal
   projects: Project[]
   tasksByProject: Record<string, Task[]>
-  onUpdate?: () => void
 }
 
-export function LifeGoalCard({ goal, projects, tasksByProject, onUpdate }: LifeGoalCardProps) {
+function LifeGoalCardComponent({ goal, projects, tasksByProject }: LifeGoalCardProps) {
   const getCategoryColor = (category: LifeGoal['category']): string => {
     if (!category) return '#71717a'
     const colors: Record<string, string> = {
@@ -91,7 +90,6 @@ export function LifeGoalCard({ goal, projects, tasksByProject, onUpdate }: LifeG
                 key={project.id}
                 project={project}
                 tasks={tasksByProject[project.id] || []}
-                onUpdate={onUpdate}
               />
             ))
           )}
@@ -100,3 +98,5 @@ export function LifeGoalCard({ goal, projects, tasksByProject, onUpdate }: LifeG
     </CollapsibleSection>
   )
 }
+
+export const LifeGoalCard = memo(LifeGoalCardComponent)

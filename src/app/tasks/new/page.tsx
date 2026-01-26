@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createTask, getProjects } from '@/lib/actions/tasks'
+import { useTasks } from '@/contexts/TaskContext'
+import { useProjects } from '@/contexts/ProjectContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { useMachine } from '@/lib/state-machines/useMachine'
 import { taskCreationConfig } from '@/lib/state-machines/taskCreationMachine'
-import type { Project } from '@/types/database'
 
 function NewTaskForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const defaultDate = searchParams.get('date') || ''
+  const { createTask } = useTasks()
+  const { projects, loading: loadingProjects } = useProjects()
   
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -19,27 +21,9 @@ function NewTaskForm() {
   const [scheduledDate, setScheduledDate] = useState(defaultDate)
   const [scheduledTime, setScheduledTime] = useState('')
   const [durationMinutes, setDurationMinutes] = useState<number | ''>('')
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loadingProjects, setLoadingProjects] = useState(true)
 
   // State machine for task creation
   const machine = useMachine(taskCreationConfig, 'idle', {})
-
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  async function loadProjects() {
-    try {
-      setLoadingProjects(true)
-      const projectsData = await getProjects(undefined, false)
-      setProjects(projectsData)
-    } catch (error) {
-      console.error('Failed to load projects:', error)
-    } finally {
-      setLoadingProjects(false)
-    }
-  }
 
   const handleSubmit = async (status: 'today' | 'backlog') => {
     if (!title.trim() || machine.state !== 'idle') return

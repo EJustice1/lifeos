@@ -42,9 +42,9 @@ export default function ActionsPage() {
       id: 'tasks',
       label: 'Tasks',
       description: 'View your tasks',
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
-      hoverColor: 'hover:bg-blue-500/20',
+      color: 'text-blue-300',
+      bgColor: 'bg-blue-500/15',
+      hoverColor: 'hover:bg-blue-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -64,9 +64,9 @@ export default function ActionsPage() {
       id: 'goals',
       label: 'Goals',
       description: 'View life goals',
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      hoverColor: 'hover:bg-purple-500/20',
+      color: 'text-purple-300',
+      bgColor: 'bg-purple-500/15',
+      hoverColor: 'hover:bg-purple-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -86,9 +86,9 @@ export default function ActionsPage() {
       id: 'workout',
       label: 'Start Workout',
       description: 'Begin gym session',
-      color: 'text-red-400',
-      bgColor: 'bg-red-500/10',
-      hoverColor: 'hover:bg-red-500/20',
+      color: 'text-red-300',
+      bgColor: 'bg-red-500/15',
+      hoverColor: 'hover:bg-red-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -108,9 +108,9 @@ export default function ActionsPage() {
       id: 'study',
       label: 'Start Study',
       description: 'Begin study session',
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
-      hoverColor: 'hover:bg-blue-500/20',
+      color: 'text-cyan-300',
+      bgColor: 'bg-cyan-500/15',
+      hoverColor: 'hover:bg-cyan-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -130,9 +130,9 @@ export default function ActionsPage() {
       id: 'add-task',
       label: 'Add Task',
       description: 'Create new task',
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10',
-      hoverColor: 'hover:bg-emerald-500/20',
+      color: 'text-emerald-300',
+      bgColor: 'bg-emerald-500/15',
+      hoverColor: 'hover:bg-emerald-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -152,9 +152,9 @@ export default function ActionsPage() {
       id: 'add-project',
       label: 'Add Project',
       description: 'Create new project',
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-500/10',
-      hoverColor: 'hover:bg-cyan-500/20',
+      color: 'text-indigo-300',
+      bgColor: 'bg-indigo-500/15',
+      hoverColor: 'hover:bg-indigo-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -174,9 +174,9 @@ export default function ActionsPage() {
       id: 'daily-review',
       label: 'Daily Review',
       description: 'Complete reflection',
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      hoverColor: 'hover:bg-purple-500/20',
+      color: 'text-pink-300',
+      bgColor: 'bg-pink-500/15',
+      hoverColor: 'hover:bg-pink-500/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -196,9 +196,9 @@ export default function ActionsPage() {
       id: 'settings',
       label: 'Settings',
       description: 'App preferences',
-      color: 'text-zinc-400',
-      bgColor: 'bg-zinc-500/10',
-      hoverColor: 'hover:bg-zinc-500/20',
+      color: 'text-zinc-300',
+      bgColor: 'bg-zinc-600/15',
+      hoverColor: 'hover:bg-zinc-600/25',
       icon: (
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -235,34 +235,131 @@ export default function ActionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-24">
-      {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
-        <div className="px-4 py-4">
-          <h1 className="text-headline-lg font-bold text-white mb-1">Actions</h1>
-          <p className="text-body-sm text-zinc-400">Quick access to all functions</p>
-        </div>
+    <div className="min-h-screen bg-zinc-950">
+      {/* Uniform action list - all items consistent */}
+      <div className="space-y-1 pt-2">
+        {/* Tasks */}
+        <button
+          onClick={actions[0].action}
+          className="w-full px-5 py-5 bg-blue-500/10 border-l-4 border-blue-500 hover:bg-blue-500/20 transition-all active:bg-blue-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-blue-400">
+              {actions[0].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Tasks</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Goals */}
+        <button
+          onClick={actions[1].action}
+          className="w-full px-5 py-5 bg-purple-500/10 border-l-4 border-purple-500 hover:bg-purple-500/20 transition-all active:bg-purple-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-purple-400">
+              {actions[1].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Goals</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Start Workout */}
+        <button
+          onClick={actions[2].action}
+          className="w-full px-5 py-5 bg-red-500/10 border-l-4 border-red-500 hover:bg-red-500/20 transition-all active:bg-red-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-red-400">
+              {actions[2].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Start Workout</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Start Study */}
+        <button
+          onClick={actions[3].action}
+          className="w-full px-5 py-5 bg-cyan-500/10 border-l-4 border-cyan-500 hover:bg-cyan-500/20 transition-all active:bg-cyan-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-cyan-400">
+              {actions[3].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Start Study</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Add Task */}
+        <button
+          onClick={actions[4].action}
+          className="w-full px-5 py-5 bg-emerald-500/10 border-l-4 border-emerald-500 hover:bg-emerald-500/20 transition-all active:bg-emerald-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-emerald-400">
+              {actions[4].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Add Task</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Add Project */}
+        <button
+          onClick={actions[5].action}
+          className="w-full px-5 py-5 bg-indigo-500/10 border-l-4 border-indigo-500 hover:bg-indigo-500/20 transition-all active:bg-indigo-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-indigo-400">
+              {actions[5].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Add Project</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Daily Review */}
+        <button
+          onClick={actions[6].action}
+          className="w-full px-5 py-5 bg-pink-500/10 border-l-4 border-pink-500 hover:bg-pink-500/20 transition-all active:bg-pink-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-pink-400">
+              {actions[6].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Daily Review</div>
+            </div>
+          </div>
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={actions[7].action}
+          className="w-full px-5 py-5 bg-zinc-600/15 border-l-4 border-zinc-600 hover:bg-zinc-600/25 transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-zinc-400">
+              {actions[7].icon}
+            </div>
+            <div className="text-left">
+              <div className="text-xl font-bold text-white leading-tight">Settings</div>
+            </div>
+          </div>
+        </button>
       </div>
 
-      {/* Action Grid */}
-      <div className="px-4 py-6">
-        <div className="grid grid-cols-2 gap-4">
-          {actions.map((action) => (
-            <button
-              key={action.id}
-              onClick={action.action}
-              className={`p-6 rounded-xl ${action.bgColor} ${action.hoverColor} border border-zinc-800 transition-all duration-200 hover:scale-105 active:scale-95 flex flex-col items-center gap-3`}
-            >
-              <div className={`${action.color} flex justify-center`}>{action.icon}</div>
-              <div className="text-center">
-                <div className="text-white font-semibold text-title-md mb-1">{action.label}</div>
-                <div className="text-zinc-400 text-label-sm">{action.description}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
+      <div className="h-24"></div>
     </div>
   )
 }

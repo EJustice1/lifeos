@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createProject, getLifeGoals } from '@/lib/actions/tasks'
+import { useProjects } from '@/contexts/ProjectContext'
+import { useGoals } from '@/contexts/GoalContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import type { LifeGoal } from '@/types/database'
 
 interface ProjectFormModalProps {
   isOpen: boolean
@@ -25,35 +25,20 @@ const PRESET_COLORS = [
 ]
 
 export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId }: ProjectFormModalProps) {
+  const { createProject } = useProjects()
+  const { goals: lifeGoals, loading: loadingGoals } = useGoals()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [lifeGoalId, setLifeGoalId] = useState(defaultLifeGoalId || '')
   const [color, setColor] = useState('#3b82f6')
   const [targetDate, setTargetDate] = useState('')
-  const [lifeGoals, setLifeGoals] = useState<LifeGoal[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadingGoals, setLoadingGoals] = useState(true)
 
   useEffect(() => {
-    if (isOpen) {
-      loadLifeGoals()
-      if (defaultLifeGoalId) {
-        setLifeGoalId(defaultLifeGoalId)
-      }
+    if (isOpen && defaultLifeGoalId) {
+      setLifeGoalId(defaultLifeGoalId)
     }
   }, [isOpen, defaultLifeGoalId])
-
-  async function loadLifeGoals() {
-    try {
-      setLoadingGoals(true)
-      const goalsData = await getLifeGoals(false)
-      setLifeGoals(goalsData)
-    } catch (error) {
-      console.error('Failed to load life goals:', error)
-    } finally {
-      setLoadingGoals(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

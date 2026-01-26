@@ -1,72 +1,58 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { LifeGoal, Project, Task } from '@/types/database'
-import { getLifeGoals, getProjects, getTasks } from '@/lib/actions/tasks'
+import { useGoals } from '@/contexts/GoalContext'
+import { useProjects } from '@/contexts/ProjectContext'
+import { useTasks } from '@/contexts/TaskContext'
 import { LifeGoalCard } from '@/components/strategy/LifeGoalCard'
 import { ProjectCard } from '@/components/strategy/ProjectCard'
 import { TaskListItem } from '@/components/strategy/TaskListItem'
 import { LifeGoalFormModal } from '@/components/modals/LifeGoalFormModal'
+import type { Task } from '@/types/database'
 
 export function StrategyHubClient() {
-  const [lifeGoals, setLifeGoals] = useState<LifeGoal[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const { goals: lifeGoals, loading: goalsLoading } = useGoals()
+  const { projects, loading: projectsLoading } = useProjects()
+  const { tasks, loading: tasksLoading } = useTasks()
   const [activeTab, setActiveTab] = useState<'today' | 'backlog' | 'projects' | 'goals'>('today')
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const loading = goalsLoading || projectsLoading || tasksLoading
 
-  async function loadData() {
-    try {
-      setLoading(true)
-      const [goalsData, projectsData, tasksData] = await Promise.all([
-        getLifeGoals(false), // Don't include archived
-        getProjects(undefined, false), // All projects, not archived
-        getTasks(), // All tasks
-      ])
-      
-      setLifeGoals(goalsData)
-      setProjects(projectsData)
-      setTasks(tasksData)
-    } catch (error) {
-      console.error('Failed to load strategy data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Memoize project grouping
+  const projectsByGoal = useMemo(() => 
+    projects.reduce((acc, project) => {
+      const goalId = project.life_goal_id || 'none'
+      if (!acc[goalId]) acc[goalId] = []
+      acc[goalId].push(project)
+      return acc
+    }, {} as Record<string, typeof projects>),
+    [projects]
+  )
 
-  // Group projects by life goal
-  const projectsByGoal = projects.reduce((acc, project) => {
-    const goalId = project.life_goal_id || 'none'
-    if (!acc[goalId]) acc[goalId] = []
-    acc[goalId].push(project)
-    return acc
-  }, {} as Record<string, Project[]>)
+  // Memoize task grouping
+  const tasksByProject = useMemo(() => 
+    tasks.reduce((acc, task) => {
+      const projectId = task.project_id || 'none'
+      if (!acc[projectId]) acc[projectId] = []
+      acc[projectId].push(task)
+      return acc
+    }, {} as Record<string, typeof tasks>),
+    [tasks]
+  )
 
-  // Group tasks by project
-  const tasksByProject = tasks.reduce((acc, task) => {
-    const projectId = task.project_id || 'none'
-    if (!acc[projectId]) acc[projectId] = []
-    acc[projectId].push(task)
-    return acc
-  }, {} as Record<string, Task[]>)
-
-  // Orphaned projects (no life goal)
-  const orphanedProjects = projectsByGoal['none'] || []
-
-  // Backlog tasks only (inbox has been removed)
-  const inboxTasks: Task[] = [] // Inbox concept removed
-  const backlogTasks = tasks.filter(t => t.status === 'backlog')
-  const orphanedTasks = tasks.filter(t => !t.project_id && t.status !== 'backlog')
+  // Memoize derived data
+  const orphanedProjects = useMemo(() => projectsByGoal['none'] || [], [projectsByGoal])
+  const backlogTasks = useMemo(() => tasks.filter(t => t.status === 'backlog'), [tasks])
+  const orphanedTasks = useMemo(() => tasks.filter(t => !t.project_id && t.status !== 'backlog'), [tasks])
   
   // Today's tasks
-  const today = new Date().toISOString().split('T')[0]
-  const todayTasks = tasks.filter(t => t.scheduled_date === today && t.status !== 'cancelled')
+  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const todayTasks = useMemo(() => 
+    tasks.filter(t => t.scheduled_date === today && t.status !== 'cancelled'),
+    [tasks, today]
+  )
 
   if (loading) {
     return (
@@ -168,7 +154,7 @@ export function StrategyHubClient() {
                   </div>
                 </div>
                 {todayTasks.map(task => (
-                  <TaskListItem key={task.id} task={task} onUpdate={loadData} />
+                  <TaskListItem key={task.id} task={task} />
                 ))}
               </>
             )}
@@ -206,7 +192,6 @@ export function StrategyHubClient() {
                       goal={goal}
                       projects={goalProjects}
                       tasksByProject={goalTasksByProject}
-                      onUpdate={loadData}
                     />
                   )
                 })}
@@ -221,7 +206,6 @@ export function StrategyHubClient() {
                           key={project.id}
                           project={project}
                           tasks={tasksByProject[project.id] || []}
-                          onUpdate={loadData}
                         />
                       ))}
                     </div>
@@ -250,7 +234,7 @@ export function StrategyHubClient() {
                   </p>
                 </div>
                 {backlogTasks.map(task => (
-                  <TaskListItem key={task.id} task={task} onUpdate={loadData} />
+                  <TaskListItem key={task.id} task={task} />
                 ))}
               </>
             )}
@@ -274,7 +258,6 @@ export function StrategyHubClient() {
                     key={project.id}
                     project={project}
                     tasks={tasksByProject[project.id] || []}
-                    onUpdate={loadData}
                   />
                 ))}
               </div>
@@ -302,7 +285,6 @@ export function StrategyHubClient() {
         onClose={() => setShowCreateGoalModal(false)}
         onSuccess={() => {
           setShowCreateGoalModal(false)
-          loadData()
         }}
       />
     </div>

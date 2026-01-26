@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createTask, getProjects } from '@/lib/actions/tasks'
+import { useState } from 'react'
+import { useTasks } from '@/contexts/TaskContext'
+import { useProjects } from '@/contexts/ProjectContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import type { Project } from '@/types/database'
 
 interface TaskFormModalProps {
   isOpen: boolean
@@ -13,6 +13,8 @@ interface TaskFormModalProps {
 }
 
 export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskFormModalProps) {
+  const { createTask } = useTasks()
+  const { projects, loading: loadingProjects } = useProjects()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [projectId, setProjectId] = useState<string>('')
@@ -21,27 +23,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
   const [durationMinutes, setDurationMinutes] = useState<number | ''>('')
   const [priority, setPriority] = useState(3)
   const [tags, setTags] = useState('')
-  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadingProjects, setLoadingProjects] = useState(true)
-
-  useEffect(() => {
-    if (isOpen) {
-      loadProjects()
-    }
-  }, [isOpen])
-
-  async function loadProjects() {
-    try {
-      setLoadingProjects(true)
-      const projectsData = await getProjects(undefined, false)
-      setProjects(projectsData)
-    } catch (error) {
-      console.error('Failed to load projects:', error)
-    } finally {
-      setLoadingProjects(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
