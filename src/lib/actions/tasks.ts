@@ -339,10 +339,10 @@ export async function updateLifeGoal(
   goalId: string,
   updates: {
     title?: string
-    description?: string
+    description?: string | null
     category?: LifeGoal['category']
     status?: LifeGoal['status']
-    target_date?: string
+    target_date?: string | null
     archived?: boolean
   }
 ) {
