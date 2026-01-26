@@ -45,11 +45,11 @@ export function ExercisePRDisplay({ exerciseId, currentWeight, currentReps }: Ex
   return (
     <div className="flex items-center gap-2">
       {isNewPR && (
-        <span className="px-2 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full animate-pulse">
+        <span className="px-2 py-1 bg-yellow-500 text-black text-label-sm font-bold rounded-full animate-pulse">
           NEW PR!
         </span>
       )}
-      <span className="text-xs text-zinc-400">
+      <span className="text-label-sm text-zinc-400">
         Current PR: {pr.weight} lbs × {pr.reps} (Est. 1RM: {pr.estimated_1rm})
       </span>
     </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect, memo, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { MobileCard } from '@/components/mobile/cards/MobileCard';
 import { useToast } from '@/components/mobile/feedback/ToastProvider';
 import {
   getMuscleGroupPercentiles,
@@ -21,7 +20,7 @@ const MuscleGroupRadarChart = dynamic(
       <div className="h-72 flex items-center justify-center">
         <div className="text-center text-zinc-400">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-          <p className="text-sm">Loading chart...</p>
+          <p className="text-body-sm">Loading chart...</p>
         </div>
       </div>
     )
@@ -122,7 +121,7 @@ export default function GymProgressPage() {
       <div className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold">Progress</h1>
+          <h1 className="text-headline-md font-bold">Progress</h1>
           <Link
             href="/m/gym"
             className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
@@ -134,27 +133,27 @@ export default function GymProgressPage() {
         </div>
 
         {!hasData ? (
-          <MobileCard className="text-center py-12">
+          <div className="text-center py-12">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 opacity-50 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <p className="text-lg mb-2 text-zinc-300">No Data Yet</p>
-            <p className="text-sm text-zinc-400 mb-4">Complete workouts to track progress</p>
+            <p className="text-title-md mb-2 text-zinc-300">No Data Yet</p>
+            <p className="text-body-sm text-zinc-400 mb-4">Complete workouts to track progress</p>
             <Link
               href="/m/gym"
               className="inline-block px-6 py-3 bg-[var(--mobile-accent)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
             >
               Start Workout
             </Link>
-          </MobileCard>
+          </div>
         ) : (
           <>
             {/* Workout Calendar */}
             <WorkoutCalendar workoutDates={workoutDates} />
 
             {/* Muscle Balance Radar */}
-            <MobileCard>
-              <h3 className="text-lg font-semibold mb-4">Muscle Balance</h3>
+            <div>
+              <h3 className="text-title-lg font-semibold mb-4 text-white">Muscle Balance</h3>
               {muscleGroupData ? (
                 <div className="h-72">
                   <MuscleGroupRadarChart percentiles={muscleGroupData} />
@@ -163,16 +162,16 @@ export default function GymProgressPage() {
                 <div className="h-72 flex items-center justify-center">
                   <div className="text-center text-zinc-400">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                    <p className="text-sm">Loading muscle data...</p>
+                    <p className="text-body-sm">Loading muscle data...</p>
                   </div>
                 </div>
               )}
-            </MobileCard>
+            </div>
 
             {/* Personal Records */}
             {personalRecords.length > 0 && (
-              <MobileCard>
-                <h3 className="text-lg font-semibold mb-4">Key Personal Records</h3>
+              <div>
+                <h3 className="text-title-lg font-semibold mb-4 text-white">Key Personal Records</h3>
                 <div className="space-y-2">
                   {personalRecords.map((pr: any) => (
                     <div
@@ -181,7 +180,7 @@ export default function GymProgressPage() {
                     >
                       <div>
                         <div className="font-medium text-white">{pr.exercise?.name || 'Unknown'}</div>
-                        <div className="text-xs text-zinc-400">
+                        <div className="text-label-sm text-zinc-400">
                           {new Date(pr.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                       </div>
@@ -189,14 +188,14 @@ export default function GymProgressPage() {
                         <div className="font-bold text-yellow-400">
                           {pr.weight} lbs × {pr.reps}
                         </div>
-                        <div className="text-xs text-zinc-400">
+                        <div className="text-label-sm text-zinc-400">
                           1RM: {pr.estimated_1rm}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </MobileCard>
+              </div>
             )}
           </>
         )}
@@ -287,16 +286,16 @@ const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
   };
 
   return (
-    <MobileCard>
+    <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Workout Calendar</h3>
-        <div className="text-sm text-zinc-400">{currentMonthName}</div>
+        <h3 className="text-title-lg font-semibold text-white">Workout Calendar</h3>
+        <div className="text-body-sm text-zinc-400">{currentMonthName}</div>
       </div>
 
       {/* Day labels */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <div key={i} className="text-center text-xs font-medium text-zinc-500 py-1">
+          <div key={i} className="text-center text-label-sm font-medium text-zinc-500 py-1">
             {day}
           </div>
         ))}
@@ -314,7 +313,7 @@ const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
                 <div
                   key={dayIdx}
                   className={`
-                    aspect-square flex items-center justify-center rounded-lg text-sm
+                    aspect-square flex items-center justify-center rounded-lg text-body-sm
                     ${!date ? 'invisible' : ''}
                     ${workout ? 'bg-[var(--mobile-accent)] text-white font-bold' : 'bg-zinc-800/50 text-zinc-400'}
                     ${today && !workout ? 'ring-2 ring-white ring-inset' : ''}
@@ -331,7 +330,7 @@ const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-4 text-xs text-zinc-400">
+      <div className="flex items-center justify-center gap-4 mt-4 text-label-sm text-zinc-400">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-[var(--mobile-accent)]"></div>
           <span>Workout</span>
@@ -341,7 +340,7 @@ const WorkoutCalendar = memo(({ workoutDates }: { workoutDates: string[] }) => {
           <span>Today</span>
         </div>
       </div>
-    </MobileCard>
+    </div>
   );
 });
 

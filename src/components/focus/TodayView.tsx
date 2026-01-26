@@ -10,6 +10,7 @@ import type { GoogleCalendarEvent, Task } from '@/types/database'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/web'
+import { Section, Timeline, Divider, StatusBadge } from '@/components/editorial'
 
 export function TodayView() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -68,7 +69,7 @@ export function TodayView() {
   }
 
   return (
-    <div className="space-y-6">
+    <Section spacing="normal">
       {/* Calendar Strip */}
       <WeeklyCalendarStrip
         selectedDate={selectedDate}
@@ -78,81 +79,76 @@ export function TodayView() {
 
       {/* Calendar Events */}
       {calendarEvents.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
-            Calendar Events
-          </h3>
-          {calendarEvents.map((event) => (
-            <div
-              key={event.id}
-              className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg"
-            >
-              <div className="font-medium text-white">{event.summary}</div>
-              {event.start_time && (
-                <div className="text-sm text-zinc-400 mt-1">
-                  {new Date(event.start_time).toLocaleTimeString('en-US', {
+        <>
+          <Divider spacing="normal" label="Calendar Events" />
+          <Timeline
+            items={calendarEvents.map(event => ({
+              time: event.start_time
+                ? new Date(event.start_time).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                  })
+                : undefined,
+              title: event.summary || 'Untitled Event',
+              description: event.description || undefined,
+            }))}
+            variant="default"
+          />
+        </>
       )}
 
       {/* Active Tasks */}
       {activeTasks.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
-            Tasks ({activeTasks.length})
-          </h3>
-          {activeTasks.map((task) => (
-            <SwipeableTaskCard
-              key={task.id}
-              task={task}
-              onToggleComplete={handleToggleComplete}
-              onUpdate={updateTask}
-              onTap={(t) => {
-                if (t.linked_domain) {
-                  setDomainLaunchTask(t)
-                }
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <Divider spacing="normal" label={`Tasks (${activeTasks.length})`} />
+          <div className="space-y-0">
+            {activeTasks.map((task) => (
+              <SwipeableTaskCard
+                key={task.id}
+                task={task}
+                onToggleComplete={handleToggleComplete}
+                onUpdate={updateTask}
+                onTap={(t) => {
+                  if (t.linked_domain) {
+                    setDomainLaunchTask(t)
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Completed Tasks */}
       {completedTasks.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
-            Completed ({completedTasks.length})
-          </h3>
-          {completedTasks.map((task) => (
-            <div
-              key={task.id}
-              className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg opacity-60"
-            >
-              <div className="flex items-start gap-3">
-                <button
-                  onClick={() => handleToggleComplete(task)}
-                  className="mt-0.5 w-6 h-6 rounded-full border-2 border-emerald-500 bg-emerald-500 flex items-center justify-center flex-shrink-0"
-                >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-                <div className="flex-1">
-                  <div className="text-zinc-400 line-through">{task.title}</div>
-                  {task.description && (
-                    <div className="text-sm text-zinc-600 mt-1">{task.description}</div>
-                  )}
+        <>
+          <Divider spacing="normal" label={`Completed (${completedTasks.length})`} variant="subtle" />
+          <div className="space-y-0">
+            {completedTasks.map((task) => (
+              <div
+                key={task.id}
+                className="border-b border-zinc-800 py-4 px-4 opacity-60 border-l-[3px] border-l-emerald-500"
+              >
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => handleToggleComplete(task)}
+                    className="mt-0.5 w-6 h-6 rounded-full border-2 border-emerald-500 bg-emerald-500 flex items-center justify-center flex-shrink-0"
+                  >
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <div className="flex-1">
+                    <div className="text-title-md text-zinc-400 line-through">{task.title}</div>
+                    {task.description && (
+                      <div className="text-body-sm text-zinc-600 mt-1">{task.description}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Empty State */}
@@ -161,8 +157,8 @@ export function TodayView() {
           <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-xl font-semibold text-white mb-2">No Tasks Today</h3>
-          <p className="text-zinc-400">Add tasks from the backlog or use the + button</p>
+          <h3 className="text-headline-md font-semibold text-white mb-2">No Tasks Today</h3>
+          <p className="text-body-md text-zinc-400">Add tasks from the backlog or use the + button</p>
         </div>
       )}
 
@@ -177,7 +173,7 @@ export function TodayView() {
           onClose={() => setDomainLaunchTask(null)}
         />
       )}
-    </div>
+    </Section>
   )
 }
 
@@ -246,11 +242,14 @@ function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: Swipeabl
         {...bind()}
         style={{ x }}
         onClick={() => onTap?.(task)}
-        className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 touch-pan-y cursor-pointer"
+        className="border-b border-zinc-800 py-4 px-4 touch-pan-y cursor-pointer hover:bg-zinc-900/50 transition-colors border-l-[3px] border-l-blue-400"
       >
         <div className="flex items-start gap-3">
           <button
-            onClick={() => onToggleComplete(task)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleComplete(task)
+            }}
             className="mt-0.5 w-6 h-6 rounded-full border-2 border-zinc-600 hover:border-emerald-500 flex items-center justify-center flex-shrink-0 transition-colors"
           >
             {task.status === 'completed' && (
@@ -259,19 +258,23 @@ function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: Swipeabl
               </svg>
             )}
           </button>
-          <div className="flex-1">
-            <div className="text-white font-medium">{task.title}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-title-md font-medium text-white">{task.title}</div>
             {task.description && (
-              <div className="text-sm text-zinc-400 mt-1">{task.description}</div>
+              <div className="text-body-sm text-zinc-400 mt-1">{task.description}</div>
             )}
-            {task.scheduled_time && (
-              <div className="text-xs text-zinc-500 mt-2">{task.scheduled_time}</div>
-            )}
-            {task.linked_domain && (
-              <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded">
-                {task.linked_domain === 'gym' ? '💪' : '📚'} {task.linked_domain}
-              </div>
-            )}
+            <div className="flex items-center gap-3 mt-2">
+              {task.scheduled_time && (
+                <span className="text-label-md text-zinc-500 font-mono">{task.scheduled_time}</span>
+              )}
+              {task.linked_domain && (
+                <StatusBadge
+                  status={task.linked_domain === 'gym' ? 'in_progress' : 'today'}
+                  label={`${task.linked_domain === 'gym' ? '💪' : '📚'} ${task.linked_domain}`}
+                  size="sm"
+                />
+              )}
+            </div>
           </div>
         </div>
       </animated.div>

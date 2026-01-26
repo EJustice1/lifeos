@@ -13,9 +13,9 @@ export const AdjustButton: React.FC<AdjustButtonProps> = ({
   ...props
 }) => {
   const sizeClasses = {
-    sm: 'w-12 h-12 text-lg',
-    md: 'w-16 h-16 text-2xl',
-    lg: 'w-20 h-20 text-3xl',
+    sm: 'w-12 h-12 text-title-md',
+    md: 'w-16 h-16 text-headline-md',
+    lg: 'w-20 h-20 text-headline-lg',
   };
 
   const handleClickWithHaptic = (e: React.MouseEvent<HTMLButtonElement>) => {

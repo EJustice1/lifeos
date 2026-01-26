@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { getUserSettings, updateUserSettings } from '@/lib/actions/settings'
 import { endAllActiveStudySessions } from '@/lib/actions/study'
 import { endAllActiveWorkouts } from '@/lib/actions/gym'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import Link from 'next/link'
 
@@ -118,8 +117,8 @@ export default function SettingsPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center pt-4 pb-2">
-          <h1 className="text-2xl font-bold mb-2">Settings</h1>
-          <p className="text-zinc-400 text-sm">Configure your daily goals</p>
+          <h1 className="text-headline-md font-bold mb-2">Settings</h1>
+          <p className="text-zinc-400 text-body-sm">Configure your daily goals</p>
         </div>
 
         {/* Message Toast */}
@@ -131,13 +130,14 @@ export default function SettingsPage() {
                 : 'bg-red-900/30 border-red-500 text-red-300'
             }`}
           >
-            <p className="text-sm font-medium">{message.text}</p>
+            <p className="text-body-sm font-medium">{message.text}</p>
           </div>
         )}
 
         {/* Study Target */}
-        <MobileCard title="Study Target">
-          <p className="text-sm text-zinc-400 mb-4">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Study Target</h3>
+          <p className="text-body-sm text-zinc-400 mb-4">
             Daily study time goal (used for execution score validation)
           </p>
 
@@ -183,7 +183,7 @@ export default function SettingsPage() {
                 <button
                   key={mins}
                   onClick={() => setStudyTarget(mins)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${
+                  className={`flex-1 py-2 px-3 rounded-lg text-label-sm font-medium transition-colors ${
                     studyTarget === mins
                       ? 'bg-purple-500 text-white'
                       : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -194,11 +194,12 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-        </MobileCard>
+        </div>
 
         {/* Workout Target */}
-        <MobileCard title="Workout Target">
-          <p className="text-sm text-zinc-400 mb-4">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Workout Target</h3>
+          <p className="text-body-sm text-zinc-400 mb-4">
             Daily workout sessions goal (used for execution score validation)
           </p>
 
@@ -244,7 +245,7 @@ export default function SettingsPage() {
                 <button
                   key={sessions}
                   onClick={() => setWorkoutTarget(sessions)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors ${
+                  className={`flex-1 py-2 px-3 rounded-lg text-label-sm font-medium transition-colors ${
                     workoutTarget === sessions
                       ? 'bg-purple-500 text-white'
                       : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -255,12 +256,12 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-        </MobileCard>
+        </div>
 
         {/* Information Card */}
         <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg">
-          <h3 className="text-sm font-semibold text-purple-400 mb-2">How These Goals Are Used</h3>
-          <ul className="space-y-2 text-xs text-zinc-400">
+          <h3 className="text-body-sm font-semibold text-purple-400 mb-2">How These Goals Are Used</h3>
+          <ul className="space-y-2 text-label-sm text-zinc-400">
             <li className="flex gap-2">
               <span className="text-purple-400">•</span>
               <span>Used to calculate your suggested execution score in daily review</span>
@@ -292,8 +293,9 @@ export default function SettingsPage() {
         </PrimaryButton>
 
         {/* Integrations Section */}
-        <MobileCard title="Integrations">
-          <p className="text-sm text-zinc-400 mb-4">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Integrations</h3>
+          <p className="text-body-sm text-zinc-400 mb-4">
             Connect external services to enhance your workflow
           </p>
           
@@ -307,7 +309,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="font-medium text-white">Google Calendar</div>
-                  <div className="text-xs text-zinc-400">Sync events and tasks</div>
+                  <div className="text-label-sm text-zinc-400">Sync events and tasks</div>
                 </div>
               </div>
               <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,20 +317,21 @@ export default function SettingsPage() {
               </svg>
             </div>
           </Link>
-        </MobileCard>
+        </div>
 
         {/* Maintenance Section */}
-        <MobileCard title="Maintenance">
-          <p className="text-sm text-zinc-400 mb-4">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Maintenance</h3>
+          <p className="text-body-sm text-zinc-400 mb-4">
             Clean up orphaned or stuck sessions
           </p>
 
           <div className="space-y-3">
             <div className="p-3 bg-amber-900/20 border border-amber-600/30 rounded-lg">
-              <p className="text-xs text-amber-300 mb-2">
+              <p className="text-label-sm text-amber-300 mb-2">
                 ⚠️ Use this if you have a session that won't end or is stuck showing incorrect time.
               </p>
-              <p className="text-xs text-zinc-400">
+              <p className="text-label-sm text-zinc-400">
                 This will forcefully end all active study and gym sessions in the database.
               </p>
             </div>
@@ -341,7 +344,7 @@ export default function SettingsPage() {
               {cleaning ? 'Cleaning up...' : 'Clean Up Orphaned Sessions'}
             </button>
           </div>
-        </MobileCard>
+        </div>
       </div>
     </div>
   )

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { useDailyReview } from './DailyReviewContext'
 
@@ -43,8 +42,8 @@ export default function TomorrowGoals({ onSubmit, onBack, isSubmitting = false }
   }
 
   return (
-    <MobileCard>
-      <h2 className="text-2xl font-bold mb-2">Tomorrow's Focus</h2>
+    <div>
+      <h2 className="text-headline-md font-bold mb-2">Tomorrow's Focus</h2>
       <p className="text-zinc-400 mb-6">What are your top priorities for tomorrow?</p>
 
       {/* Goal Input */}
@@ -74,7 +73,7 @@ export default function TomorrowGoals({ onSubmit, onBack, isSubmitting = false }
           </button>
         </div>
         {goals.length >= 5 && (
-          <p className="text-xs text-yellow-400 mt-2">Maximum 5 goals reached</p>
+          <p className="text-label-sm text-yellow-400 mt-2">Maximum 5 goals reached</p>
         )}
       </div>
 
@@ -137,6 +136,6 @@ export default function TomorrowGoals({ onSubmit, onBack, isSubmitting = false }
           </PrimaryButton>
         </div>
       </div>
-    </MobileCard>
+    </div>
   )
 }

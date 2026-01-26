@@ -37,11 +37,11 @@ export function RatingWidget({
     <div className="space-y-4">
       {/* Main title above everything */}
       <div className="text-left">
-        <h3 className={`text-xl font-bold ${titleColor} mb-1`}>
+        <h3 className={`text-title-lg font-bold ${titleColor} mb-1`}>
           {title}
         </h3>
         {description && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-body-sm text-zinc-500">
             {description}
           </p>
         )}
@@ -50,7 +50,7 @@ export function RatingWidget({
       {/* Selected option label above rating (left aligned) */}
       {selectedOption && (
         <div className="text-left">
-          <div className={`text-2xl font-bold ${selectedOption.color}`}>
+          <div className={`text-headline-md font-bold ${selectedOption.color}`}>
             {selectedOption.label}
           </div>
         </div>
@@ -78,7 +78,7 @@ export function RatingWidget({
       {/* Description below rating (left aligned) */}
       {selectedOption && (
         <div className="text-left">
-          <p className="text-sm text-zinc-400">
+          <p className="text-body-sm text-zinc-400">
             {selectedOption.description}
           </p>
         </div>

@@ -70,7 +70,7 @@ export function ExecutionSlider({
               i === currentIndex ? 'scale-110' : 'opacity-40 scale-90'
             } ${level.value > maxValue && !isOverrideEnabled ? 'opacity-20 cursor-not-allowed' : 'hover:opacity-100 cursor-pointer'}`}
           >
-            <div className="text-xl">{level.emoji}</div>
+            <div className="text-title-lg">{level.emoji}</div>
             <div
               className={`text-[10px] font-medium ${
                 i === currentIndex ? level.color : 'text-zinc-500'

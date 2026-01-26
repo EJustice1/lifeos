@@ -113,7 +113,7 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
         <svg className="w-16 h-16 mx-auto text-emerald-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <h3 className="text-xl font-semibold text-white mb-2">No Tasks Today!</h3>
+        <h3 className="text-title-lg font-semibold text-white mb-2">No Tasks Today!</h3>
         <p className="text-zinc-400">You had no tasks scheduled for today</p>
       </div>
     )
@@ -126,7 +126,7 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
           <svg className="w-16 h-16 mx-auto text-emerald-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-xl font-semibold text-white mb-2">All Incomplete Tasks Processed!</h3>
+          <h3 className="text-title-lg font-semibold text-white mb-2">All Incomplete Tasks Processed!</h3>
           <p className="text-zinc-400">Review your completed tasks below</p>
         </div>
 
@@ -164,7 +164,7 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
             </svg>
             Completed Tasks ({completedTasks.length})
           </h3>
-          <p className="text-sm text-zinc-400 mb-3">
+          <p className="text-body-sm text-zinc-400 mb-3">
             Great job! Tap any task to mark it as incomplete if needed.
           </p>
           <div className="space-y-2">
@@ -186,7 +186,7 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
           {/* Instructions */}
           <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
             <h3 className="font-semibold text-white mb-2">Process Incomplete Tasks</h3>
-            <p className="text-sm text-zinc-400">
+            <p className="text-body-sm text-zinc-400">
               Tap on the left (Backlog) or right (Tomorrow) side of each task card to make your choice.
             </p>
           </div>
@@ -251,7 +251,7 @@ function TaskChoiceCard({ task, choice, processed, onChoose, onDelete, disabled 
           }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
           </svg>
-          <span className={`text-xs font-medium transition-colors ${
+          <span className={`text-label-sm font-medium transition-colors ${
             choice === 'backlog' ? 'text-purple-400' : 'text-zinc-600'
           }`}>
             Backlog
@@ -264,11 +264,11 @@ function TaskChoiceCard({ task, choice, processed, onChoose, onDelete, disabled 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-white mb-1">{task.title}</h4>
               {task.description && (
-                <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{task.description}</p>
+                <p className="text-body-sm text-zinc-400 line-clamp-2 mb-2">{task.description}</p>
               )}
               <div className="flex items-center gap-2 flex-wrap">
                 {task.scheduled_time && (
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-label-sm text-zinc-500">
                     {task.scheduled_time}
                   </span>
                 )}
@@ -313,7 +313,7 @@ function TaskChoiceCard({ task, choice, processed, onChoose, onDelete, disabled 
           }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
-          <span className={`text-xs font-medium transition-colors ${
+          <span className={`text-label-sm font-medium transition-colors ${
             choice === 'tomorrow' ? 'text-emerald-400' : 'text-zinc-600'
           }`}>
             Tomorrow
@@ -349,18 +349,18 @@ function CompletedTaskCard({ task, onToggleComplete, disabled }: CompletedTaskCa
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-zinc-400 line-through">{task.title}</h4>
           {task.description && (
-            <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{task.description}</p>
+            <p className="text-body-sm text-zinc-500 line-clamp-2 mt-1">{task.description}</p>
           )}
           <div className="flex items-center gap-2 flex-wrap mt-2">
             {task.tags && task.tags.length > 0 && (
               task.tags.map(tag => (
-                <span key={tag} className="px-2 py-0.5 bg-zinc-800 text-zinc-500 text-xs rounded">
+                <span key={tag} className="px-2 py-0.5 bg-zinc-800 text-zinc-500 text-label-sm rounded">
                   {tag}
                 </span>
               ))
             )}
             {task.scheduled_time && (
-              <span className="text-xs text-zinc-600">
+              <span className="text-label-sm text-zinc-600">
                 {task.scheduled_time}
               </span>
             )}

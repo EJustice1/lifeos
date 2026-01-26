@@ -23,9 +23,9 @@ export function OverrideConfirmationModal({
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">⚠️</div>
-          <h2 className="text-xl font-bold text-white mb-2">Override Score Cap?</h2>
-          <p className="text-sm text-zinc-400">
+          <div className="text-display-lg mb-3">⚠️</div>
+          <h2 className="text-title-lg font-bold text-white mb-2">Override Score Cap?</h2>
+          <p className="text-body-sm text-zinc-400">
             Your behavioral data suggests a different score
           </p>
         </div>
@@ -35,15 +35,15 @@ export function OverrideConfirmationModal({
           {/* Attempted Score */}
           <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
-              <div className="text-3xl">{attemptedLevel.emoji}</div>
+              <div className="text-headline-lg">{attemptedLevel.emoji}</div>
               <div className="flex-1">
-                <div className="text-sm text-zinc-400">You selected:</div>
-                <div className={`text-lg font-bold ${attemptedLevel.color}`}>
+                <div className="text-body-sm text-zinc-400">You selected:</div>
+                <div className={`text-title-md font-bold ${attemptedLevel.color}`}>
                   {attemptedLevel.label} ({currentScore})
                 </div>
               </div>
             </div>
-            <p className="text-xs text-zinc-400">{attemptedLevel.description}</p>
+            <p className="text-label-sm text-zinc-400">{attemptedLevel.description}</p>
           </div>
 
           {/* Arrow */}
@@ -61,21 +61,21 @@ export function OverrideConfirmationModal({
           {/* Max Allowed Score */}
           <div className="p-4 bg-yellow-900/20 border border-yellow-500/50 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
-              <div className="text-3xl">{maxAllowedLevel.emoji}</div>
+              <div className="text-headline-lg">{maxAllowedLevel.emoji}</div>
               <div className="flex-1">
-                <div className="text-sm text-zinc-400">Data suggests max:</div>
-                <div className={`text-lg font-bold ${maxAllowedLevel.color}`}>
+                <div className="text-body-sm text-zinc-400">Data suggests max:</div>
+                <div className={`text-title-md font-bold ${maxAllowedLevel.color}`}>
                   {maxAllowedLevel.label} ({maxAllowed})
                 </div>
               </div>
             </div>
-            <p className="text-xs text-zinc-400">{maxAllowedLevel.description}</p>
+            <p className="text-label-sm text-zinc-400">{maxAllowedLevel.description}</p>
           </div>
         </div>
 
         {/* Warning Message */}
         <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg mb-6">
-          <p className="text-xs text-zinc-400 leading-relaxed">
+          <p className="text-label-sm text-zinc-400 leading-relaxed">
             <span className="font-semibold text-yellow-400">Warning:</span> Overriding this cap
             will be recorded. Consistent overrides may indicate misaligned self-assessment and
             could skew your long-term trends.
@@ -99,7 +99,7 @@ export function OverrideConfirmationModal({
         </div>
 
         {/* Tip */}
-        <p className="text-center text-xs text-zinc-500 mt-4">
+        <p className="text-center text-label-sm text-zinc-500 mt-4">
           Tip: Adjust your score to match the data for accurate insights
         </p>
       </div>

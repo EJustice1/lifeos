@@ -123,8 +123,8 @@ function DailyContextReviewPage() {
         <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
           <div className="flex items-center justify-between px-4 py-3">
             <div>
-              <h1 className="text-xl font-bold text-white">Daily Review</h1>
-              <p className="text-sm text-zinc-400">
+              <h1 className="text-title-lg font-bold text-white">Daily Review</h1>
+              <p className="text-body-sm text-zinc-400">
                 Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
               </p>
             </div>

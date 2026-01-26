@@ -108,8 +108,8 @@ export default function VisionPage() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="px-4 py-4">
-          <h1 className="text-3xl font-bold text-white mb-1">Goals</h1>
-          <p className="text-sm text-zinc-400">Your life goals and projects</p>
+          <h1 className="text-headline-lg font-bold text-white mb-1">Goals</h1>
+          <p className="text-body-sm text-zinc-400">Your life goals and projects</p>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function VisionPage() {
             <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
-            <h3 className="text-xl font-semibold text-white mb-2">No Life Goals Yet</h3>
+            <h3 className="text-title-lg font-semibold text-white mb-2">No Life Goals Yet</h3>
             <p className="text-zinc-400">Create your first life goal to get started</p>
           </div>
         ) : (
@@ -148,19 +148,19 @@ export default function VisionPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                       <div className="flex-1 text-left">
-                        <div className="font-semibold text-white text-lg">{goal.title}</div>
+                        <div className="font-semibold text-white text-title-md">{goal.title}</div>
                         {goal.description && (
-                          <div className="text-sm text-zinc-400 mt-1">{goal.description}</div>
+                          <div className="text-body-sm text-zinc-400 mt-1">{goal.description}</div>
                         )}
                         {goal.category && (
-                          <div className="mt-2 inline-block px-2 py-1 bg-purple-500/10 text-purple-400 text-xs rounded">
+                          <div className="mt-2 inline-block px-2 py-1 bg-purple-500/10 text-purple-400 text-label-sm rounded">
                             {goal.category}
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-zinc-800 text-zinc-400 text-sm rounded">
+                      <span className="px-2 py-1 bg-zinc-800 text-zinc-400 text-body-sm rounded">
                         {goalProjects.length} projects
                       </span>
                     </div>
@@ -209,11 +209,11 @@ export default function VisionPage() {
                               <div className="flex-1 text-left">
                                 <div className="font-medium text-white">{project.title}</div>
                                 {project.description && (
-                                  <div className="text-xs text-zinc-500 mt-1">{project.description}</div>
+                                  <div className="text-label-sm text-zinc-500 mt-1">{project.description}</div>
                                 )}
                               </div>
                             </div>
-                            <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-xs rounded">
+                            <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-label-sm rounded">
                               {projectTasks.length} tasks
                             </span>
                           </button>
@@ -223,8 +223,8 @@ export default function VisionPage() {
                             <div className="px-4 pb-3 ml-6">
                               <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
                                 <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm text-zinc-400">Task Progress</span>
-                                  <span className="text-sm font-semibold text-white">
+                                  <span className="text-body-sm text-zinc-400">Task Progress</span>
+                                  <span className="text-body-sm font-semibold text-white">
                                     {completedTasks.length}/{projectTasks.length}
                                   </span>
                                 </div>
@@ -239,7 +239,7 @@ export default function VisionPage() {
                                   </div>
                                 )}
                                 {projectTasks.length === 0 && (
-                                  <p className="text-xs text-zinc-500 text-center py-2">No tasks yet</p>
+                                  <p className="text-label-sm text-zinc-500 text-center py-2">No tasks yet</p>
                                 )}
                               </div>
                             </div>
@@ -278,7 +278,7 @@ export default function VisionPage() {
         {/* Orphaned Projects */}
         {projectsByGoal['orphaned'] && projectsByGoal['orphaned'].length > 0 && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold text-zinc-400 mb-3 px-2">Unassigned Projects</h3>
+            <h3 className="text-title-md font-semibold text-zinc-400 mb-3 px-2">Unassigned Projects</h3>
             <div className="space-y-2">
               {projectsByGoal['orphaned'].map(project => {
                 const projectTasks = tasksByProject[project.id] || []
@@ -305,11 +305,11 @@ export default function VisionPage() {
                         <div className="flex-1 text-left">
                           <div className="font-medium text-white">{project.title}</div>
                           {project.description && (
-                            <div className="text-xs text-zinc-500 mt-1">{project.description}</div>
+                            <div className="text-label-sm text-zinc-500 mt-1">{project.description}</div>
                           )}
                         </div>
                       </div>
-                      <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-xs rounded">
+                      <span className="px-2 py-1 bg-zinc-700 text-zinc-400 text-label-sm rounded">
                         {projectTasks.length} tasks
                       </span>
                     </button>
@@ -318,8 +318,8 @@ export default function VisionPage() {
                       <div className="px-4 pb-3">
                         <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-zinc-400">Task Progress</span>
-                            <span className="text-sm font-semibold text-white">
+                            <span className="text-body-sm text-zinc-400">Task Progress</span>
+                            <span className="text-body-sm font-semibold text-white">
                               {completedTasks.length}/{projectTasks.length}
                             </span>
                           </div>
@@ -334,7 +334,7 @@ export default function VisionPage() {
                             </div>
                           )}
                           {projectTasks.length === 0 && (
-                            <p className="text-xs text-zinc-500 text-center py-2">No tasks yet</p>
+                            <p className="text-label-sm text-zinc-500 text-center py-2">No tasks yet</p>
                           )}
                         </div>
                       </div>

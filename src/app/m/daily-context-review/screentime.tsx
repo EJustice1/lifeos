@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { useDailyReview } from './DailyReviewContext'
 
 export default function ScreentimeStep() {
@@ -31,17 +30,18 @@ export default function ScreentimeStep() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center mb-6">Screentime</h1>
+      <h1 className="text-headline-md font-bold text-center mb-6">Screentime</h1>
 
       {/* Screentime Input */}
-      <MobileCard title="Total Screentime Today">
-        <p className="text-sm text-zinc-400 mb-4">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Total Screentime Today</h3>
+        <p className="text-body-sm text-zinc-400 mb-4">
           How much time did you spend on screens today?
         </p>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-body-sm font-medium text-zinc-300 mb-2">
               Hours
             </label>
             <input
@@ -50,12 +50,12 @@ export default function ScreentimeStep() {
               max="24"
               value={hours}
               onChange={(e) => handleHoursChange(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center text-2xl font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center text-headline-md font-mono focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-body-sm font-medium text-zinc-300 mb-2">
               Minutes
             </label>
             <input
@@ -64,7 +64,7 @@ export default function ScreentimeStep() {
               max="59"
               value={minutes}
               onChange={(e) => handleMinutesChange(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center text-2xl font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center text-headline-md font-mono focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
         </div>
@@ -74,19 +74,20 @@ export default function ScreentimeStep() {
           <div className="mt-4 p-3 bg-zinc-800 rounded-lg">
             <div className="flex items-center justify-between">
               <span className="text-zinc-400">Total:</span>
-              <span className={`text-lg font-semibold ${screenTimeStatus.color}`}>
+              <span className={`text-title-md font-semibold ${screenTimeStatus.color}`}>
                 {hours}h {minutes}m
               </span>
             </div>
-            <p className={`text-sm mt-1 ${screenTimeStatus.color}`}>
+            <p className={`text-body-sm mt-1 ${screenTimeStatus.color}`}>
               {screenTimeStatus.label}
             </p>
           </div>
         )}
-      </MobileCard>
+      </div>
 
       {/* Quick Presets */}
-      <MobileCard title="Quick Presets">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Quick Presets</h3>
         <div className="grid grid-cols-2 gap-3">
           {[
             { label: '1 hour', minutes: 60 },
@@ -115,7 +116,7 @@ export default function ScreentimeStep() {
             </button>
           ))}
         </div>
-      </MobileCard>
+      </div>
     </div>
   )
 }

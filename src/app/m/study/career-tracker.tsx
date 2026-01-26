@@ -8,7 +8,6 @@ import {
   createBucket,
   archiveBucket,
 } from '@/lib/actions/study'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { MobileSlider } from '@/components/mobile/inputs/MobileSlider'
@@ -307,7 +306,7 @@ export function CareerTracker({
     return (
       <section className="space-y-4">
         <div className="bg-zinc-900 rounded-xl p-6 text-center">
-          <p className="text-zinc-400 mb-4">No buckets found. Create one to start tracking.</p>
+          <p className="text-body-md text-zinc-400 mb-4">No buckets found. Create one to start tracking.</p>
           <button
             onClick={() => {
               setShowBucketManager(true)
@@ -322,11 +321,11 @@ export function CareerTracker({
         {/* Bucket creation form */}
         {showCreateBucket && (
           <div className="bg-zinc-900 rounded-xl p-4">
-            <h3 className="text-lg font-semibold mb-4">Create New Bucket</h3>
+            <h3 className="text-title-md font-semibold mb-4">Create New Bucket</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Name</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Name</label>
                 <input
                   type="text"
                   value={newBucketName}
@@ -335,22 +334,22 @@ export function CareerTracker({
                     setBucketError('')
                   }}
                   placeholder="e.g., CS 101"
-                  className="w-full bg-zinc-800 rounded-lg p-3 text-base"
+                  className="w-full bg-zinc-800 rounded-lg p-3 text-body-md"
                   maxLength={50}
                 />
                 {bucketError && (
-                  <p className="text-red-400 text-sm mt-1">{bucketError}</p>
+                  <p className="text-red-400 text-body-sm mt-1">{bucketError}</p>
                 )}
               </div>
 
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Type</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {BUCKET_TYPES.map(type => (
                     <button
                       key={type}
                       onClick={() => setNewBucketType(type)}
-                      className={`p-3 rounded-lg text-sm font-medium capitalize transition-colors ${
+                      className={`p-3 rounded-lg text-body-sm font-medium capitalize transition-colors ${
                         newBucketType === type
                           ? 'bg-emerald-600 text-white'
                           : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -363,7 +362,7 @@ export function CareerTracker({
               </div>
 
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Color</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Color</label>
                 <div className="grid grid-cols-8 gap-2">
                   {PRESET_COLORS.map(color => (
                     <button
@@ -409,7 +408,7 @@ export function CareerTracker({
   return (
     <section className="space-y-4">
 
-      <MobileCard>
+      <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
         <button
           onClick={() => setShowBucketManager(!showBucketManager)}
           className="w-full flex items-center justify-between text-left"
@@ -417,13 +416,13 @@ export function CareerTracker({
           <span className="font-semibold">Manage Buckets</span>
           <span className="text-zinc-400">{showBucketManager ? '▲' : '▼'}</span>
         </button>
-      </MobileCard>
+      </div>
 
       {/* Bucket Manager Section */}
       {showBucketManager && (
         <div className="bg-zinc-900 rounded-xl p-4 space-y-4">
           <div>
-            <h3 className="text-sm text-zinc-400 mb-3 font-medium">ACTIVE BUCKETS</h3>
+            <h3 className="text-body-sm text-zinc-400 mb-3 font-medium">ACTIVE BUCKETS</h3>
             <div className="space-y-2">
               {buckets.map(bucket => (
                 <div
@@ -437,13 +436,13 @@ export function CareerTracker({
                     />
                     <div>
                       <p className="font-medium">{bucket.name}</p>
-                      <p className="text-xs text-zinc-500 capitalize">{bucket.type}</p>
+                      <p className="text-label-sm text-zinc-500 capitalize">{bucket.type}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleArchiveBucket(bucket.id)}
                     disabled={isPending}
-                    className="text-xs text-zinc-400 hover:text-red-400 disabled:opacity-50 transition-colors"
+                    className="text-label-sm text-zinc-400 hover:text-red-400 disabled:opacity-50 transition-colors"
                   >
                     Archive
                   </button>
@@ -461,10 +460,10 @@ export function CareerTracker({
             </button>
           ) : (
             <div className="space-y-4 pt-2 border-t border-zinc-800">
-              <h3 className="text-lg font-semibold">Create New Bucket</h3>
+              <h3 className="text-title-md font-semibold">Create New Bucket</h3>
 
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Name</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Name</label>
                 <input
                   type="text"
                   value={newBucketName}
@@ -473,22 +472,22 @@ export function CareerTracker({
                     setBucketError('')
                   }}
                   placeholder="e.g., CS 101"
-                  className="w-full bg-zinc-800 rounded-lg p-3 text-base"
+                  className="w-full bg-zinc-800 rounded-lg p-3 text-body-md"
                   maxLength={50}
                 />
                 {bucketError && (
-                  <p className="text-red-400 text-sm mt-1">{bucketError}</p>
+                  <p className="text-red-400 text-body-sm mt-1">{bucketError}</p>
                 )}
               </div>
 
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Type</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {BUCKET_TYPES.map(type => (
                     <button
                       key={type}
                       onClick={() => setNewBucketType(type)}
-                      className={`p-3 rounded-lg text-sm font-medium capitalize transition-colors ${
+                      className={`p-3 rounded-lg text-body-sm font-medium capitalize transition-colors ${
                         newBucketType === type
                           ? 'bg-emerald-600 text-white'
                           : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -501,7 +500,7 @@ export function CareerTracker({
               </div>
 
               <div>
-                <label className="text-sm text-zinc-400 block mb-2">Color</label>
+                <label className="text-body-sm text-zinc-400 block mb-2">Color</label>
                 <div className="grid grid-cols-8 gap-2">
                   {PRESET_COLORS.map(color => (
                     <button
@@ -542,7 +541,7 @@ export function CareerTracker({
         </div>
       )}
 
-      <MobileCard>
+      <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
         <ToggleButton
           options={[
             { value: 'timer', label: 'Timer' },
@@ -552,21 +551,21 @@ export function CareerTracker({
           onChange={(value) => setMode(value as 'timer' | 'manual')}
           className={`${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
-      </MobileCard>
+      </div>
 
       {/* Main Interface - Timer Mode */}
       {mode === 'timer' && (
         <>
           {/* Bucket selector */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">
+            <label className="text-body-sm text-zinc-400 block mb-2">
               {isRunning ? 'Current Bucket' : 'Select Bucket'}
             </label>
             <select
               value={selectedBucket}
               onChange={(e) => setSelectedBucket(e.target.value)}
               disabled={isRunning}
-              className="w-full bg-zinc-800 rounded-lg p-4 text-lg font-medium disabled:opacity-50"
+              className="w-full bg-zinc-800 rounded-lg p-4 text-title-md font-medium disabled:opacity-50"
             >
               {buckets.map((bucket) => (
                 <option key={bucket.id} value={bucket.id}>
@@ -581,25 +580,25 @@ export function CareerTracker({
             <p className={`text-6xl font-mono font-bold ${isRunning ? 'text-blue-400' : 'text-white'}`}>
               {formatTime(seconds)}
             </p>
-            <p className="text-zinc-500 text-sm mt-3">
+            <p className="text-zinc-500 text-body-sm mt-3">
               {isRunning ? '🔴 Recording...' : 'Ready to start'}
             </p>
           </div>
 
           {/* Notes input */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">Notes (optional)</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Notes (optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="What are you working on?"
-              className="w-full bg-zinc-800 rounded-lg p-3 text-base resize-none"
+              className="w-full bg-zinc-800 rounded-lg p-3 text-body-md resize-none"
               rows={2}
               maxLength={500}
               disabled={isPending}
             />
             {notes.length > 400 && (
-              <p className="text-xs text-zinc-500 mt-1">{notes.length}/500</p>
+              <p className="text-label-sm text-zinc-500 mt-1">{notes.length}/500</p>
             )}
           </div>
 
@@ -609,7 +608,7 @@ export function CareerTracker({
               <button
                 onClick={handleStartTimer}
                 disabled={isPending || !selectedBucket}
-                className="col-span-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-xl font-bold transition-colors"
+                className="col-span-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-title-lg font-bold transition-colors"
               >
                 {isPending ? 'Starting...' : 'Start Session'}
               </button>
@@ -617,7 +616,7 @@ export function CareerTracker({
               <button
                 onClick={handleStopTimer}
                 disabled={isPending}
-                className="col-span-2 bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-50 rounded-xl p-5 text-xl font-bold transition-colors"
+                className="col-span-2 bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-50 rounded-xl p-5 text-title-lg font-bold transition-colors"
               >
                 {isPending ? 'Stopping...' : 'Stop Session'}
               </button>
@@ -625,7 +624,7 @@ export function CareerTracker({
             <button
               onClick={handleResetTimer}
               disabled={isRunning}
-              className="col-span-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 disabled:opacity-50 rounded-xl p-4 text-lg font-semibold transition-colors"
+              className="col-span-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 disabled:opacity-50 rounded-xl p-4 text-title-md font-semibold transition-colors"
             >
               Reset
             </button>
@@ -638,11 +637,11 @@ export function CareerTracker({
         <>
           {/* Bucket selector */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">Select Bucket</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Select Bucket</label>
             <select
               value={selectedBucket}
               onChange={(e) => setSelectedBucket(e.target.value)}
-              className="w-full bg-zinc-800 rounded-lg p-4 text-lg font-medium"
+              className="w-full bg-zinc-800 rounded-lg p-4 text-title-md font-medium"
             >
               {buckets.map((bucket) => (
                 <option key={bucket.id} value={bucket.id}>
@@ -654,7 +653,7 @@ export function CareerTracker({
 
           {/* Duration slider */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">
+            <label className="text-body-sm text-zinc-400 block mb-2">
               Duration: {formatMinutes(manualMinutes + manualHours * 60)}
             </label>
             <input
@@ -680,7 +679,7 @@ export function CareerTracker({
                     setManualHours(Math.floor(mins / 60))
                     setManualMinutes(mins % 60)
                   }}
-                  className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-zinc-400 transition-colors"
+                  className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-body-sm text-zinc-400 transition-colors"
                 >
                   {formatMinutes(mins)}
                 </button>
@@ -689,10 +688,10 @@ export function CareerTracker({
 
             {/* Manual input */}
             <div className="mt-4 pt-4 border-t border-zinc-800">
-              <p className="text-xs text-zinc-500 mb-2">Or enter manually:</p>
+              <p className="text-label-sm text-zinc-500 mb-2">Or enter manually:</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-zinc-500 block mb-1">Hours</label>
+                  <label className="text-label-sm text-zinc-500 block mb-1">Hours</label>
                   <input
                     type="number"
                     min="0"
@@ -703,7 +702,7 @@ export function CareerTracker({
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 block mb-1">Minutes</label>
+                  <label className="text-label-sm text-zinc-500 block mb-1">Minutes</label>
                   <input
                     type="number"
                     min="0"
@@ -719,12 +718,12 @@ export function CareerTracker({
 
           {/* Notes input */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-sm text-zinc-400 block mb-2">Notes (optional)</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Notes (optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="What did you work on?"
-              className="w-full bg-zinc-800 rounded-lg p-3 text-base resize-none"
+              className="w-full bg-zinc-800 rounded-lg p-3 text-body-md resize-none"
               rows={2}
               maxLength={500}
             />
@@ -734,7 +733,7 @@ export function CareerTracker({
           <button
             onClick={handleManualLog}
             disabled={isPending || !selectedBucket}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-xl font-bold transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-title-lg font-bold transition-colors"
           >
             {isPending ? 'Logging...' : 'Log Session'}
           </button>
@@ -745,10 +744,10 @@ export function CareerTracker({
       {(Object.keys(todayByBucket).length > 0 || isRunning) && (
         <div className="bg-zinc-900 rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm text-zinc-400 font-medium">TODAY'S PROGRESS</h3>
-            <span className="text-2xl font-bold text-emerald-400">
+            <h3 className="text-body-sm text-zinc-400 font-medium">TODAY'S PROGRESS</h3>
+            <span className="text-headline-md font-bold text-emerald-400">
               {formatMinutes(adjustedTotal)}
-              {isRunning && <span className="text-sm text-zinc-500 ml-1">(+{formatMinutes(currentSessionMinutes)})</span>}
+              {isRunning && <span className="text-body-sm text-zinc-500 ml-1">(+{formatMinutes(currentSessionMinutes)})</span>}
             </span>
           </div>
 
@@ -763,9 +762,9 @@ export function CareerTracker({
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: data.color }}
                       />
-                      <span className="text-sm">{name}</span>
+                      <span className="text-body-sm">{name}</span>
                     </div>
-                    <span className="text-sm text-emerald-400 font-semibold">
+                    <span className="text-body-sm text-emerald-400 font-semibold">
                       {formatMinutes(data.minutes)}
                     </span>
                   </div>
@@ -778,7 +777,7 @@ export function CareerTracker({
                       }}
                     />
                   </div>
-                  <p className="text-xs text-zinc-600 mt-1">{percentage}%</p>
+                  <p className="text-label-sm text-zinc-600 mt-1">{percentage}%</p>
                 </div>
               )
             })}

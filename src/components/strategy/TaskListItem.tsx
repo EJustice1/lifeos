@@ -4,6 +4,7 @@ import type { Task } from '@/types/database'
 import { PromoteToTodayButton } from './PromoteToTodayButton'
 import { deleteTask } from '@/lib/actions/tasks'
 import { useState } from 'react'
+import { ListItem, StatusBadge } from '@/components/editorial'
 
 interface TaskListItemProps {
   task: Task
@@ -16,9 +17,9 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    
+
     if (!confirm('Delete this task?')) return
-    
+
     try {
       setDeleting(true)
       await deleteTask(task.id)
@@ -27,17 +28,6 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
       console.error('Failed to delete task:', error)
     } finally {
       setDeleting(false)
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'backlog': return 'bg-purple-500/20 text-purple-400'
-      case 'today': return 'bg-blue-500/20 text-blue-400'
-      case 'in_progress': return 'bg-yellow-500/20 text-yellow-400'
-      case 'completed': return 'bg-emerald-500/20 text-emerald-400'
-      case 'cancelled': return 'bg-red-500/20 text-red-400'
-      default: return 'bg-zinc-600/20 text-zinc-400'
     }
   }
 
@@ -52,48 +42,46 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
     return null
   }
 
+  const titleWithPriority = (
+    <div className="flex items-center gap-2">
+      {getPriorityIcon(task.priority)}
+      <span>{task.title}</span>
+    </div>
+  )
+
   return (
-    <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700 hover:border-zinc-600 transition-colors">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {getPriorityIcon(task.priority)}
-            <h4 className="font-medium text-white truncate">{task.title}</h4>
-          </div>
-          
-          {task.description && (
-            <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{task.description}</p>
-          )}
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
-              {task.status}
-            </span>
-            
-            {task.tags && task.tags.length > 0 && (
-              task.tags.map(tag => (
-                <span key={tag} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 text-xs rounded">
-                  {tag}
-                </span>
-              ))
-            )}
-            
-            {task.scheduled_date && (
-              <span className="text-xs text-zinc-500 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {new Date(task.scheduled_date).toLocaleDateString()}
+    <ListItem
+      title={task.title}
+      description={task.description || undefined}
+      status={task.status}
+      metadata={
+        <div className="flex items-center gap-3 flex-wrap">
+          {task.tags && task.tags.length > 0 && (
+            task.tags.map(tag => (
+              <span key={tag} className="px-2 py-0.5 bg-zinc-700/50 text-zinc-400 text-label-sm rounded">
+                {tag}
               </span>
-            )}
-          </div>
+            ))
+          )}
+
+          {task.scheduled_date && (
+            <span className="flex items-center gap-1 text-zinc-500">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {new Date(task.scheduled_date).toLocaleDateString()}
+            </span>
+          )}
         </div>
-        
+      }
+      actions={
         <div className="flex items-center gap-1">
+          <StatusBadge status={task.status} size="sm" />
+
           {showPromoteButton && task.status !== 'today' && task.status !== 'completed' && (
             <PromoteToTodayButton taskId={task.id} onPromoted={onUpdate} compact />
           )}
-          
+
           <button
             onClick={handleDelete}
             disabled={deleting}
@@ -105,7 +93,7 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
             </svg>
           </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }

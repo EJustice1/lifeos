@@ -200,7 +200,7 @@ export function StudyTimer({
     return (
       <div className="bg-zinc-900 rounded-xl p-6 text-center">
         <p className="text-zinc-400 mb-4">No buckets found. Create one to start tracking.</p>
-        <p className="text-zinc-500 text-sm">Run the database migration and add buckets from the desktop view.</p>
+        <p className="text-zinc-500 text-body-sm">Run the database migration and add buckets from the desktop view.</p>
       </div>
     )
   }
@@ -209,12 +209,12 @@ export function StudyTimer({
       <section className="space-y-4">
       {/* Bucket selector */}
       <div className="bg-zinc-900 rounded-xl p-4">
-        <label className="text-sm text-zinc-400 block mb-2">Bucket</label>
+        <label className="text-body-sm text-zinc-400 block mb-2">Bucket</label>
         <select
           value={selectedBucket}
           onChange={(e) => setSelectedBucket(e.target.value)}
           disabled={isRunning}
-          className="w-full bg-zinc-800 rounded-lg p-3 text-lg disabled:opacity-50"
+          className="w-full bg-zinc-800 rounded-lg p-3 text-title-md disabled:opacity-50"
         >
           {buckets.map((bucket) => (
             <option key={bucket.id} value={bucket.id}>
@@ -226,10 +226,10 @@ export function StudyTimer({
 
       {/* Timer display */}
       <div className="bg-zinc-900 rounded-xl p-8 text-center">
-        <p className={`text-5xl font-mono font-bold ${isRunning ? 'text-blue-400' : ''}`}>
+        <p className={`text-display-lg font-mono font-bold ${isRunning ? 'text-blue-400' : ''}`}>
           {formatTime(seconds)}
         </p>
-        <p className="text-zinc-500 text-sm mt-2">
+        <p className="text-zinc-500 text-body-sm mt-2">
           {isRunning ? 'Session in progress' : 'Session time'}
         </p>
       </div>
@@ -240,7 +240,7 @@ export function StudyTimer({
           <button
             onClick={handleStart}
             disabled={isPending}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl p-4 text-lg font-semibold transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl p-4 text-title-md font-semibold transition-colors"
           >
             {isPending ? 'Starting...' : 'Start'}
           </button>
@@ -248,7 +248,7 @@ export function StudyTimer({
           <button
             onClick={handleStop}
             disabled={isPending}
-            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-xl p-4 text-lg font-semibold transition-colors"
+            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-xl p-4 text-title-md font-semibold transition-colors"
           >
             {isPending ? 'Stopping...' : 'Stop'}
           </button>
@@ -256,7 +256,7 @@ export function StudyTimer({
         <button
           onClick={handleReset}
           disabled={isRunning}
-          className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 rounded-xl p-4 text-lg font-semibold transition-colors"
+          className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 rounded-xl p-4 text-title-md font-semibold transition-colors"
         >
           Reset
         </button>
@@ -265,7 +265,7 @@ export function StudyTimer({
       {/* Today's completed sessions */}
       {todaySessions.length > 0 && (
         <div className="bg-zinc-900 rounded-xl p-4">
-          <h3 className="text-sm text-zinc-400 mb-3">Today's Sessions</h3>
+          <h3 className="text-body-sm text-zinc-400 mb-3">Today's Sessions</h3>
           <div className="space-y-2">
             {todaySessions.map((session) => {
               const bucketData = Array.isArray(session.bucket) ? session.bucket[0] : session.bucket
@@ -283,19 +283,19 @@ export function StudyTimer({
                           className="flex-1 bg-zinc-700 rounded px-2 py-1 text-white"
                           min="1"
                         />
-                        <span className="text-zinc-400 text-sm">min</span>
+                        <span className="text-zinc-400 text-body-sm">min</span>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdateSession(session.id)}
                           disabled={isPending}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded px-3 py-1 text-sm font-semibold transition-colors"
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded px-3 py-1 text-body-sm font-semibold transition-colors"
                         >
                           Save
                         </button>
                         <button
                           onClick={() => setEditingSession(null)}
-                          className="flex-1 bg-zinc-700 hover:bg-zinc-600 rounded px-3 py-1 text-sm font-semibold transition-colors"
+                          className="flex-1 bg-zinc-700 hover:bg-zinc-600 rounded px-3 py-1 text-body-sm font-semibold transition-colors"
                         >
                           Cancel
                         </button>
@@ -305,7 +305,7 @@ export function StudyTimer({
                     <div className="flex justify-between items-center">
                       <div className="flex-1">
                         <div className="font-medium">{bucketName}</div>
-                        <div className="text-sm text-zinc-400">{formatMinutes(session.duration_minutes || 0)}</div>
+                        <div className="text-body-sm text-zinc-400">{formatMinutes(session.duration_minutes || 0)}</div>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -338,10 +338,10 @@ export function StudyTimer({
           {/* Summary */}
           {Object.keys(todayByBucket).length > 0 && (
             <div className="mt-3 pt-3 border-t border-zinc-800">
-              <h4 className="text-xs text-zinc-500 mb-2">Summary by Subject</h4>
+              <h4 className="text-label-sm text-zinc-500 mb-2">Summary by Subject</h4>
               <div className="space-y-1">
                 {Object.entries(todayByBucket).map(([name, minutes]) => (
-                  <div key={name} className="flex justify-between text-sm">
+                  <div key={name} className="flex justify-between text-body-sm">
                     <span className="text-zinc-400">{name}</span>
                     <span className="text-emerald-400 font-medium">{formatMinutes(minutes)}</span>
                   </div>

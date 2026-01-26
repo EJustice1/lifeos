@@ -75,7 +75,7 @@ export default function NewProjectPage() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="px-4 py-4 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Add Project</h1>
+          <h1 className="text-headline-lg font-bold text-white">Add Project</h1>
           <button
             onClick={() => router.push('/actions')}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -92,7 +92,7 @@ export default function NewProjectPage() {
       <form onSubmit={handleSubmit} className="px-4 py-6 space-y-4">
         {/* Title */}
         <div>
-          <label htmlFor="project-title" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="project-title" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Title <span className="text-red-400">*</span>
           </label>
           <input
@@ -109,7 +109,7 @@ export default function NewProjectPage() {
 
         {/* Description */}
         <div>
-          <label htmlFor="project-description" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="project-description" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Description
           </label>
           <textarea
@@ -124,7 +124,7 @@ export default function NewProjectPage() {
 
         {/* Life Goal */}
         <div>
-          <label htmlFor="project-goal" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="project-goal" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Life Goal
           </label>
           {loadingGoals ? (
@@ -174,7 +174,7 @@ export default function NewProjectPage() {
 
         {/* Target Date */}
         <div>
-          <label htmlFor="project-target-date" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="project-target-date" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Target Date
           </label>
           <input

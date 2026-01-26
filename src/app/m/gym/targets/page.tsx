@@ -4,7 +4,6 @@ import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { getMuscleGroupTargets, updateMuscleGroupTarget } from '@/lib/actions/gym'
 import { MUSCLE_GROUPS } from '@/lib/gym-utils'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
 
@@ -73,13 +72,13 @@ export default function GymTargetsPage() {
           >
             ← Back
           </Link>
-          <h1 className="text-xl font-bold">Training Targets</h1>
+          <h1 className="text-title-lg font-bold">Training Targets</h1>
           <div className="w-12"></div> {/* Spacer */}
         </div>
 
-        <MobileCard>
-          <h2 className="text-lg font-semibold mb-2">Weekly Volume Goals</h2>
-          <p className="text-sm text-zinc-400 mb-6">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Weekly Volume Goals</h3>
+          <p className="text-body-sm text-zinc-400 mb-6">
             Set weekly target sets for each muscle group. Exercises count as 1.0 for primary muscles and 0.5 for secondary muscles.
           </p>
 
@@ -87,7 +86,7 @@ export default function GymTargetsPage() {
             {MUSCLE_GROUPS.map(mg => (
               <div key={mg} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">{capitalize(mg)}</label>
+                  <label className="text-body-sm font-medium">{capitalize(mg)}</label>
                   <span className="text-emerald-400 font-bold">{targets[mg] || 12} sets/week</span>
                 </div>
                 <input
@@ -124,17 +123,17 @@ export default function GymTargetsPage() {
               Reset to Defaults (12 sets/week)
             </button>
           </div>
-        </MobileCard>
+        </div>
 
-        <MobileCard>
-          <h3 className="text-sm font-semibold mb-2">Recommended Ranges (Mike Israetel)</h3>
-          <div className="text-xs text-zinc-400 space-y-1">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Recommended Ranges (Mike Israetel)</h3>
+          <div className="text-label-sm text-zinc-400 space-y-1">
             <p>• <span className="text-white">10-20 sets/week:</span> Most muscle groups</p>
             <p>• <span className="text-white">12-18 sets/week:</span> Chest, Back, Quads</p>
             <p>• <span className="text-white">8-12 sets/week:</span> Biceps, Triceps, Calves</p>
             <p>• <span className="text-white">15-22 sets/week:</span> Hamstrings, Glutes</p>
           </div>
-        </MobileCard>
+        </div>
       </div>
     </div>
   )

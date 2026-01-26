@@ -255,7 +255,7 @@ export function SessionRecovery() {
     return (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
         <div className="bg-zinc-900 rounded-xl p-6 max-w-md w-full">
-          <h3 className="text-xl font-bold text-white mb-3">Expired Session Found</h3>
+          <h3 className="text-title-lg font-bold text-white mb-3">Expired Session Found</h3>
           <p className="text-zinc-300 mb-4">
             You have an active {sessionType} that's older than 24 hours ({sessionInfo}). 
             Would you like to continue or end it?

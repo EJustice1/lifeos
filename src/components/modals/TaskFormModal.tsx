@@ -107,7 +107,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
       >
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Add Task</h2>
+          <h2 className="text-headline-md font-bold text-white">Add Task</h2>
           <button
             onClick={onClose}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -128,7 +128,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label htmlFor="task-title" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-title" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Title <span className="text-red-400">*</span>
             </label>
             <input
@@ -145,7 +145,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
 
           {/* Description */}
           <div>
-            <label htmlFor="task-description" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-description" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Description
             </label>
             <textarea
@@ -160,7 +160,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
 
           {/* Project */}
           <div>
-            <label htmlFor="task-project" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-project" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Project
             </label>
             {loadingProjects ? (
@@ -188,7 +188,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
           <div className="grid grid-cols-2 gap-4">
             {/* Due Date */}
             <div>
-              <label htmlFor="task-date" className="block text-sm font-medium text-zinc-300 mb-2">
+              <label htmlFor="task-date" className="block text-body-sm font-medium text-zinc-300 mb-2">
                 Due Date
               </label>
               <input
@@ -202,7 +202,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
 
             {/* Time */}
             <div>
-              <label htmlFor="task-time" className="block text-sm font-medium text-zinc-300 mb-2">
+              <label htmlFor="task-time" className="block text-body-sm font-medium text-zinc-300 mb-2">
                 Time
               </label>
               <input
@@ -217,7 +217,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
 
           {/* Duration */}
           <div>
-            <label htmlFor="task-duration" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-duration" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Duration (minutes)
             </label>
             <input
@@ -233,7 +233,7 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
 
           {/* Priority */}
           <div>
-            <label htmlFor="task-priority" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-priority" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Priority
             </label>
             <div className="flex gap-2">
@@ -252,12 +252,12 @@ export function TaskFormModal({ isOpen, onClose, onSuccess, defaultDate }: TaskF
                 </button>
               ))}
             </div>
-            <p className="text-xs text-zinc-500 mt-2">1 = Lowest, 5 = Highest</p>
+            <p className="text-label-sm text-zinc-500 mt-2">1 = Lowest, 5 = Highest</p>
           </div>
 
           {/* Tags */}
           <div>
-            <label htmlFor="task-tags" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="task-tags" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Tags
             </label>
             <input

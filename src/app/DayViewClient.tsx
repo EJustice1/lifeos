@@ -9,6 +9,7 @@ import { DayTimeline } from '@/components/day-view/DayTimeline'
 import { QuickAddFAB } from '@/components/day-view/QuickAddFAB'
 import type { GoogleCalendarEvent } from '@/types/database'
 import Link from 'next/link'
+import { Section, DataGrid, Divider } from '@/components/editorial'
 
 export function DayViewClient() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -52,7 +53,7 @@ export function DayViewClient() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-2xl font-bold text-white">Today</h1>
+          <h1 className="text-headline-lg font-bold text-white">Today</h1>
 
           <div className="flex items-center gap-2">
             {/* Sync Button */}
@@ -113,57 +114,34 @@ export function DayViewClient() {
 
       {/* Summary Section */}
       {!tasksLoading && (totalTasks > 0 || calendarEvents.length > 0) && (
-        <div className="px-4 pt-4">
-          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Tasks Summary */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Tasks</p>
-                  <p className="text-lg font-semibold text-white">
-                    {completedTasks.length}/{totalTasks}
-                  </p>
-                </div>
-              </div>
-
-              {/* Calendar Events Summary */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Events</p>
-                  <p className="text-lg font-semibold text-white">
-                    {calendarEvents.length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            {totalTasks > 0 && (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
-                  <span>Progress</span>
-                  <span>{Math.round((completedTasks.length / totalTasks) * 100)}%</span>
-                </div>
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300"
-                    style={{ width: `${(completedTasks.length / totalTasks) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <Section spacing="normal" className="px-4">
+          <DataGrid
+            metrics={[
+              {
+                label: 'Completed',
+                value: `${completedTasks.length}/${totalTasks}`,
+                color: 'emerald',
+              },
+              {
+                label: 'Remaining',
+                value: incompleteTasks.length,
+                color: 'blue',
+              },
+              {
+                label: 'Events',
+                value: calendarEvents.length,
+                color: 'purple',
+              },
+              {
+                label: 'Progress',
+                value: `${Math.round((completedTasks.length / totalTasks) * 100)}%`,
+                color: 'emerald',
+              },
+            ]}
+            columns={4}
+            layout="balanced"
+          />
+        </Section>
       )}
 
       {/* Timeline */}

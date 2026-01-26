@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useGymSession, type LoggedSet } from '@/lib/hooks/useGymSession'
 import { calculate1RM, PREDEFINED_EXERCISES, WORKOUT_TYPES, getExercisesForWorkoutType, type WorkoutType, type PredefinedExercise } from '@/lib/gym-utils'
 import { getRecentWorkoutsTransformed } from '@/lib/actions/gym'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
@@ -51,12 +50,12 @@ const WorkoutHistoryCard = memo(({ workout, onExerciseClick }: {
       >
         <div>
           <p className="font-semibold">{workout.type} Workout</p>
-          <p className="text-sm text-zinc-400">{new Date(workout.date).toLocaleDateString()}</p>
+          <p className="text-body-sm text-zinc-400">{new Date(workout.date).toLocaleDateString()}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-emerald-400 font-bold">{workout.totalVolume.toLocaleString()} lbs</p>
-            <p className="text-sm text-zinc-400">{workout.duration} min</p>
+            <p className="text-body-sm text-zinc-400">{workout.duration} min</p>
           </div>
           <svg
             className={`w-5 h-5 transform transition-transform ${expandedWorkout === workout.id ? 'rotate-90' : ''}`}
@@ -79,7 +78,7 @@ const WorkoutHistoryCard = memo(({ workout, onExerciseClick }: {
               >
                 <div>
                   <span className="font-medium">{exercise.name}</span>
-                  <span className="text-zinc-400 ml-2 text-sm">
+                  <span className="text-zinc-400 ml-2 text-body-sm">
                     {exercise.totalSets} sets • {exercise.totalReps} reps • {exercise.totalVolume} lbs
                   </span>
                 </div>
@@ -95,7 +94,7 @@ const WorkoutHistoryCard = memo(({ workout, onExerciseClick }: {
               {expandedExercise === exercise.name && (
                 <div className="ml-4 mt-2 space-y-1">
                   {exercise.sets.map((set, index) => (
-                    <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-xs">
+                    <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-label-sm">
                       <span className="text-zinc-300">Set {set.setNumber}</span>
                       <span className="text-emerald-400 font-semibold">
                         {set.weight} × {set.reps} = {set.volume} lbs
@@ -342,7 +341,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
                   key={type}
                   onClick={() => handleStartWorkout(type)}
                   disabled={isPending}
-                  className={`p-6 rounded-xl text-lg font-semibold transition-all ${
+                  className={`p-6 rounded-xl text-title-md font-semibold transition-all ${
                     isPending
                       ? 'bg-[var(--mobile-card-bg)] text-white opacity-50'
                       : 'bg-[var(--mobile-card-bg)] text-white hover:bg-zinc-800 active:bg-[var(--mobile-accent)]'
@@ -356,7 +355,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
               <button
                 onClick={() => setActiveSection('history')}
                 disabled={historyLoading}
-                className="p-6 rounded-xl text-lg font-semibold bg-zinc-800 text-white hover:bg-zinc-700 transition-all col-span-2 disabled:opacity-50"
+                className="p-6 rounded-xl text-title-md font-semibold bg-zinc-800 text-white hover:bg-zinc-700 transition-all col-span-2 disabled:opacity-50"
               >
                 {historyLoading ? 'Loading...' : 'See History'}
               </button>
@@ -364,7 +363,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
               {/* Progress Button */}
               <Link
                 href="/m/gym/progress"
-                className="p-6 rounded-xl text-lg font-semibold bg-purple-900/50 text-purple-300 hover:bg-purple-900/70 transition-all col-span-2 text-center"
+                className="p-6 rounded-xl text-title-md font-semibold bg-purple-900/50 text-purple-300 hover:bg-purple-900/70 transition-all col-span-2 text-center"
               >
                 Progress & Strength
               </Link>
@@ -374,32 +373,32 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         ) : activeSection === 'workout' && isWorkoutActive ? (
         /* Active workout screen */
         <>
-          <MobileCard>
+          <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Active Workout</p>
-                <p className="font-semibold text-lg">
+                <p className="text-body-sm text-zinc-400">Active Workout</p>
+                <p className="font-semibold text-title-md">
                   {activeWorkout?.workoutType || 'General'} • {loggedSets.length} sets
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-zinc-400">Timer</p>
-                <p className="font-bold text-yellow-400 text-lg">
+                <p className="text-body-sm text-zinc-400">Timer</p>
+                <p className="font-bold text-yellow-400 text-title-md">
                   {formatDuration(workoutDuration)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-zinc-400">Volume</p>
-                <p className="font-bold text-emerald-400 text-lg">
+                <p className="text-body-sm text-zinc-400">Volume</p>
+                <p className="font-bold text-emerald-400 text-title-md">
                   {totalVolume.toLocaleString()} lbs
                 </p>
               </div>
             </div>
-          </MobileCard>
+          </div>
 
 
-          <MobileCard>
-            <div className="text-sm text-zinc-400 mb-2">Exercise</div>
+          <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
+            <div className="text-body-sm text-zinc-400 mb-2">Exercise</div>
             <MobileSelect
               options={exercises.map((ex) => ({
                 value: ex.id.toString(),
@@ -408,7 +407,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
               value={selectedExercise?.toString() || ''}
               onChange={(e) => setSelectedExercise(e.target.value ? parseInt(e.target.value) : null)}
             />
-          </MobileCard>
+          </div>
 
           {/* Set counter */}
           <div className="bg-orange-900/30 rounded-lg p-3 text-center">
@@ -421,46 +420,46 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
           </div>
 
           {/* Show rep and 1RM counter above reps, always show volume */}
-          <MobileCard>
+          <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
-                <span className="text-zinc-500 text-sm block">Set Volume</span>
-                <span className="text-emerald-400 font-bold text-xl">
+                <span className="text-zinc-500 text-body-sm block">Set Volume</span>
+                <span className="text-emerald-400 font-bold text-title-lg">
                   {(reps * weight).toLocaleString()} lbs
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500 text-sm block">Est. 1RM</span>
-                <span className="text-purple-400 font-bold text-xl">
+                <span className="text-zinc-500 text-body-sm block">Est. 1RM</span>
+                <span className="text-purple-400 font-bold text-title-lg">
                   {estimated1RM} lbs
                 </span>
               </div>
             </div>
-          </MobileCard>
+          </div>
 
-          <MobileCard>
-            <div className="text-sm text-zinc-400 mb-3 text-center">Reps</div>
+          <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
+            <div className="text-body-sm text-zinc-400 mb-3 text-center">Reps</div>
             <div className="flex items-center justify-center gap-4">
               <AdjustButton onClick={() => adjustReps(-1)}>−</AdjustButton>
               <input
                 type="number"
                 value={reps}
                 onChange={(e) => setReps(Math.max(1, Number(e.target.value)))}
-                className="w-24 bg-transparent text-5xl font-bold text-center"
+                className="w-24 bg-transparent text-display-lg font-bold text-center"
               />
               <AdjustButton onClick={() => adjustReps(1)}>+</AdjustButton>
             </div>
-          </MobileCard>
+          </div>
 
-          <MobileCard>
-            <div className="text-sm text-zinc-400 block mb-3 text-center">Weight (lbs)</div>
+          <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
+            <div className="text-body-sm text-zinc-400 block mb-3 text-center">Weight (lbs)</div>
             <div className="flex items-center justify-center gap-4">
               <AdjustButton onClick={() => adjustWeight(-5)}>-5</AdjustButton>
               <input
                 type="number"
                 value={weight}
                 onChange={(e) => setWeight(Math.max(0, Number(e.target.value)))}
-                className="w-28 bg-transparent text-5xl font-bold text-center"
+                className="w-28 bg-transparent text-display-lg font-bold text-center"
               />
               <AdjustButton onClick={() => adjustWeight(5)}>+5</AdjustButton>
             </div>
@@ -470,13 +469,13 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
                 <button
                   key={delta}
                   onClick={() => adjustWeight(delta)}
-                  className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-zinc-400"
+                  className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-body-sm text-zinc-400"
                 >
                   {delta > 0 ? '+' : ''}{delta}
                 </button>
               ))}
             </div>
-          </MobileCard>
+          </div>
 
           {/* Side-by-side buttons moved above workout summary */}
           <div className="grid grid-cols-2 gap-2">
@@ -505,15 +504,15 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
 
           {/* Logged sets summary - Compact display like history */}
           {Object.keys(exerciseSummary).length > 0 && (
-            <MobileCard>
-              <h3 className="text-sm text-zinc-400 mb-3 font-medium">This Workout</h3>
+            <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
+              <h3 className="text-body-sm text-zinc-400 mb-3 font-medium">This Workout</h3>
               <div className="space-y-2 ml-2">
                 {Object.entries(exerciseSummary).map(([exerciseName, data]) => (
                   <div key={exerciseName} className="border-l-2 border-zinc-700 pl-3">
                     <div className="py-2 flex items-center justify-between">
                       <div>
                         <span className="font-medium">{exerciseName}</span>
-                        <span className="text-zinc-400 ml-2 text-sm">
+                        <span className="text-zinc-400 ml-2 text-body-sm">
                           {data.sets} sets • {data.totalReps} reps • {data.totalVolume} lbs
                         </span>
                       </div>
@@ -528,7 +527,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
                       {loggedSets
                         .filter(set => set.exercise === exerciseName)
                         .map((set, index) => (
-                          <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-xs">
+                          <div key={index} className="bg-zinc-900/50 rounded p-1.5 flex items-center justify-between text-label-sm">
                             <span className="text-zinc-300">Set {set.setNumber}</span>
                             <span className="text-emerald-400 font-semibold">
                               {set.weight} × {set.reps} = {set.weight * set.reps} lbs
@@ -540,16 +539,16 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
                   </div>
                 ))}
               </div>
-            </MobileCard>
+            </div>
           )}
         </>
       ) : activeSection === 'history' ? (
         /* Enhanced History Section */
         <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
 
-          <MobileCard className="flex-1">
+          <div className="flex-1 bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Workout History</h2>
+              <h2 className="text-title-lg font-bold">Workout History</h2>
               <button
                 onClick={() => setActiveSection('workout')}
                 className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
@@ -581,7 +580,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
                 ))}
               </div>
             )}
-          </MobileCard>
+          </div>
         </div>
       ) : null}
       </section>

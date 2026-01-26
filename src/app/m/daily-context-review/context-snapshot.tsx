@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useDailyReview } from './DailyReviewContext'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { ExecutionSlider } from '@/components/mobile/inputs/ExecutionSlider'
 import { getUserSettings } from '@/lib/actions/settings'
@@ -95,11 +94,12 @@ export default function ContextSnapshotStep() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center mb-6">Today&apos;s Execution</h1>
+      <h1 className="text-headline-md font-bold text-center mb-6">Today&apos;s Execution</h1>
 
       {/* Condensed Summary */}
-      <MobileCard title="Summary">
-        <div className="space-y-3 text-sm">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Summary</h3>
+        <div className="space-y-3 text-body-sm">
           <div className="flex justify-between items-center">
             <span className="text-zinc-400">Goals Completed:</span>
             <span className="text-white font-semibold">
@@ -109,7 +109,7 @@ export default function ContextSnapshotStep() {
           {yesterdayGoals.length > 0 && (
             <div className="space-y-1">
               {yesterdayGoals.map((goal, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
+                <div key={i} className="flex items-start gap-2 text-label-sm">
                   <span className={completedGoals.has(i) ? 'text-emerald-400' : 'text-zinc-500'}>
                     {completedGoals.has(i) ? '✓' : '○'}
                   </span>
@@ -121,10 +121,11 @@ export default function ContextSnapshotStep() {
             </div>
           )}
         </div>
-      </MobileCard>
+      </div>
 
       {/* Today's Metrics - Neutral Display */}
-      <MobileCard title="Today's Metrics">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Today's Metrics</h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-zinc-300">Study Time:</span>
@@ -141,16 +142,17 @@ export default function ContextSnapshotStep() {
             <span className="text-white font-semibold">{totalScreenText}</span>
           </div>
         </div>
-      </MobileCard>
+      </div>
 
-      <MobileCard title="Execution Score">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Execution Score</h3>
         {/* Suggested Score - Informational Only */}
         {validationResult && validationResult.suggestions.length > 0 && (
           <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-            <p className="text-sm text-blue-300 mb-2">Suggestions based on your data:</p>
+            <p className="text-body-sm text-blue-300 mb-2">Suggestions based on your data:</p>
             <ul className="space-y-1">
               {validationResult.suggestions.map((suggestion, i) => (
-                <li key={i} className="text-xs text-zinc-400 flex items-start gap-2">
+                <li key={i} className="text-label-sm text-zinc-400 flex items-start gap-2">
                   <span className="text-blue-400">•</span>
                   <span>{suggestion}</span>
                 </li>
@@ -162,7 +164,7 @@ export default function ContextSnapshotStep() {
         {/* Suggested Score */}
         {validationResult && (
           <div className="mb-3 text-center">
-            <span className="text-xs text-zinc-400">
+            <span className="text-label-sm text-zinc-400">
               Suggested:{' '}
               <span className={`font-semibold ${findExecutionLevel(validationResult.suggestedScore).color}`}>
                 {findExecutionLevel(validationResult.suggestedScore).label}
@@ -193,24 +195,24 @@ export default function ContextSnapshotStep() {
             <div className={`font-bold ${selectedLevel.color}`}>
               {selectedLevel.label} ({selectedLevel.range})
             </div>
-            <div className="text-xs text-zinc-400">{selectedLevel.description}</div>
+            <div className="text-label-sm text-zinc-400">{selectedLevel.description}</div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium text-zinc-300">Did you:</p>
+            <p className="text-body-sm font-medium text-zinc-300">Did you:</p>
             {selectedLevel.criteria.map((criterion, i) => (
               <div key={i} className="flex items-start gap-2">
                 <span className="text-purple-400 mt-0.5">•</span>
-                <span className="text-sm text-zinc-400">{criterion}</span>
+                <span className="text-body-sm text-zinc-400">{criterion}</span>
               </div>
             ))}
           </div>
 
           <div className="mt-4 pt-3 border-t border-zinc-700">
-            <p className="text-xs italic text-zinc-400">"{selectedLevel.mindset}"</p>
+            <p className="text-label-sm italic text-zinc-400">"{selectedLevel.mindset}"</p>
           </div>
         </div>
-      </MobileCard>
+      </div>
 
     </div>
   )

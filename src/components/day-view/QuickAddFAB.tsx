@@ -59,7 +59,7 @@ export function QuickAddFAB() {
             className="bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold text-white mb-4">Quick Add Task</h2>
+            <h2 className="text-headline-md font-bold text-white mb-4">Quick Add Task</h2>
 
             <form onSubmit={handleSubmit}>
               <input

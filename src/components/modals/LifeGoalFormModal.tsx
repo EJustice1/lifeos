@@ -63,7 +63,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
       >
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Create Life Goal</h2>
+          <h2 className="text-headline-md font-bold text-white">Create Life Goal</h2>
           <button
             onClick={onClose}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -84,7 +84,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label htmlFor="goal-title" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="goal-title" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Title <span className="text-red-400">*</span>
             </label>
             <input
@@ -101,7 +101,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
 
           {/* Description */}
           <div>
-            <label htmlFor="goal-description" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="goal-description" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Description
             </label>
             <textarea
@@ -116,7 +116,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
 
           {/* Category */}
           <div>
-            <label htmlFor="goal-category" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="goal-category" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Category
             </label>
             <select
@@ -136,7 +136,7 @@ export function LifeGoalFormModal({ isOpen, onClose, onSuccess }: LifeGoalFormMo
 
           {/* Target Date */}
           <div>
-            <label htmlFor="goal-target-date" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="goal-target-date" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Target Date
             </label>
             <input

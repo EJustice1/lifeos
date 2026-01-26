@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import type { Task } from '@/types/database'
 import { useTasks } from '@/contexts/TaskContext'
+import { ListItem, StatusBadge } from '@/components/editorial'
 
 interface TaskCardProps {
   task: Task
@@ -42,31 +43,49 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     }
   }
 
-  const projectColor = task.project_id ? '#3b82f6' : '#6b7280' // Default color
+  const projectColor = task.project_id ? '#3b82f6' : '#71717a' // Default color
 
   return (
-    <div
-      className="bg-zinc-800 rounded-lg p-4 border-l-4 cursor-pointer hover:bg-zinc-750 transition-colors"
-      style={{ borderLeftColor: projectColor }}
+    <ListItem
+      title={task.title}
+      description={task.description || undefined}
+      status={task.status === 'completed' ? 'completed' : task.status}
+      interactive
       onClick={handleClick}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="font-semibold text-white">{task.title}</h3>
-          {task.description && (
-            <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{task.description}</p>
+      style={{ borderLeftColor: projectColor }}
+      metadata={
+        <div className="flex items-center gap-3 text-label-md text-zinc-500">
+          {task.scheduled_time && (
+            <span className="font-mono">{formatTime(task.scheduled_time)}</span>
+          )}
+          {task.duration_minutes && <span>• {task.duration_minutes}m</span>}
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {task.tags.map(tag => (
+                <span key={tag} className="px-2 py-0.5 bg-zinc-700/50 text-zinc-400 text-label-sm rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {task.gcal_event_id && (
+            <span className="flex items-center gap-1 text-purple-400">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                <path
+                  fillRule="evenodd"
+                  d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-label-sm">Synced</span>
+            </span>
           )}
         </div>
-
-        <div className="ml-4 flex items-center gap-2">
-          {/* Status badge */}
-          <div
-            className={`px-2 py-1 rounded text-xs font-medium ${getStatusStyles(task.status)}`}
-          >
-            {task.status}
-          </div>
-
-          {/* Complete button */}
+      }
+      actions={
+        <>
+          <StatusBadge status={task.status} size="sm" />
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -85,61 +104,10 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               </svg>
             )}
           </button>
-        </div>
-      </div>
-
-      {/* Time and duration */}
-      {task.scheduled_time && (
-        <div className="mt-2 text-xs text-zinc-500 flex items-center gap-2">
-          <span>{formatTime(task.scheduled_time)}</span>
-          {task.duration_minutes && <span>• {task.duration_minutes}m</span>}
-        </div>
-      )}
-
-      {/* Tags */}
-      {task.tags && task.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {task.tags.map(tag => (
-            <span key={tag} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 text-xs rounded">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Google Calendar sync indicator */}
-      {task.gcal_event_id && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-purple-400">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-            <path
-              fillRule="evenodd"
-              d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span>Synced with Google Calendar</span>
-        </div>
-      )}
-    </div>
+        </>
+      }
+    />
   )
-}
-
-function getStatusStyles(status: Task['status']): string {
-  switch (status) {
-    case 'today':
-      return 'bg-blue-500/20 text-blue-400'
-    case 'in_progress':
-      return 'bg-yellow-500/20 text-yellow-400'
-    case 'completed':
-      return 'bg-emerald-500/20 text-emerald-400'
-    case 'backlog':
-      return 'bg-purple-500/20 text-purple-400'
-    case 'cancelled':
-      return 'bg-red-500/20 text-red-400'
-    default:
-      return 'bg-zinc-600/20 text-zinc-400'
-  }
 }
 
 function formatTime(time: string): string {

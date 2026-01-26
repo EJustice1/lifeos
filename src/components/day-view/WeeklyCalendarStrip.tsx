@@ -35,10 +35,10 @@ export function WeeklyCalendarStrip({
                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
               }`}
             >
-              <span className="text-xs font-medium uppercase">
+              <span className="text-label-sm font-medium uppercase">
                 {date.toLocaleDateString('en-US', { weekday: 'short' })}
               </span>
-              <span className="text-2xl font-bold mt-1">
+              <span className="text-headline-md font-bold mt-1">
                 {date.getDate()}
               </span>
               {hasEvents && !isSelected && (

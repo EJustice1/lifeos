@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 
 interface ExecutionData {
   date: string
@@ -73,10 +72,11 @@ export function ExecutionChart({ data }: ExecutionChartProps) {
   }
 
   return (
-    <MobileCard title="Weekly Execution Trend">
+    <div>
+      <h3 className="text-title-lg font-semibold mb-4 text-white">Weekly Execution Trend</h3>
       <div className="flex gap-4">
         {/* Y-axis scale (left side) */}
-        <div className="flex flex-col justify-between text-xs text-zinc-600" style={{ height: '140px', paddingTop: '4px', paddingBottom: '4px' }}>
+        <div className="flex flex-col justify-between text-label-sm text-zinc-600" style={{ height: '140px', paddingTop: '4px', paddingBottom: '4px' }}>
           <span>100</span>
           <span>75</span>
           <span>50</span>
@@ -168,7 +168,7 @@ export function ExecutionChart({ data }: ExecutionChartProps) {
           </div>
 
           {/* Date labels */}
-          <div className="flex justify-between text-xs text-zinc-600">
+          <div className="flex justify-between text-label-sm text-zinc-600">
             {chartData.map((item, index) => (
               <div key={index} className="text-center" style={{ width: `${100 / chartData.length}%` }}>
                 {new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })}
@@ -177,6 +177,6 @@ export function ExecutionChart({ data }: ExecutionChartProps) {
           </div>
         </div>
       </div>
-    </MobileCard>
+    </div>
   )
 }

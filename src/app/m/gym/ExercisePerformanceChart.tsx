@@ -148,7 +148,7 @@ export function ExercisePerformanceChart({ exerciseId, exerciseName }: ExerciseP
 
   return (
     <div>
-      <h3 className="text-sm font-semibold mb-2">{exerciseName} Progress (Last 90 Days)</h3>
+      <h3 className="text-body-sm font-semibold mb-2">{exerciseName} Progress (Last 90 Days)</h3>
       <div className="h-64">
         <canvas ref={chartRef} />
       </div>

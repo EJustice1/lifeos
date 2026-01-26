@@ -239,8 +239,8 @@ export default function ActionsPage() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="px-4 py-4">
-          <h1 className="text-3xl font-bold text-white mb-1">Actions</h1>
-          <p className="text-sm text-zinc-400">Quick access to all functions</p>
+          <h1 className="text-headline-lg font-bold text-white mb-1">Actions</h1>
+          <p className="text-body-sm text-zinc-400">Quick access to all functions</p>
         </div>
       </div>
 
@@ -255,8 +255,8 @@ export default function ActionsPage() {
             >
               <div className={`${action.color} flex justify-center`}>{action.icon}</div>
               <div className="text-center">
-                <div className="text-white font-semibold text-base mb-1">{action.label}</div>
-                <div className="text-zinc-400 text-xs">{action.description}</div>
+                <div className="text-white font-semibold text-title-md mb-1">{action.label}</div>
+                <div className="text-zinc-400 text-label-sm">{action.description}</div>
               </div>
             </button>
           ))}

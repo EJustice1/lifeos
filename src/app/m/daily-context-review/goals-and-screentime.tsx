@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { getTasks, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import type { Task } from '@/types/database'
@@ -67,14 +66,15 @@ export default function TaskReviewStep() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center mb-6">Today's Tasks</h1>
+      <h1 className="text-headline-md font-bold text-center mb-6">Today's Tasks</h1>
 
       {/* Task Statistics */}
-      <MobileCard title="Task Completion">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Task Completion</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-zinc-400">Completed</span>
-            <span className={`text-lg font-semibold ${
+            <span className={`text-title-md font-semibold ${
               completionRate === 100 ? 'text-emerald-400' :
               completionRate >= 50 ? 'text-yellow-400' :
               'text-red-400'
@@ -96,26 +96,28 @@ export default function TaskReviewStep() {
             </div>
           )}
         </div>
-      </MobileCard>
+      </div>
 
       {/* No Tasks Message */}
       {totalTasks === 0 && (
-        <MobileCard title="No Tasks">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">No Tasks</h3>
           <div className="text-center py-6">
             <svg className="w-12 h-12 mx-auto text-zinc-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-zinc-400 text-sm">
+            <p className="text-zinc-400 text-body-sm">
               You had no tasks scheduled for today
             </p>
           </div>
-        </MobileCard>
+        </div>
       )}
 
       {/* Incomplete Tasks */}
       {incompleteTasks.length > 0 && (
-        <MobileCard title={`Incomplete Tasks (${incompleteTasks.length})`}>
-          <p className="text-xs text-zinc-400 mb-3">Tap to mark as completed</p>
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Incomplete Tasks ({incompleteTasks.length})</h3>
+          <p className="text-label-sm text-zinc-400 mb-3">Tap to mark as completed</p>
           <div className="space-y-2">
             {incompleteTasks.map((task) => (
               <button
@@ -128,22 +130,23 @@ export default function TaskReviewStep() {
                 <div className="flex-1">
                   <span className="text-white">{task.title}</span>
                   {task.description && (
-                    <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{task.description}</p>
+                    <p className="text-label-sm text-zinc-500 mt-1 line-clamp-1">{task.description}</p>
                   )}
                   {task.scheduled_time && (
-                    <p className="text-xs text-zinc-600 mt-1">{task.scheduled_time}</p>
+                    <p className="text-label-sm text-zinc-600 mt-1">{task.scheduled_time}</p>
                   )}
                 </div>
               </button>
             ))}
           </div>
-        </MobileCard>
+        </div>
       )}
 
       {/* Completed Tasks */}
       {completedTasks.length > 0 && (
-        <MobileCard title={`Completed Tasks (${completedTasks.length})`}>
-          <p className="text-xs text-zinc-400 mb-3">Great job! Tap to mark as incomplete if needed</p>
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Completed Tasks ({completedTasks.length})</h3>
+          <p className="text-label-sm text-zinc-400 mb-3">Great job! Tap to mark as incomplete if needed</p>
           <div className="space-y-2">
             {completedTasks.map((task) => (
               <button
@@ -160,13 +163,13 @@ export default function TaskReviewStep() {
                 <div className="flex-1">
                   <span className="text-zinc-400 line-through">{task.title}</span>
                   {task.description && (
-                    <p className="text-xs text-zinc-600 mt-1 line-clamp-1">{task.description}</p>
+                    <p className="text-label-sm text-zinc-600 mt-1 line-clamp-1">{task.description}</p>
                   )}
                 </div>
               </button>
             ))}
           </div>
-        </MobileCard>
+        </div>
       )}
 
     </div>

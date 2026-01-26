@@ -64,7 +64,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-8">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">LifeOS</h1>
+          <h1 className="text-headline-lg font-bold">LifeOS</h1>
           <p className="text-zinc-400 mt-2">
             {isSignUp ? 'Create your account' : 'Sign in to continue'}
           </p>
@@ -72,7 +72,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm text-zinc-400 block mb-2">Email</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Email</label>
             <input
               type="email"
               value={email}
@@ -84,7 +84,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="text-sm text-zinc-400 block mb-2">Password</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Password</label>
             <input
               type="password"
               value={password}
@@ -97,7 +97,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="bg-red-900/50 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+            <div className="bg-red-900/50 border border-red-800 rounded-lg p-3 text-body-sm text-red-400">
               {error}
             </div>
           )}

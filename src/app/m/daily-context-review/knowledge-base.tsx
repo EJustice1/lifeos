@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useDailyReview } from './DailyReviewContext'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 
 export default function KnowledgeBaseStep() {
   const { formData, setFormData } = useDailyReview()
@@ -17,9 +16,10 @@ export default function KnowledgeBaseStep() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-center mb-6">Knowledge Base</h1>
+      <h1 className="text-headline-md font-bold text-center mb-6">Knowledge Base</h1>
 
-      <MobileCard title="Lesson Learned">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Lesson Learned</h3>
         <div className="flex items-center mb-4">
           <span className="text-zinc-300 mr-3">Did you learn a specific lesson today?</span>
           <button
@@ -45,9 +45,10 @@ export default function KnowledgeBaseStep() {
             className="w-full bg-zinc-800 rounded-lg p-3 resize-none mb-3"
           />
         )}
-      </MobileCard>
+      </div>
 
-      <MobileCard title="Daily Highlights">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Daily Highlights</h3>
         <textarea
           value={formData.highlights || ''}
           onChange={(e) => setFormData({ highlights: e.target.value })}
@@ -55,8 +56,8 @@ export default function KnowledgeBaseStep() {
           rows={4}
           className="w-full bg-zinc-800 rounded-lg p-3 resize-none"
         />
-        <p className="text-xs text-zinc-500 mt-2">Optional: Add any important events or accomplishments from today</p>
-      </MobileCard>
+        <p className="text-label-sm text-zinc-500 mt-2">Optional: Add any important events or accomplishments from today</p>
+      </div>
     </div>
   )
 }

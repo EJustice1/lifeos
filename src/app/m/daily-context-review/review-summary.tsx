@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { ExecutionChart } from './execution-chart'
 import { getDailyContextReviewStats } from '@/lib/actions/daily-context-review'
@@ -34,8 +33,8 @@ function MetricDisplay({
 }) {
   return (
     <div className="flex-1 text-center">
-      <div className="text-3xl font-bold text-white mb-1">{value}</div>
-      <div className="text-xs text-zinc-400">{label}</div>
+      <div className="text-headline-lg font-bold text-white mb-1">{value}</div>
+      <div className="text-label-sm text-zinc-400">{label}</div>
       <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
         <div 
           className="h-full rounded-full transition-all"
@@ -70,8 +69,8 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
   return (
     <div className="min-h-screen bg-zinc-900 p-4 space-y-4">
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">Daily Review Complete</h1>
-        <p className="text-zinc-400 text-sm">
+        <h1 className="text-headline-md font-bold text-white mb-2">Daily Review Complete</h1>
+        <p className="text-zinc-400 text-body-sm">
           {new Date(review.date).toLocaleDateString('en-US', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -82,7 +81,8 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
       </div>
 
       {/* Execution Metrics */}
-      <MobileCard title="Today's Performance">
+      <div>
+        <h3 className="text-title-lg font-semibold mb-4 text-white">Today's Performance</h3>
         <div className="flex justify-center">
           <MetricDisplay 
             label="Execution Score"
@@ -90,79 +90,85 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
             color="#8b5cf6"
           />
         </div>
-      </MobileCard>
+      </div>
 
       {/* Context Snapshot */}
       {contextData && (
-        <MobileCard title="Today's Activity">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Today's Activity</h3>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">
+              <div className="text-headline-md font-bold text-white">
                 {Math.floor(contextData.studyMinutes / 60)}h {contextData.studyMinutes % 60}m
               </div>
-              <div className="text-xs text-zinc-400">Study Time</div>
+              <div className="text-label-sm text-zinc-400">Study Time</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">
+              <div className="text-headline-md font-bold text-white">
                 {contextData.workoutsCompleted}/{contextData.workoutsTotal}
               </div>
-              <div className="text-xs text-zinc-400">Workouts</div>
+              <div className="text-label-sm text-zinc-400">Workouts</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">
+              <div className="text-headline-md font-bold text-white">
                 {Math.floor(contextData.screenTimeMinutes / 60)}h {contextData.screenTimeMinutes % 60}m
               </div>
-              <div className="text-xs text-zinc-400">Screen Time</div>
+              <div className="text-label-sm text-zinc-400">Screen Time</div>
             </div>
           </div>
-        </MobileCard>
+        </div>
       )}
 
       {/* Screen Time */}
       {(review.screen_time_minutes ?? 0) > 0 && (
-        <MobileCard title="Screen Time">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Screen Time</h3>
           <div className="text-center">
-            <div className="text-3xl font-bold text-white mb-1">
+            <div className="text-headline-lg font-bold text-white mb-1">
               {Math.floor((review.screen_time_minutes ?? 0) / 60)}h {(review.screen_time_minutes ?? 0) % 60}m
             </div>
-            <div className="text-sm text-zinc-400">Total Time</div>
+            <div className="text-body-sm text-zinc-400">Total Time</div>
           </div>
-        </MobileCard>
+        </div>
       )}
 
       {/* Unfocused Factors */}
       {review.unfocused_factors && review.unfocused_factors.length > 0 && (
-        <MobileCard title="Unfocused Factors">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Unfocused Factors</h3>
           <div className="flex flex-wrap gap-2">
             {review.unfocused_factors.map((factor) => (
               <span
                 key={factor}
-                className="px-3 py-1.5 rounded-full text-sm bg-orange-600/20 text-orange-300 border border-orange-600/30"
+                className="px-3 py-1.5 rounded-full text-body-sm bg-orange-600/20 text-orange-300 border border-orange-600/30"
               >
                 {factor}
               </span>
             ))}
           </div>
-        </MobileCard>
+        </div>
       )}
 
       {/* Highlights */}
       {review.highlights && (
-        <MobileCard title="Highlights">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Highlights</h3>
           <p className="text-white whitespace-pre-wrap">{review.highlights}</p>
-        </MobileCard>
+        </div>
       )}
 
       {/* Lesson Learned */}
       {review.lesson_learned && (
-        <MobileCard title="Lesson Learned">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Lesson Learned</h3>
           <p className="text-white whitespace-pre-wrap">{review.lesson_learned}</p>
-        </MobileCard>
+        </div>
       )}
 
       {/* Tomorrow's Goals */}
       {review.tomorrow_goals && review.tomorrow_goals.length > 0 && (
-        <MobileCard title="Tomorrow's Goals">
+        <div>
+          <h3 className="text-title-lg font-semibold mb-4 text-white">Tomorrow's Goals</h3>
           <ul className="space-y-2">
             {review.tomorrow_goals.map((goal, index) => (
               <li key={index} className="flex items-start gap-2">
@@ -171,7 +177,7 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
               </li>
             ))}
           </ul>
-        </MobileCard>
+        </div>
       )}
 
       {/* Execution History Chart */}

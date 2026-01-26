@@ -126,11 +126,11 @@ function GoogleCalendarSettings() {
   return (
     <div className="min-h-screen bg-zinc-950 p-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Google Calendar Settings</h1>
+        <h1 className="text-headline-lg font-bold text-white mb-8">Google Calendar Settings</h1>
 
         {/* Connection Status */}
         <div className="bg-zinc-900 rounded-lg p-6 mb-4">
-          <h2 className="text-xl font-semibold text-white mb-4">Connection Status</h2>
+          <h2 className="text-title-lg font-semibold text-white mb-4">Connection Status</h2>
 
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -212,9 +212,9 @@ function GoogleCalendarSettings() {
 
         {/* Info Card */}
         <div className="bg-zinc-900 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">About Google Calendar Sync</h2>
+          <h2 className="text-title-lg font-semibold text-white mb-4">About Google Calendar Sync</h2>
 
-          <div className="space-y-2 text-zinc-400 text-sm">
+          <div className="space-y-2 text-zinc-400 text-body-sm">
             <p>
               Connect your Google Calendar to automatically sync events with your LifeOS tasks:
             </p>

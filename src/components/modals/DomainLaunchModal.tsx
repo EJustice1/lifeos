@@ -40,18 +40,18 @@ export function DomainLaunchModal({ task, domain, onClose }: DomainLaunchModalPr
               {domainIcon}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Start {domainLabel}</h2>
-              <p className="text-sm text-zinc-400">Begin session for this task</p>
+              <h2 className="text-title-lg font-bold text-white">Start {domainLabel}</h2>
+              <p className="text-body-sm text-zinc-400">Begin session for this task</p>
             </div>
           </div>
         </div>
 
         {/* Task Info */}
         <div className="mb-6 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
-          <p className="text-sm text-zinc-400 mb-1">Task:</p>
+          <p className="text-body-sm text-zinc-400 mb-1">Task:</p>
           <p className="text-white font-medium">{task.title}</p>
           {task.description && (
-            <p className="text-sm text-zinc-500 mt-2">{task.description}</p>
+            <p className="text-body-sm text-zinc-500 mt-2">{task.description}</p>
           )}
         </div>
 

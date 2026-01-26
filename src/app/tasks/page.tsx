@@ -45,7 +45,7 @@ export default function TasksPage() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="px-4 py-4">
-          <h1 className="text-3xl font-bold text-white mb-4">Tasks</h1>
+          <h1 className="text-headline-lg font-bold text-white mb-4">Tasks</h1>
           
           {/* Segmented Control */}
           <SegmentedControl

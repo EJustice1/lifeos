@@ -88,7 +88,7 @@ function NewTaskForm() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="px-4 py-4 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Add Task</h1>
+          <h1 className="text-headline-lg font-bold text-white">Add Task</h1>
           <button
             onClick={() => router.push('/actions')}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -105,7 +105,7 @@ function NewTaskForm() {
       <div className="px-4 py-6 space-y-4">
         {/* Title */}
         <div>
-          <label htmlFor="task-title" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="task-title" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Title <span className="text-red-400">*</span>
           </label>
           <input
@@ -122,7 +122,7 @@ function NewTaskForm() {
 
         {/* Description */}
         <div>
-          <label htmlFor="task-description" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="task-description" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Description
           </label>
           <textarea
@@ -137,7 +137,7 @@ function NewTaskForm() {
 
         {/* Project */}
         <div>
-          <label htmlFor="task-project" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="task-project" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Project
           </label>
           {loadingProjects ? (
@@ -192,7 +192,7 @@ function NewTaskForm() {
 
         {/* Duration */}
         <div>
-          <label htmlFor="task-duration" className="block text-sm font-medium text-zinc-300 mb-2">
+          <label htmlFor="task-duration" className="block text-body-sm font-medium text-zinc-300 mb-2">
             Duration (minutes)
           </label>
           <input

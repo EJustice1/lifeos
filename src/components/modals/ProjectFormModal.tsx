@@ -102,7 +102,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
       >
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Add Project</h2>
+          <h2 className="text-headline-md font-bold text-white">Add Project</h2>
           <button
             onClick={onClose}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -123,7 +123,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label htmlFor="project-title" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="project-title" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Title <span className="text-red-400">*</span>
             </label>
             <input
@@ -140,7 +140,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
 
           {/* Description */}
           <div>
-            <label htmlFor="project-description" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="project-description" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Description
             </label>
             <textarea
@@ -155,7 +155,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
 
           {/* Life Goal */}
           <div>
-            <label htmlFor="project-goal" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="project-goal" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Life Goal
             </label>
             {loadingGoals ? (
@@ -181,7 +181,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
 
           {/* Color */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-body-sm font-medium text-zinc-300 mb-2">
               Color
             </label>
             <div className="grid grid-cols-9 gap-2">
@@ -205,7 +205,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
 
           {/* Target Date */}
           <div>
-            <label htmlFor="project-target-date" className="block text-sm font-medium text-zinc-300 mb-2">
+            <label htmlFor="project-target-date" className="block text-body-sm font-medium text-zinc-300 mb-2">
               Target Date
             </label>
             <input

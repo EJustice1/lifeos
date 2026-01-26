@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { RatingWidget, type RatingOption } from '@/components/widgets'
@@ -129,7 +128,7 @@ function StudyReviewContent() {
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-2xl font-bold text-white">Study Session Review</h1>
+          <h1 className="text-headline-md font-bold text-white">Study Session Review</h1>
           <button
             onClick={() => router.push('/m/study')}
             className="p-2 text-zinc-400 hover:text-white"
@@ -172,7 +171,7 @@ function StudyReviewContent() {
 
         {/* Notes */}
         <div>
-          <label className="block text-lg font-bold text-white mb-2">
+          <label className="block text-title-md font-bold text-white mb-2">
             Notes (Optional)
           </label>
           <textarea
@@ -186,14 +185,15 @@ function StudyReviewContent() {
 
         {/* Failure Tags (shown only if ratings are low) */}
         {showFailureTags && (
-          <MobileCard title="What Went Wrong?">
-            <p className="text-sm text-zinc-400 mb-4">Select any factors that impacted your session</p>
+          <div>
+            <h3 className="text-title-lg font-semibold mb-4 text-white">What Went Wrong?</h3>
+            <p className="text-body-sm text-zinc-400 mb-4">Select any factors that impacted your session</p>
             <div className="flex flex-wrap gap-2">
               {STUDY_FAILURE_TAGS.map((tag) => (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-body-sm font-medium transition-colors ${
                     selectedTags.includes(tag)
                       ? 'bg-red-500 text-white'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -203,7 +203,7 @@ function StudyReviewContent() {
                 </button>
               ))}
             </div>
-          </MobileCard>
+          </div>
         )}
       </div>
 

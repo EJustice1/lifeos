@@ -82,8 +82,8 @@ export function StrategyHubClient() {
       <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-2xl font-bold text-white">Strategy Hub</h1>
-            <p className="text-sm text-zinc-400">Goals, Projects & Tasks</p>
+            <h1 className="text-headline-md font-bold text-white">Strategy Hub</h1>
+            <p className="text-body-sm text-zinc-400">Goals, Projects & Tasks</p>
           </div>
 
           <Link
@@ -108,7 +108,7 @@ export function StrategyHubClient() {
             }`}
           >
             Today
-            <span className="ml-2 text-xs opacity-60">({todayTasks.length})</span>
+            <span className="ml-2 text-label-sm opacity-60">({todayTasks.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('backlog')}
@@ -155,14 +155,14 @@ export function StrategyHubClient() {
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">No Tasks Today</h3>
+                <h3 className="text-title-lg font-semibold text-white mb-2">No Tasks Today</h3>
                 <p className="text-zinc-400">Schedule tasks for today from Inbox or Backlog</p>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-body-sm text-zinc-400">
                       {todayTasks.filter(t => t.status === 'completed').length}/{todayTasks.length} completed
                     </p>
                   </div>
@@ -182,7 +182,7 @@ export function StrategyHubClient() {
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">No Life Goals Yet</h3>
+                <h3 className="text-title-lg font-semibold text-white mb-2">No Life Goals Yet</h3>
                 <p className="text-zinc-400 mb-4">Start by creating your first life goal</p>
                 <button 
                   onClick={() => setShowCreateGoalModal(true)}
@@ -214,7 +214,7 @@ export function StrategyHubClient() {
                 {/* Orphaned projects (no life goal) */}
                 {orphanedProjects.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-white mb-3">Unassigned Projects</h3>
+                    <h3 className="text-title-md font-semibold text-white mb-3">Unassigned Projects</h3>
                     <div className="space-y-3">
                       {orphanedProjects.map(project => (
                         <ProjectCard
@@ -239,13 +239,13 @@ export function StrategyHubClient() {
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">No Backlog Tasks</h3>
+                <h3 className="text-title-lg font-semibold text-white mb-2">No Backlog Tasks</h3>
                 <p className="text-zinc-400">Tasks moved from today will appear here</p>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-zinc-400">
+                  <p className="text-body-sm text-zinc-400">
                     {backlogTasks.length} task{backlogTasks.length !== 1 ? 's' : ''} in backlog
                   </p>
                 </div>
@@ -264,7 +264,7 @@ export function StrategyHubClient() {
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
-                <h3 className="text-xl font-semibold text-white mb-2">No Projects Yet</h3>
+                <h3 className="text-title-lg font-semibold text-white mb-2">No Projects Yet</h3>
                 <p className="text-zinc-400">Create projects from the Life Goals tab</p>
               </div>
             ) : (

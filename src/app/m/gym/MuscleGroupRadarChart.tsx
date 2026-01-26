@@ -160,7 +160,7 @@ export function MuscleGroupRadarChart({ percentiles }: MuscleGroupRadarChartProp
       <div className="flex-1">
         <canvas ref={chartRef} />
       </div>
-      <div className="mt-4 flex justify-center gap-4 text-xs">
+      <div className="mt-4 flex justify-center gap-4 text-label-sm">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-green-500"></div>
           <span className="text-zinc-400">80-100%</span>

@@ -1,5 +1,5 @@
 export * from './layout';
 export * from './feedback';
-export * from './cards';
+// Cards exports removed - MobileCard component replaced with editorial design patterns
 export * from './buttons';
 export * from './inputs';
