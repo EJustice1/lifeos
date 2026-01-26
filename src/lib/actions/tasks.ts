@@ -456,11 +456,12 @@ export async function updateProject(
   projectId: string,
   updates: {
     title?: string
-    description?: string
-    life_goal_id?: string
+    description?: string | null
+    life_goal_id?: string | null
     color?: string
     status?: Project['status']
-    target_date?: string
+    target_date?: string | null
+    completed_at?: string | null
     archived?: boolean
   }
 ) {
