@@ -3,13 +3,13 @@
  * Provides tactile feedback for user interactions
  */
 
-export const triggerHapticFeedback = (pattern: number | number[] = 10): void => {
+export const triggerHapticFeedback = (pattern: number | readonly number[] = 10): void => {
   // Only trigger on mobile devices with touch support
   if (typeof window !== 'undefined' && 'ontouchstart' in window) {
     try {
       // Check if Vibration API is available
       if ('vibrate' in navigator) {
-        navigator.vibrate(pattern);
+        navigator.vibrate(pattern as number | number[]);
       }
     } catch {
       console.log('Haptic feedback not supported on this device');

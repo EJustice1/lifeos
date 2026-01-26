@@ -1,15 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DayViewClient } from './DayViewClient'
+import { StrategyHubClient } from './StrategyHubClient'
 
-export default async function Home() {
+export default async function StrategyHubPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Redirect to login if not authenticated
   if (!user) {
     redirect('/auth/login')
   }
 
-  return <DayViewClient />
+  return <StrategyHubClient />
 }

@@ -64,10 +64,10 @@ const DailyReviewContext = createContext<DailyReviewContextType | undefined>(und
 
 export function DailyReviewProvider({
   children,
-  initialData,
+  initialData = { contextData: null, existingReview: null },
 }: {
   children: ReactNode
-  initialData: {
+  initialData?: {
     contextData: DailyContextData | null
     existingReview: DailyReviewRow | null
   }

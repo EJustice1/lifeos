@@ -11,6 +11,7 @@ import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
 import { ClientCache, CACHE_KEYS, CACHE_DURATIONS } from '@/lib/cache-utils'
+import { ActiveCooldownSheet } from '@/components/active-cooldown/ActiveCooldownSheet'
 
 interface WorkoutHistory {
   id: string
@@ -127,6 +128,8 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [showCooldown, setShowCooldown] = useState(false)
+  const [completedWorkoutId, setCompletedWorkoutId] = useState<string | null>(null)
 
   // Get exercises filtered by workout type (memoized for performance)
   const exercises = useMemo(() => {
@@ -274,6 +277,9 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
   const handleEndWorkout = useCallback(async () => {
     if (!activeWorkout) return
 
+    // Capture workout ID before ending session (it will be cleared)
+    const workoutId = activeWorkout.workoutId
+
     startTransition(async () => {
       try {
         // End workout (will handle empty workouts internally)
@@ -286,8 +292,9 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         ClientCache.remove(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5))
 
         // Only show success toast if data was actually saved
-        if (result.saved) {
-          showToast('Workout completed successfully! 🎉', 'success')
+        if (result.saved && workoutId) {
+          setCompletedWorkoutId(workoutId)
+          setShowCooldown(true)
         }
 
         // Update local state
@@ -324,7 +331,23 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
 
 
   return (
-    <section className="space-y-4">
+    <>
+      {/* Active Cooldown Sheet */}
+      {showCooldown && completedWorkoutId && (
+        <ActiveCooldownSheet
+          sessionId={completedWorkoutId}
+          sessionType="workout"
+          onClose={() => {
+            setShowCooldown(false)
+            setCompletedWorkoutId(null)
+          }}
+          onSave={() => {
+            showToast('Workout feedback saved! 🎉', 'success')
+          }}
+        />
+      )}
+
+      <section className="space-y-4">
       {activeSection === 'workout' && !isWorkoutActive ? (
           /* New front screen design - 2-column grid with big buttons */
           <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
@@ -577,6 +600,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
           </MobileCard>
         </div>
       ) : null}
-    </section>
+      </section>
+    </>
   )
 }

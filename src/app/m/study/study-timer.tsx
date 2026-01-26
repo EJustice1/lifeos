@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useSession } from '@/context/SessionContext'
 import { startStudySession, endStudySession, deleteStudySession, updateStudySession } from '@/lib/actions/study'
 import { useRouter } from 'next/navigation'
+import { ActiveCooldownSheet } from '@/components/active-cooldown/ActiveCooldownSheet'
 
 interface Bucket {
   id: string
@@ -45,6 +46,8 @@ export function StudyTimer({
   const [isRunning, setIsRunning] = useState(false)
   const [editingSession, setEditingSession] = useState<string | null>(null)
   const [editDuration, setEditDuration] = useState(0)
+  const [showCooldown, setShowCooldown] = useState(false)
+  const [completedSessionId, setCompletedSessionId] = useState<string | null>(null)
 
   const {
     activeSession: contextSession,
@@ -110,9 +113,13 @@ export function StudyTimer({
   async function handleStop() {
     if (!activeSession) return
 
+    const sessionId = activeSession
+
     startTransition(async () => {
       try {
-        await endStudySession(activeSession)
+        await endStudySession(sessionId)
+        setCompletedSessionId(sessionId)
+        setShowCooldown(true)
       } catch (error) {
         // Silently handle validation errors (no time logged)
         // Only log real errors
@@ -172,7 +179,24 @@ export function StudyTimer({
   }
 
   return (
-    <section className="space-y-4">
+    <>
+      {/* Active Cooldown Sheet */}
+      {showCooldown && completedSessionId && (
+        <ActiveCooldownSheet
+          sessionId={completedSessionId}
+          sessionType="study"
+          onClose={() => {
+            setShowCooldown(false)
+            setCompletedSessionId(null)
+            router.refresh()
+          }}
+          onSave={() => {
+            router.refresh()
+          }}
+        />
+      )}
+
+      <section className="space-y-4">
       {/* Bucket selector */}
       <div className="bg-zinc-900 rounded-xl p-4">
         <label className="text-sm text-zinc-400 block mb-2">Bucket</label>
@@ -317,6 +341,7 @@ export function StudyTimer({
           )}
         </div>
       )}
-    </section>
+      </section>
+    </>
   )
 }

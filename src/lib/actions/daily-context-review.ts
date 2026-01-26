@@ -50,6 +50,7 @@ export async function getDailyContextData() {
 }
 
 // Submit daily context review data
+// Note: tomorrow_goals parameter removed - use Tasks system instead
 export async function submitDailyContextReview(
   date: string,
   executionScore: number,
@@ -58,11 +59,11 @@ export async function submitDailyContextReview(
   unfocusedFactors: string[],
   lessonLearned: string | null,
   highlights: string | null,
-  tomorrowGoals: string[] = [],
   productiveScreenMinutes: number = 0,
   distractedScreenMinutes: number = 0,
   executionScoreSuggested?: number,
-  executionScoreLocked: boolean = false
+  executionScoreLocked: boolean = false,
+  rolledOverTaskIds: string[] = []
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -80,11 +81,13 @@ export async function submitDailyContextReview(
       unfocused_factors: unfocusedFactors,
       lesson_learned: lessonLearned,
       highlights: highlights,
-      tomorrow_goals: tomorrowGoals,
+      tomorrow_goals: [], // Deprecated - keeping empty for backward compatibility
       productive_screen_minutes: productiveScreenMinutes,
       distracted_screen_minutes: distractedScreenMinutes,
       execution_score_suggested: executionScoreSuggested,
       execution_score_locked: executionScoreLocked,
+      rolled_over_task_ids: rolledOverTaskIds,
+      incomplete_tasks_processed: true,
     }, {
       onConflict: 'user_id,date'
     })

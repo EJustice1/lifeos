@@ -117,6 +117,10 @@ export interface Database {
           type: string | null
           notes: string | null
           total_volume: number
+          effort_rating: number | null
+          feeling_rating: number | null
+          failure_tags: string[]
+          task_id: string | null
         }
         Insert: {
           id?: string
@@ -127,6 +131,10 @@ export interface Database {
           type?: string | null
           notes?: string | null
           total_volume?: number
+          effort_rating?: number | null
+          feeling_rating?: number | null
+          failure_tags?: string[]
+          task_id?: string | null
         }
         Update: {
           id?: string
@@ -137,6 +145,10 @@ export interface Database {
           type?: string | null
           notes?: string | null
           total_volume?: number
+          effort_rating?: number | null
+          feeling_rating?: number | null
+          failure_tags?: string[]
+          task_id?: string | null
         }
       }
 
@@ -184,6 +196,10 @@ export interface Database {
           ended_at: string | null
           duration_minutes: number
           notes: string | null
+          effort_rating: number | null
+          focus_rating: number | null
+          failure_tags: string[]
+          task_id: string | null
         }
         Insert: {
           id?: string
@@ -194,6 +210,10 @@ export interface Database {
           ended_at?: string | null
           duration_minutes?: number
           notes?: string | null
+          effort_rating?: number | null
+          focus_rating?: number | null
+          failure_tags?: string[]
+          task_id?: string | null
         }
         Update: {
           id?: string
@@ -204,6 +224,10 @@ export interface Database {
           ended_at?: string | null
           duration_minutes?: number
           notes?: string | null
+          effort_rating?: number | null
+          focus_rating?: number | null
+          failure_tags?: string[]
+          task_id?: string | null
         }
       }
 
@@ -421,6 +445,14 @@ export interface Database {
           unfocused_factors: string[]
           lesson_learned: string | null
           highlights: string | null
+          tomorrow_goals: string[]
+          yesterday_goals: string[]
+          productive_screen_minutes: number | null
+          distracted_screen_minutes: number | null
+          execution_score_suggested: number | null
+          execution_score_locked: boolean
+          incomplete_tasks_processed: boolean
+          rolled_over_task_ids: string[]
           created_at: string
         }
         Insert: {
@@ -433,6 +465,14 @@ export interface Database {
           unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
+          tomorrow_goals?: string[]
+          yesterday_goals?: string[]
+          productive_screen_minutes?: number | null
+          distracted_screen_minutes?: number | null
+          execution_score_suggested?: number | null
+          execution_score_locked?: boolean
+          incomplete_tasks_processed?: boolean
+          rolled_over_task_ids?: string[]
           created_at?: string
         }
         Update: {
@@ -445,7 +485,331 @@ export interface Database {
           unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
+          tomorrow_goals?: string[]
+          yesterday_goals?: string[]
+          productive_screen_minutes?: number | null
+          distracted_screen_minutes?: number | null
+          execution_score_suggested?: number | null
+          execution_score_locked?: boolean
+          incomplete_tasks_processed?: boolean
+          rolled_over_task_ids?: string[]
           created_at?: string
+        }
+      }
+
+      // Task Management: Life Goals (top-level hierarchy)
+      life_goals: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          category: 'health' | 'career' | 'relationships' | 'finance' | 'personal' | 'other' | null
+          status: 'active' | 'completed' | 'abandoned'
+          target_date: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+          archived: boolean
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          category?: 'health' | 'career' | 'relationships' | 'finance' | 'personal' | 'other' | null
+          status?: 'active' | 'completed' | 'abandoned'
+          target_date?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          archived?: boolean
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          category?: 'health' | 'career' | 'relationships' | 'finance' | 'personal' | 'other' | null
+          status?: 'active' | 'completed' | 'abandoned'
+          target_date?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          archived?: boolean
+        }
+      }
+
+      // Task Management: Projects (middle hierarchy level)
+      projects: {
+        Row: {
+          id: string
+          user_id: string
+          life_goal_id: string | null
+          title: string
+          description: string | null
+          color: string
+          status: 'active' | 'completed' | 'on_hold' | 'archived'
+          target_date: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+          archived: boolean
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          life_goal_id?: string | null
+          title: string
+          description?: string | null
+          color?: string
+          status?: 'active' | 'completed' | 'on_hold' | 'archived'
+          target_date?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          archived?: boolean
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          life_goal_id?: string | null
+          title?: string
+          description?: string | null
+          color?: string
+          status?: 'active' | 'completed' | 'on_hold' | 'archived'
+          target_date?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          archived?: boolean
+        }
+      }
+
+      // Task Management: Tasks (actionable items)
+      tasks: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string | null
+          bucket_id: string | null
+          title: string
+          description: string | null
+          status: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          scheduled_date: string | null
+          scheduled_time: string | null
+          duration_minutes: number | null
+          gcal_event_id: string | null
+          gcal_sync_status: 'synced' | 'pending' | 'conflict' | 'error' | null
+          gcal_last_sync: string | null
+          priority: number
+          tags: string[]
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+          promoted_to_today_at: string | null
+          position_in_day: number | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id?: string | null
+          bucket_id?: string | null
+          title: string
+          description?: string | null
+          status?: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          duration_minutes?: number | null
+          gcal_event_id?: string | null
+          gcal_sync_status?: 'synced' | 'pending' | 'conflict' | 'error' | null
+          gcal_last_sync?: string | null
+          priority?: number
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          promoted_to_today_at?: string | null
+          position_in_day?: number | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string | null
+          bucket_id?: string | null
+          title?: string
+          description?: string | null
+          status?: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          duration_minutes?: number | null
+          gcal_event_id?: string | null
+          gcal_sync_status?: 'synced' | 'pending' | 'conflict' | 'error' | null
+          gcal_last_sync?: string | null
+          priority?: number
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+          promoted_to_today_at?: string | null
+          position_in_day?: number | null
+        }
+      }
+
+      // Task Completion Feedback (Active Cooldown data)
+      task_completion_feedback: {
+        Row: {
+          id: string
+          user_id: string
+          task_id: string | null
+          session_id: string | null
+          session_type: 'study' | 'workout' | 'task'
+          effort_rating: number | null
+          focus_rating: number | null
+          failure_tags: string[]
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          task_id?: string | null
+          session_id?: string | null
+          session_type: 'study' | 'workout' | 'task'
+          effort_rating?: number | null
+          focus_rating?: number | null
+          failure_tags?: string[]
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_id?: string | null
+          session_id?: string | null
+          session_type?: 'study' | 'workout' | 'task'
+          effort_rating?: number | null
+          focus_rating?: number | null
+          failure_tags?: string[]
+          notes?: string | null
+          created_at?: string
+        }
+      }
+
+      // Google Calendar: Events cache
+      google_calendar_events: {
+        Row: {
+          id: string
+          user_id: string
+          gcal_event_id: string
+          calendar_id: string
+          summary: string
+          description: string | null
+          start_time: string
+          end_time: string
+          all_day: boolean
+          location: string | null
+          task_id: string | null
+          last_synced: string
+          is_deleted: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          gcal_event_id: string
+          calendar_id: string
+          summary: string
+          description?: string | null
+          start_time: string
+          end_time: string
+          all_day?: boolean
+          location?: string | null
+          task_id?: string | null
+          last_synced?: string
+          is_deleted?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          gcal_event_id?: string
+          calendar_id?: string
+          summary?: string
+          description?: string | null
+          start_time?: string
+          end_time?: string
+          all_day?: boolean
+          location?: string | null
+          task_id?: string | null
+          last_synced?: string
+          is_deleted?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
+      // Google Calendar: Credentials
+      google_calendar_credentials: {
+        Row: {
+          user_id: string
+          access_token: string
+          refresh_token: string
+          token_expiry: string
+          calendar_id: string | null
+          last_sync: string | null
+          sync_enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          access_token: string
+          refresh_token: string
+          token_expiry: string
+          calendar_id?: string | null
+          last_sync?: string | null
+          sync_enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          access_token?: string
+          refresh_token?: string
+          token_expiry?: string
+          calendar_id?: string | null
+          last_sync?: string | null
+          sync_enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
+      // Migration tracking
+      migration_status: {
+        Row: {
+          user_id: string
+          buckets_migrated: boolean
+          goals_migrated: boolean
+          migration_started_at: string | null
+          migration_completed_at: string | null
+        }
+        Insert: {
+          user_id: string
+          buckets_migrated?: boolean
+          goals_migrated?: boolean
+          migration_started_at?: string | null
+          migration_completed_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          buckets_migrated?: boolean
+          goals_migrated?: boolean
+          migration_started_at?: string | null
+          migration_completed_at?: string | null
         }
       }
     }
@@ -468,3 +832,12 @@ export type ScreenTime = Database['public']['Tables']['screen_time']['Row']
 export type AppUsage = Database['public']['Tables']['app_usage']['Row']
 export type DailyReview = Database['public']['Tables']['daily_reviews']['Row']
 export type DailyContextReview = Database['public']['Tables']['daily_context_reviews']['Row']
+
+// Task Management types
+export type LifeGoal = Database['public']['Tables']['life_goals']['Row']
+export type Project = Database['public']['Tables']['projects']['Row']
+export type Task = Database['public']['Tables']['tasks']['Row']
+export type TaskCompletionFeedback = Database['public']['Tables']['task_completion_feedback']['Row']
+export type GoogleCalendarEvent = Database['public']['Tables']['google_calendar_events']['Row']
+export type GoogleCalendarCredentials = Database['public']['Tables']['google_calendar_credentials']['Row']
+export type MigrationStatus = Database['public']['Tables']['migration_status']['Row']
