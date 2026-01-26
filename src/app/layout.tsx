@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from './Providers';
+import { CommandCenterNav } from '@/components/navigation/CommandCenterNav';
 
 export const metadata: Metadata = {
   title: "LifeOS",
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className="antialiased">
         <Providers>
           {children}
+          <CommandCenterNav />
         </Providers>
       </body>
     </html>

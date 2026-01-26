@@ -5,7 +5,6 @@ import { useDailyReview } from './DailyReviewContext'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import { ExecutionSlider } from '@/components/mobile/inputs/ExecutionSlider'
-import { OverrideConfirmationModal } from '@/components/mobile/modals/OverrideConfirmationModal'
 import { getUserSettings } from '@/lib/actions/settings'
 import {
   calculateExecutionRange,
@@ -14,11 +13,9 @@ import {
   ValidationResult,
 } from '@/lib/execution-validator'
 
-export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
+export default function ContextSnapshotStep() {
   const { formData, setFormData, contextData, yesterdayGoals, completedGoals } = useDailyReview()
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
-  const [showOverrideModal, setShowOverrideModal] = useState(false)
-  const [hasAskedOverride, setHasAskedOverride] = useState(false)
   const [studyTarget, setStudyTarget] = useState(120)
   const [workoutTarget, setWorkoutTarget] = useState(1)
 
@@ -49,8 +46,7 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
       studyTarget: studyTarget,
       workoutsCompleted: contextData.workoutsCompleted,
       workoutsTarget: workoutTarget,
-      productiveScreenMinutes: formData.productiveScreenMinutes,
-      distractedScreenMinutes: formData.distractedScreenMinutes,
+      screenTimeMinutes: formData.screenTimeMinutes,
       yesterdayGoalsCompleted: completedGoals.size,
       yesterdayGoalsTotal: yesterdayGoals.length,
     })
@@ -65,8 +61,7 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
     contextData,
     studyTarget,
     workoutTarget,
-    formData.productiveScreenMinutes,
-    formData.distractedScreenMinutes,
+    formData.screenTimeMinutes,
     completedGoals,
     yesterdayGoals.length,
   ])
@@ -88,7 +83,7 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
     : `${studyMinutes}m`
 
   // Calculate total screen time from user input
-  const totalScreenMinutes = formData.productiveScreenMinutes + formData.distractedScreenMinutes
+  const totalScreenMinutes = formData.screenTimeMinutes
   const totalScreenHours = Math.floor(totalScreenMinutes / 60)
   const totalScreenMins = totalScreenMinutes % 60
   const totalScreenText = totalScreenHours > 0
@@ -149,13 +144,18 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
       </MobileCard>
 
       <MobileCard title="Execution Score">
-        {/* Validation Alert */}
-        {validationResult && validationResult.locked && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg">
-            <p className="text-sm text-red-300">{validationResult.suggestions.join('. ')}</p>
-            <p className="text-xs text-red-400 mt-1">
-              Maximum allowed: {findExecutionLevel(validationResult.maxScore).label}
-            </p>
+        {/* Suggested Score - Informational Only */}
+        {validationResult && validationResult.suggestions.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+            <p className="text-sm text-blue-300 mb-2">Suggestions based on your data:</p>
+            <ul className="space-y-1">
+              {validationResult.suggestions.map((suggestion, i) => (
+                <li key={i} className="text-xs text-zinc-400 flex items-start gap-2">
+                  <span className="text-blue-400">•</span>
+                  <span>{suggestion}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -171,27 +171,18 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
           </div>
         )}
 
-        {/* Custom Stepped Slider */}
+        {/* Custom Stepped Slider - No Restrictions */}
         {validationResult && (
           <ExecutionSlider
             value={formData.executionScore}
             levels={EXECUTION_LEVELS}
-            maxValue={validationResult.maxScore}
-            isOverrideEnabled={formData.executionScoreLocked}
+            maxValue={100}
+            isOverrideEnabled={false}
             onChange={(score) => {
               setFormData({ executionScore: score })
-              // Clear locked flag if user changes score back down
-              if (formData.executionScoreLocked && score <= validationResult.maxScore) {
-                setFormData({ executionScoreLocked: false })
-                setHasAskedOverride(false)
-              }
             }}
             onAttemptLocked={() => {
-              // Only show modal once per session or if user hasn't locked override
-              if (!hasAskedOverride && !formData.executionScoreLocked) {
-                setShowOverrideModal(true)
-                setHasAskedOverride(true)
-              }
+              // No restrictions - do nothing
             }}
           />
         )}
@@ -221,31 +212,6 @@ export default function ContextSnapshot({ onNext }: { onNext: () => void }) {
         </div>
       </MobileCard>
 
-      <PrimaryButton
-        variant="primary"
-        size="lg"
-        onClick={onNext}
-        className="w-full"
-      >
-        Continue to Internal State
-      </PrimaryButton>
-
-      {/* Override Confirmation Modal */}
-      {showOverrideModal && validationResult && (
-        <OverrideConfirmationModal
-          currentScore={formData.executionScore}
-          maxAllowed={validationResult.maxScore}
-          onConfirm={() => {
-            setFormData({ executionScoreLocked: true })
-            setShowOverrideModal(false)
-          }}
-          onCancel={() => {
-            const maxLevel = findExecutionLevel(validationResult.maxScore)
-            setFormData({ executionScore: maxLevel.value })
-            setShowOverrideModal(false)
-          }}
-        />
-      )}
     </div>
   )
 }

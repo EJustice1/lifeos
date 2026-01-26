@@ -4,6 +4,7 @@ import { getDailyContextData, getExistingDailyContextReview, submitDailyContextR
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 import GoalsAndScreentime from './goals-and-screentime'
+import ScreentimeStep from './screentime'
 import ContextSnapshot from './context-snapshot'
 import InternalState from './internal-state'
 import KnowledgeBase from './knowledge-base'
@@ -57,7 +58,8 @@ function reducer(state: State, action: Action): State {
 }
 
 const STEPS = [
-  { id: 'goals', label: 'Goals & Screentime', component: GoalsAndScreentime },
+  { id: 'tasks', label: 'Today\'s Tasks', component: GoalsAndScreentime },
+  { id: 'screentime', label: 'Screentime', component: ScreentimeStep },
   { id: 'context', label: 'Context Snapshot', component: ContextSnapshot },
   { id: 'internal', label: 'Internal State', component: InternalState },
   { id: 'knowledge', label: 'Knowledge Base', component: KnowledgeBase },
@@ -88,7 +90,8 @@ function DailyContextReviewPage() {
       }
     }
     load()
-  }, [showToast])
+    // Only load once on mount - no auto-syncing with database
+  }, [])
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -110,6 +113,7 @@ function DailyContextReviewPage() {
   }
 
   const isRolloverStep = STEPS[currentStep].id === 'rollover'
+  // Allow proceeding if: not on rollover step, OR rollover step has been completed
   const canProceed = !isRolloverStep || canProceedFromRollover
 
   return (
@@ -173,11 +177,12 @@ function DailyContextReviewPage() {
         {(state.type === 'EDITING_FORM' || state.type === 'SUBMITTING') && (
           <>
             <div className="px-4 py-6">
-              {currentStep === 0 && <GoalsAndScreentime onNext={handleNext} />}
-              {currentStep === 1 && <ContextSnapshot onNext={handleNext} />}
-              {currentStep === 2 && <InternalState onNext={handleNext} onBack={handleBack} />}
-              {currentStep === 3 && <KnowledgeBase onNext={handleNext} onBack={handleBack} />}
-              {currentStep === 4 && (
+              {currentStep === 0 && <GoalsAndScreentime />}
+              {currentStep === 1 && <ScreentimeStep />}
+              {currentStep === 2 && <ContextSnapshot />}
+              {currentStep === 3 && <InternalState />}
+              {currentStep === 4 && <KnowledgeBase />}
+              {currentStep === 5 && (
                 <ConsciousRollover
                   onAllProcessed={(ids) => {
                     setRolledOverTaskIds(ids)
@@ -186,7 +191,7 @@ function DailyContextReviewPage() {
                   disabled={state.type === 'SUBMITTING'}
                 />
               )}
-              {currentStep === 5 && (
+              {currentStep === 6 && (
                 <PlanningStep disabled={state.type === 'SUBMITTING'} />
               )}
             </div>

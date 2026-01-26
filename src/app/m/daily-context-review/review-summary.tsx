@@ -1,7 +1,10 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
 import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { ExecutionChart } from './execution-chart'
+import { getDailyContextReviewStats } from '@/lib/actions/daily-context-review'
 import type { DailyReviewRow } from './DailyReviewContext'
 
 interface DailyContextData {
@@ -47,6 +50,23 @@ function MetricDisplay({
 }
 
 export function DailyContextReviewSummary({ review, contextData, onEdit }: ReviewSummaryProps) {
+  const [executionHistory, setExecutionHistory] = useState<Array<{ date: string; execution_score: number }>>([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const stats = await getDailyContextReviewStats(7)
+        setExecutionHistory(stats)
+      } catch (error) {
+        console.error('Failed to load execution history:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+    loadHistory()
+  }, [])
+
   return (
     <div className="min-h-screen bg-zinc-900 p-4 space-y-4">
       <div className="text-center mb-6">
@@ -63,21 +83,11 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
 
       {/* Execution Metrics */}
       <MobileCard title="Today's Performance">
-        <div className="flex gap-4 mb-4">
+        <div className="flex justify-center">
           <MetricDisplay 
-            label="Execution"
+            label="Execution Score"
             value={review.execution_score}
             color="#8b5cf6"
-          />
-          <MetricDisplay 
-            label="Focus"
-            value={review.focus_quality}
-            color="#06b6d4"
-          />
-          <MetricDisplay 
-            label="Vitality"
-            value={review.physical_vitality}
-            color="#10b981"
           />
         </div>
       </MobileCard>
@@ -108,37 +118,17 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
         </MobileCard>
       )}
 
-      {/* Screen Time Breakdown */}
-      <MobileCard title="Screen Time Analysis">
-        <div className="flex gap-4">
-          <div className="flex-1 text-center">
-            <div className="text-2xl font-bold text-green-400">
-              {Math.floor((review.productive_screen_minutes ?? 0) / 60)}h {(review.productive_screen_minutes ?? 0) % 60}m
+      {/* Screen Time */}
+      {(review.screen_time_minutes ?? 0) > 0 && (
+        <MobileCard title="Screen Time">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-white mb-1">
+              {Math.floor((review.screen_time_minutes ?? 0) / 60)}h {(review.screen_time_minutes ?? 0) % 60}m
             </div>
-            <div className="text-xs text-zinc-400">Productive</div>
+            <div className="text-sm text-zinc-400">Total Time</div>
           </div>
-          <div className="flex-1 text-center">
-            <div className="text-2xl font-bold text-red-400">
-              {Math.floor((review.distracted_screen_minutes ?? 0) / 60)}h {(review.distracted_screen_minutes ?? 0) % 60}m
-            </div>
-            <div className="text-xs text-zinc-400">Distracted</div>
-          </div>
-        </div>
-        <div className="mt-3 h-2 bg-zinc-800 rounded-full overflow-hidden flex">
-          <div 
-            className="bg-green-500"
-            style={{ 
-              width: `${((review.productive_screen_minutes ?? 0) / ((review.productive_screen_minutes ?? 0) + (review.distracted_screen_minutes ?? 0))) * 100}%` 
-            }}
-          />
-          <div 
-            className="bg-red-500"
-            style={{ 
-              width: `${((review.distracted_screen_minutes ?? 0) / ((review.productive_screen_minutes ?? 0) + (review.distracted_screen_minutes ?? 0))) * 100}%` 
-            }}
-          />
-        </div>
-      </MobileCard>
+        </MobileCard>
+      )}
 
       {/* Unfocused Factors */}
       {review.unfocused_factors && review.unfocused_factors.length > 0 && (
@@ -182,6 +172,11 @@ export function DailyContextReviewSummary({ review, contextData, onEdit }: Revie
             ))}
           </ul>
         </MobileCard>
+      )}
+
+      {/* Execution History Chart */}
+      {!loadingHistory && executionHistory.length > 0 && (
+        <ExecutionChart data={executionHistory} />
       )}
 
       {/* Edit Button */}

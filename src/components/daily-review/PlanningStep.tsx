@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { Task } from '@/types/database'
-import { getBacklogTasks, getInboxTasks, createTask, moveTaskToDate } from '@/lib/actions/tasks'
+import { getBacklogTasks, getTasks, createTask, moveTaskToDate } from '@/lib/actions/tasks'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 
 interface PlanningStepProps {
@@ -11,9 +11,10 @@ interface PlanningStepProps {
 }
 
 export default function PlanningStep({ onTasksScheduled, disabled = false }: PlanningStepProps) {
-  const [activeTab, setActiveTab] = useState<'backlog' | 'inbox'>('backlog')
+  const [activeTab, setActiveTab] = useState<'backlog'>('backlog')
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([])
   const [inboxTasks, setInboxTasks] = useState<Task[]>([])
+  const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([])
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(true)
@@ -26,12 +27,19 @@ export default function PlanningStep({ onTasksScheduled, disabled = false }: Pla
   async function loadTasks() {
     try {
       setLoading(true)
-      const [backlog, inbox] = await Promise.all([
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const tomorrowStr = tomorrow.toISOString().split('T')[0]
+      
+      // Load both backlog and tomorrow's tasks
+      const [backlog, tomorrowScheduled] = await Promise.all([
         getBacklogTasks(),
-        getInboxTasks(),
+        getTasks({ scheduled_date: tomorrowStr })
       ])
+      
       setBacklogTasks(backlog)
-      setInboxTasks(inbox)
+      setTomorrowTasks(tomorrowScheduled.filter(t => t.status !== 'completed'))
+      setInboxTasks([])
     } catch (error) {
       console.error('Failed to load tasks:', error)
     } finally {
@@ -129,6 +137,40 @@ export default function PlanningStep({ onTasksScheduled, disabled = false }: Pla
         </p>
       </div>
 
+      {/* Already Scheduled for Tomorrow */}
+      {tomorrowTasks.length > 0 && (
+        <div className="bg-emerald-900/10 rounded-lg p-4 border border-emerald-700/50">
+          <h3 className="font-semibold text-emerald-400 mb-2 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Already Scheduled for Tomorrow ({tomorrowTasks.length})
+          </h3>
+          <div className="space-y-2 mt-3">
+            {tomorrowTasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-zinc-900 rounded-lg p-3 border border-zinc-700"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-white mb-1">{task.title}</h4>
+                    {task.description && (
+                      <p className="text-sm text-zinc-400 line-clamp-2">{task.description}</p>
+                    )}
+                    {task.scheduled_time && (
+                      <span className="text-xs text-zinc-500 mt-1 block">
+                        {task.scheduled_time}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Add */}
       <form onSubmit={handleQuickAdd} className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
         <label className="block text-sm font-medium text-white mb-2">
@@ -165,17 +207,6 @@ export default function PlanningStep({ onTasksScheduled, disabled = false }: Pla
         >
           Backlog
           <span className="ml-2 text-xs opacity-60">({backlogTasks.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('inbox')}
-          className={`flex-1 px-4 py-3 font-medium transition-colors ${
-            activeTab === 'inbox'
-              ? 'text-white border-b-2 border-emerald-500'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          Inbox
-          <span className="ml-2 text-xs opacity-60">({inboxTasks.length})</span>
         </button>
       </div>
 

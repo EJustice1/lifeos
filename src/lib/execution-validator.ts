@@ -10,8 +10,7 @@ export interface DailyMetrics {
   studyTarget: number // User's daily goal (from settings)
   workoutsCompleted: number
   workoutsTarget: number // User's daily goal (from settings)
-  productiveScreenMinutes: number
-  distractedScreenMinutes: number
+  screenTimeMinutes: number
   yesterdayGoalsCompleted: number
   yesterdayGoalsTotal: number
 }
@@ -36,19 +35,19 @@ export function calculateExecutionRange(metrics: DailyMetrics): ValidationResult
   // HARD CAPS (Negative behaviors)
   // ============================================
 
-  // If distracted screentime > 5h (300 min) - SABOTAGE level
-  if (metrics.distractedScreenMinutes > 300) {
+  // If total screentime > 8h (480 min) - SABOTAGE level
+  if (metrics.screenTimeMinutes > 480) {
     maxScore = Math.min(maxScore, 15)
-    suggestions.push('High screentime detected (>5h). Max capped at Sabotage.')
+    suggestions.push('Excessive screentime detected (>8h). Max capped at Sabotage.')
   }
-  // If distracted screentime > 4h (240 min) - MAINTENANCE level
-  else if (metrics.distractedScreenMinutes > 240) {
+  // If total screentime > 6h (360 min) - MAINTENANCE level
+  else if (metrics.screenTimeMinutes > 360) {
     maxScore = Math.min(maxScore, 50)
-    suggestions.push('Screentime >4h. Max capped at Maintenance.')
+    suggestions.push('High screentime (>6h). Max capped at Maintenance.')
   }
 
-  // If study < 1 hour AND screentime > 4 hours - UNFOCUSED level
-  if (metrics.studyMinutes < 60 && metrics.distractedScreenMinutes > 240) {
+  // If study < 1 hour AND screentime > 6 hours - UNFOCUSED level
+  if (metrics.studyMinutes < 60 && metrics.screenTimeMinutes > 360) {
     maxScore = Math.min(maxScore, 40)
     suggestions.push('Low study + high screentime. Max capped at Unfocused.')
   }
@@ -75,15 +74,8 @@ export function calculateExecutionRange(metrics: DailyMetrics): ValidationResult
     suggestions.push('Hit study + gym targets. Minimum: Traction.')
   }
 
-  // If productivity rate > 80% - Minimum TRACTION
-  const totalScreen = metrics.productiveScreenMinutes + metrics.distractedScreenMinutes
-  const productivityRate =
-    totalScreen > 0 ? (metrics.productiveScreenMinutes / totalScreen) * 100 : 100
-
-  if (productivityRate > 80 && totalScreen > 60) {
-    minScore = Math.max(minScore, 65)
-    suggestions.push('High productivity rate (>80%). Minimum: Traction.')
-  }
+  // Simplified: No productivity rate calculation since we removed the productive/unproductive split
+  // Screen time is just a penalty now, not a productivity metric
 
   // ============================================
   // SUGGESTED SCORE (Weighted algorithm)
@@ -101,7 +93,7 @@ export function calculateExecutionRange(metrics: DailyMetrics): ValidationResult
     metrics.yesterdayGoalsTotal > 0
       ? (metrics.yesterdayGoalsCompleted / metrics.yesterdayGoalsTotal) * 100
       : 50
-  const screenScore = 100 - Math.min(100, (metrics.distractedScreenMinutes / 240) * 100)
+  const screenScore = 100 - Math.min(100, (metrics.screenTimeMinutes / 360) * 100)
 
   // Weighted average
   suggestedScore = Math.round(

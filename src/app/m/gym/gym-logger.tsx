@@ -11,7 +11,7 @@ import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
 import { AdjustButton } from '@/components/mobile/buttons/AdjustButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
 import { ClientCache, CACHE_KEYS, CACHE_DURATIONS } from '@/lib/cache-utils'
-import { ActiveCooldownSheet } from '@/components/active-cooldown/ActiveCooldownSheet'
+import { useRouter } from 'next/navigation'
 
 interface WorkoutHistory {
   id: string
@@ -128,8 +128,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistory[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
-  const [showCooldown, setShowCooldown] = useState(false)
-  const [completedWorkoutId, setCompletedWorkoutId] = useState<string | null>(null)
+  const router = useRouter()
 
   // Get exercises filtered by workout type (memoized for performance)
   const exercises = useMemo(() => {
@@ -277,8 +276,9 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
   const handleEndWorkout = useCallback(async () => {
     if (!activeWorkout) return
 
-    // Capture workout ID before ending session (it will be cleared)
+    // Capture workout ID and check if any sets were logged
     const workoutId = activeWorkout.workoutId
+    const hasLoggedSets = loggedSets.length > 0
 
     startTransition(async () => {
       try {
@@ -291,25 +291,24 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         // Invalidate workout history cache
         ClientCache.remove(CACHE_KEYS.WORKOUT_HISTORY_TRANSFORMED(5))
 
-        // Only show success toast if data was actually saved
-        if (result.saved && workoutId) {
-          setCompletedWorkoutId(workoutId)
-          setShowCooldown(true)
-        }
-
-        // Update local state
-        setWorkoutType('')
-
-        // Always return to main gym page after ending workout
-        // Use setTimeout to ensure state updates are processed in order
-        setTimeout(() => {
+        // Only navigate to review if workout has sets logged
+        if (result.saved && workoutId && hasLoggedSets) {
+          router.push(`/review/gym?sessionId=${workoutId}`)
+        } else {
+          // Empty workout or not saved, just reset state
+          setWorkoutType('')
           setActiveSection('workout')
-        }, 50)
+          // Refresh to show any updated history
+          router.refresh()
+        }
       } catch (error) {
         showToast('Failed to end workout', 'error')
+        // Reset state on error
+        setWorkoutType('')
+        setActiveSection('workout')
       }
     })
-  }, [activeWorkout, endWorkout, showToast, setActiveSection, setHistoryLoaded, setWorkoutType])
+  }, [activeWorkout, endWorkout, loggedSets, showToast, setActiveSection, setHistoryLoaded, setWorkoutType, router])
 
 
 
@@ -331,22 +330,7 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
 
 
   return (
-    <>
-      {/* Active Cooldown Sheet */}
-      {showCooldown && completedWorkoutId && (
-        <ActiveCooldownSheet
-          sessionId={completedWorkoutId}
-          sessionType="workout"
-          onClose={() => {
-            setShowCooldown(false)
-            setCompletedWorkoutId(null)
-          }}
-          onSave={() => {
-            showToast('Workout feedback saved! 🎉', 'success')
-          }}
-        />
-      )}
-
+    <div className="min-h-screen bg-[var(--mobile-bg)] pb-24">
       <section className="space-y-4">
       {activeSection === 'workout' && !isWorkoutActive ? (
           /* New front screen design - 2-column grid with big buttons */
@@ -601,6 +585,6 @@ export function GymLogger({ initialActiveWorkout }: GymLoggerProps) {
         </div>
       ) : null}
       </section>
-    </>
+    </div>
   )
 }

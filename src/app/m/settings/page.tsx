@@ -291,6 +291,32 @@ export default function SettingsPage() {
           {saving ? 'Saving...' : 'Save Settings'}
         </PrimaryButton>
 
+        {/* Integrations Section */}
+        <MobileCard title="Integrations">
+          <p className="text-sm text-zinc-400 mb-4">
+            Connect external services to enhance your workflow
+          </p>
+          
+          <Link href="/settings/google-calendar">
+            <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg hover:bg-zinc-750 transition-colors cursor-pointer border border-zinc-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="font-medium text-white">Google Calendar</div>
+                  <div className="text-xs text-zinc-400">Sync events and tasks</div>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+        </MobileCard>
+
         {/* Maintenance Section */}
         <MobileCard title="Maintenance">
           <p className="text-sm text-zinc-400 mb-4">

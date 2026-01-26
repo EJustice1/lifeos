@@ -11,7 +11,7 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const router = useRouter()
-  const { completeTask } = useTasks()
+  const { completeTask, uncompleteTask } = useTasks()
 
   const handleClick = () => {
     // Launchpad logic: route based on bucket_id or tags
@@ -25,16 +25,20 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       // Custom onClick handler
       onClick(task)
     } else {
-      // Generic task → just complete it
-      handleComplete()
+      // Generic task → just toggle completion
+      handleToggleComplete()
     }
   }
 
-  const handleComplete = async () => {
+  const handleToggleComplete = async () => {
     try {
-      await completeTask(task.id)
+      if (task.status === 'completed') {
+        await uncompleteTask(task.id)
+      } else {
+        await completeTask(task.id)
+      }
     } catch (error) {
-      console.error('Failed to complete task:', error)
+      console.error('Failed to toggle task completion:', error)
     }
   }
 
@@ -63,16 +67,24 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </div>
 
           {/* Complete button */}
-          {task.status !== 'completed' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleComplete()
-              }}
-              className="w-6 h-6 rounded-full border-2 border-zinc-600 hover:border-emerald-500 hover:bg-emerald-500/20 transition-colors"
-              aria-label="Complete task"
-            />
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleToggleComplete()
+            }}
+            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              task.status === 'completed'
+                ? 'border-emerald-500 bg-emerald-500'
+                : 'border-zinc-600 hover:border-emerald-500 hover:bg-emerald-500/20'
+            }`}
+            aria-label={task.status === 'completed' ? 'Mark as incomplete' : 'Complete task'}
+          >
+            {task.status === 'completed' && (
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
 
@@ -121,8 +133,6 @@ function getStatusStyles(status: Task['status']): string {
       return 'bg-yellow-500/20 text-yellow-400'
     case 'completed':
       return 'bg-emerald-500/20 text-emerald-400'
-    case 'inbox':
-      return 'bg-zinc-600/20 text-zinc-400'
     case 'backlog':
       return 'bg-purple-500/20 text-purple-400'
     case 'cancelled':

@@ -4,16 +4,13 @@ import { createContext, useContext, useState, ReactNode } from 'react'
 
 export interface DailyReviewFormData {
   executionScore: number
-  focusQuality: number
-  physicalVitality: number
   unfocusedFactors: string[]
   lessonLearned: string | null
   highlights: string | null
   tomorrowGoals?: string[]
-  // NEW: Screentime fields
-  productiveScreenMinutes: number
-  distractedScreenMinutes: number
-  // NEW: Execution validation fields
+  // Screentime field (total only, no productive/unproductive split)
+  screenTimeMinutes: number
+  // Execution validation fields
   executionScoreSuggested?: number
   executionScoreLocked?: boolean
 }
@@ -33,18 +30,15 @@ export interface DailyReviewRow {
   user_id: string
   date: string
   execution_score: number
-  focus_quality: number
-  physical_vitality: number
   unfocused_factors: string[]
   lesson_learned: string | null
   highlights: string | null
   tomorrow_goals?: string[]
   yesterday_goals?: string[]
   created_at: string
-  // NEW: Screentime fields
-  productive_screen_minutes?: number
-  distracted_screen_minutes?: number
-  // NEW: Execution validation fields
+  // Screentime field (total only)
+  screen_time_minutes?: number
+  // Execution validation fields
   execution_score_suggested?: number
   execution_score_locked?: boolean
 }
@@ -80,13 +74,10 @@ export function DailyReviewProvider({
     if (initialData.existingReview) {
       return {
         executionScore: initialData.existingReview.execution_score || 50,
-        focusQuality: initialData.existingReview.focus_quality || 3,
-        physicalVitality: initialData.existingReview.physical_vitality || 3,
         unfocusedFactors: initialData.existingReview.unfocused_factors || [],
         lessonLearned: initialData.existingReview.lesson_learned || null,
         highlights: initialData.existingReview.highlights || null,
-        productiveScreenMinutes: initialData.existingReview.productive_screen_minutes || 0,
-        distractedScreenMinutes: initialData.existingReview.distracted_screen_minutes || 0,
+        screenTimeMinutes: initialData.existingReview.screen_time_minutes || 0,
         executionScoreSuggested: initialData.existingReview.execution_score_suggested,
         executionScoreLocked: initialData.existingReview.execution_score_locked || false,
       }
@@ -94,14 +85,11 @@ export function DailyReviewProvider({
 
     return {
       executionScore: 50,
-      focusQuality: 3,
-      physicalVitality: 3,
       unfocusedFactors: [],
       lessonLearned: null,
       highlights: null,
       tomorrowGoals: [],
-      productiveScreenMinutes: 0,
-      distractedScreenMinutes: 0,
+      screenTimeMinutes: 0,
       executionScoreSuggested: undefined,
       executionScoreLocked: false,
     }

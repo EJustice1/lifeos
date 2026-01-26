@@ -16,7 +16,13 @@ export function DayViewClient() {
   const { getTasksByDate, loading: tasksLoading } = useTasks()
   const { syncing, connected, sync } = useGoogleCalendarSync()
 
-  const tasksForSelectedDate = getTasksByDate(selectedDate.toISOString().split('T')[0])
+  const selectedDateStr = selectedDate.toISOString().split('T')[0]
+  const tasksForSelectedDate = getTasksByDate(selectedDateStr)
+
+  // Calculate stats
+  const completedTasks = tasksForSelectedDate.filter(t => t.status === 'completed')
+  const incompleteTasks = tasksForSelectedDate.filter(t => t.status !== 'completed')
+  const totalTasks = tasksForSelectedDate.length
 
   // Load calendar events for selected date
   useEffect(() => {
@@ -105,6 +111,61 @@ export function DayViewClient() {
         hasEventsForDate={hasEventsForDate}
       />
 
+      {/* Summary Section */}
+      {!tasksLoading && (totalTasks > 0 || calendarEvents.length > 0) && (
+        <div className="px-4 pt-4">
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Tasks Summary */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-400">Tasks</p>
+                  <p className="text-lg font-semibold text-white">
+                    {completedTasks.length}/{totalTasks}
+                  </p>
+                </div>
+              </div>
+
+              {/* Calendar Events Summary */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-400">Events</p>
+                  <p className="text-lg font-semibold text-white">
+                    {calendarEvents.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            {totalTasks > 0 && (
+              <div className="mt-4 pt-4 border-t border-zinc-800">
+                <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+                  <span>Progress</span>
+                  <span>{Math.round((completedTasks.length / totalTasks) * 100)}%</span>
+                </div>
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300"
+                    style={{ width: `${(completedTasks.length / totalTasks) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Timeline */}
       <div className="px-4 py-6">
         {tasksLoading ? (
@@ -118,81 +179,6 @@ export function DayViewClient() {
 
       {/* Quick Add FAB */}
       <QuickAddFAB />
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 pb-safe">
-        <div className="flex items-center justify-around py-3">
-          <Link
-            href="/"
-            className="flex flex-col items-center gap-1 text-emerald-500"
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
-            <span className="text-xs font-medium">Today</span>
-          </Link>
-
-          <Link
-            href="/strategy"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-              />
-            </svg>
-            <span className="text-xs font-medium">Strategy</span>
-          </Link>
-
-          <Link
-            href="/m/gym"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            <span className="text-xs font-medium">Gym</span>
-          </Link>
-
-          <Link
-            href="/m/study"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-            <span className="text-xs font-medium">Study</span>
-          </Link>
-
-          <Link
-            href="/m/daily-context-review"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span className="text-xs font-medium">Review</span>
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }

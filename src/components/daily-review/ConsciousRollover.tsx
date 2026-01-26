@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/web'
 import type { Task } from '@/types/database'
-import { getIncompleteTasks, moveTaskToDate, moveToBacklog, deleteTask } from '@/lib/actions/tasks'
+import { getTasks, moveTaskToDate, moveToBacklog, deleteTask, completeTask, uncompleteTask } from '@/lib/actions/tasks'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 
 interface ConsciousRolloverProps {
@@ -13,32 +13,91 @@ interface ConsciousRolloverProps {
 }
 
 export default function ConsciousRollover({ onAllProcessed, disabled = false }: ConsciousRolloverProps) {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [allTasks, setAllTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [rolledOverTaskIds, setRolledOverTaskIds] = useState<string[]>([])
+  const [taskChoices, setTaskChoices] = useState<Record<string, 'tomorrow' | 'backlog' | null>>({})
+  const [processedTasks, setProcessedTasks] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    loadIncompleteTasks()
+    loadTodayTasks()
   }, [])
 
-  async function loadIncompleteTasks() {
+  async function loadTodayTasks() {
     try {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
-      const incompleteTasks = await getIncompleteTasks(today)
-      setTasks(incompleteTasks)
+      const allTasksData = await getTasks({ scheduled_date: today })
+      // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
+      const relevantTasks = allTasksData.filter(t => 
+        ['today', 'in_progress', 'completed'].includes(t.status)
+      )
+      setAllTasks(relevantTasks)
     } catch (error) {
-      console.error('Failed to load incomplete tasks:', error)
+      console.error('Failed to load tasks:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (tasks.length === 0 && !loading) {
-      onAllProcessed?.(rolledOverTaskIds)
+  const completedTasks = allTasks.filter(t => t.status === 'completed')
+  const incompleteTasks = allTasks.filter(t => t.status !== 'completed')
+
+  async function handleToggleComplete(task: Task) {
+    try {
+      if (task.status === 'completed') {
+        await uncompleteTask(task.id)
+      } else {
+        await completeTask(task.id)
+      }
+      // Reload tasks to get updated status
+      await loadTodayTasks()
+      triggerHapticFeedback(HapticPatterns.SUCCESS)
+    } catch (error) {
+      console.error('Failed to toggle task completion:', error)
+      triggerHapticFeedback(HapticPatterns.FAILURE)
     }
-  }, [tasks.length, loading, rolledOverTaskIds, onAllProcessed])
+  }
+
+  // Auto-process tasks when all have been marked, or when there are no incomplete tasks
+  useEffect(() => {
+    const unprocessedIncompleteTasks = incompleteTasks.filter(t => !processedTasks.has(t.id))
+    
+    // If there are no incomplete tasks at all, immediately signal completion
+    if (incompleteTasks.length === 0 && !loading) {
+      onAllProcessed?.([])
+      return
+    }
+    
+    const allMarked = unprocessedIncompleteTasks.every(t => taskChoices[t.id] !== undefined && taskChoices[t.id] !== null)
+    
+    if (allMarked && unprocessedIncompleteTasks.length > 0 && !loading) {
+      // Process all marked tasks
+      const processAll = async () => {
+        const tomorrowIds: string[] = []
+        const newProcessedIds = new Set(processedTasks)
+        
+        for (const task of unprocessedIncompleteTasks) {
+          const choice = taskChoices[task.id]
+          if (choice === 'tomorrow') {
+            const tomorrow = new Date()
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            const tomorrowStr = tomorrow.toISOString().split('T')[0]
+            await moveTaskToDate(task.id, tomorrowStr)
+            tomorrowIds.push(task.id)
+          } else if (choice === 'backlog') {
+            await moveToBacklog(task.id)
+          }
+          newProcessedIds.add(task.id)
+        }
+        
+        setProcessedTasks(newProcessedIds)
+        setRolledOverTaskIds(tomorrowIds)
+        onAllProcessed?.(tomorrowIds)
+      }
+      processAll()
+    }
+  }, [taskChoices, incompleteTasks, loading, processedTasks, onAllProcessed])
 
   if (loading) {
     return (
@@ -48,187 +107,266 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
     )
   }
 
-  if (tasks.length === 0) {
+  if (incompleteTasks.length === 0 && completedTasks.length === 0) {
     return (
       <div className="text-center py-12">
         <svg className="w-16 h-16 mx-auto text-emerald-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <h3 className="text-xl font-semibold text-white mb-2">All Tasks Processed!</h3>
-        <p className="text-zinc-400">You can now continue to planning</p>
+        <h3 className="text-xl font-semibold text-white mb-2">No Tasks Today!</h3>
+        <p className="text-zinc-400">You had no tasks scheduled for today</p>
+      </div>
+    )
+  }
+
+  if (incompleteTasks.length === 0 && completedTasks.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <svg className="w-16 h-16 mx-auto text-emerald-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-white mb-2">All Incomplete Tasks Processed!</h3>
+          <p className="text-zinc-400">Review your completed tasks below</p>
+        </div>
+
+        {/* Completed Tasks Section */}
+        <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+          <h3 className="font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Completed Tasks ({completedTasks.length})
+          </h3>
+          <div className="space-y-2">
+            {completedTasks.map(task => (
+              <CompletedTaskCard
+                key={task.id}
+                task={task}
+                onToggleComplete={() => handleToggleComplete(task)}
+                disabled={disabled}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      {/* Instructions */}
-      <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-        <h3 className="font-semibold text-white mb-2">Process Incomplete Tasks</h3>
-        <p className="text-sm text-zinc-400 mb-3">
-          You have {tasks.length} incomplete task{tasks.length !== 1 ? 's' : ''} from today. Decide what to do with each:
-        </p>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+      {/* Completed Tasks Section */}
+      {completedTasks.length > 0 && (
+        <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+          <h3 className="font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span>Swipe right → Move to tomorrow</span>
-          </div>
-          <div className="flex items-center gap-2 text-purple-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            <span>Swipe left → Return to backlog</span>
-          </div>
-          <div className="flex items-center gap-2 text-red-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Tap X → Delete task</span>
+            Completed Tasks ({completedTasks.length})
+          </h3>
+          <p className="text-sm text-zinc-400 mb-3">
+            Great job! Tap any task to mark it as incomplete if needed.
+          </p>
+          <div className="space-y-2">
+            {completedTasks.map(task => (
+              <CompletedTaskCard
+                key={task.id}
+                task={task}
+                onToggleComplete={() => handleToggleComplete(task)}
+                disabled={disabled}
+              />
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Task Cards */}
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <SwipeableTaskCard
-            key={task.id}
-            task={task}
-            onSwipeRight={async () => {
-              const tomorrow = new Date()
-              tomorrow.setDate(tomorrow.getDate() + 1)
-              const tomorrowStr = tomorrow.toISOString().split('T')[0]
-              await moveTaskToDate(task.id, tomorrowStr)
-              setRolledOverTaskIds(prev => [...prev, task.id])
-              setTasks(prev => prev.filter(t => t.id !== task.id))
-              triggerHapticFeedback(HapticPatterns.SUCCESS)
-            }}
-            onSwipeLeft={async () => {
-              await moveToBacklog(task.id)
-              setTasks(prev => prev.filter(t => t.id !== task.id))
-              triggerHapticFeedback(HapticPatterns.MEDIUM)
-            }}
-            onDelete={async () => {
-              if (confirm('Delete this task?')) {
-                await deleteTask(task.id)
-                setTasks(prev => prev.filter(t => t.id !== task.id))
-                triggerHapticFeedback(HapticPatterns.SUCCESS)
-              }
-            }}
-            disabled={disabled}
-          />
-        ))}
+      {/* Incomplete Tasks Section */}
+      {incompleteTasks.length > 0 && (
+        <>
+          {/* Instructions */}
+          <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+            <h3 className="font-semibold text-white mb-2">Process Incomplete Tasks</h3>
+            <p className="text-sm text-zinc-400">
+              Tap on the left (Backlog) or right (Tomorrow) side of each task card to make your choice.
+            </p>
+          </div>
+
+          {/* Task Cards */}
+          <div className="space-y-3">
+            {incompleteTasks.map((task) => (
+              <TaskChoiceCard
+                key={task.id}
+                task={task}
+                choice={taskChoices[task.id] || null}
+                processed={processedTasks.has(task.id)}
+                onChoose={(choice) => {
+                  if (!processedTasks.has(task.id)) {
+                    setTaskChoices(prev => ({ ...prev, [task.id]: choice }))
+                    triggerHapticFeedback(HapticPatterns.LIGHT)
+                  }
+                }}
+                onDelete={async () => {
+                  if (confirm('Delete this task?')) {
+                    await deleteTask(task.id)
+                    setAllTasks(prev => prev.filter(t => t.id !== task.id))
+                    triggerHapticFeedback(HapticPatterns.SUCCESS)
+                  }
+                }}
+                disabled={disabled || processedTasks.has(task.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+interface TaskChoiceCardProps {
+  task: Task
+  choice: 'tomorrow' | 'backlog' | null
+  processed: boolean
+  onChoose: (choice: 'tomorrow' | 'backlog') => void
+  onDelete: () => void
+  disabled?: boolean
+}
+
+function TaskChoiceCard({ task, choice, processed, onChoose, onDelete, disabled }: TaskChoiceCardProps) {
+  return (
+    <div className="relative overflow-hidden rounded-lg">
+      {/* Task Card with choice indicators */}
+      <div className={`relative bg-zinc-800 rounded-lg border border-zinc-700 flex ${processed ? 'opacity-70' : ''}`}>
+        {/* Left 20% - Backlog */}
+        <button
+          onClick={() => !disabled && !processed && onChoose('backlog')}
+          disabled={disabled || processed}
+          className={`w-[20%] flex flex-col items-center justify-center py-4 px-2 transition-all rounded-l-lg ${
+            choice === 'backlog' 
+              ? 'bg-purple-600/30 border-r-2 border-purple-500' 
+              : processed ? '' : 'hover:bg-purple-900/20'
+          }`}
+        >
+          <svg className={`w-6 h-6 mb-1 transition-colors ${
+            choice === 'backlog' ? 'text-purple-400' : 'text-zinc-600'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
+          <span className={`text-xs font-medium transition-colors ${
+            choice === 'backlog' ? 'text-purple-400' : 'text-zinc-600'
+          }`}>
+            Backlog
+          </span>
+        </button>
+
+        {/* Center 60% - Task Info */}
+        <div className="flex-1 p-4 min-w-0">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-white mb-1">{task.title}</h4>
+              {task.description && (
+                <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{task.description}</p>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {task.scheduled_time && (
+                  <span className="text-xs text-zinc-500">
+                    {task.scheduled_time}
+                  </span>
+                )}
+              </div>
+            </div>
+            {!processed && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                }}
+                disabled={disabled}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            {processed && (
+              <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right 20% - Tomorrow */}
+        <button
+          onClick={() => !disabled && !processed && onChoose('tomorrow')}
+          disabled={disabled || processed}
+          className={`w-[20%] flex flex-col items-center justify-center py-4 px-2 transition-all rounded-r-lg ${
+            choice === 'tomorrow' 
+              ? 'bg-emerald-600/30 border-l-2 border-emerald-500' 
+              : processed ? '' : 'hover:bg-emerald-900/20'
+          }`}
+        >
+          <svg className={`w-6 h-6 mb-1 transition-colors ${
+            choice === 'tomorrow' ? 'text-emerald-400' : 'text-zinc-600'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+          <span className={`text-xs font-medium transition-colors ${
+            choice === 'tomorrow' ? 'text-emerald-400' : 'text-zinc-600'
+          }`}>
+            Tomorrow
+          </span>
+        </button>
       </div>
     </div>
   )
 }
 
-interface SwipeableTaskCardProps {
+interface CompletedTaskCardProps {
   task: Task
-  onSwipeRight: () => void
-  onSwipeLeft: () => void
-  onDelete: () => void
+  onToggleComplete: () => void
   disabled?: boolean
 }
 
-function SwipeableTaskCard({ task, onSwipeRight, onSwipeLeft, onDelete, disabled }: SwipeableTaskCardProps) {
-  const [{ x }, api] = useSpring(() => ({ x: 0 }))
-  const [direction, setDirection] = useState<'left' | 'right' | null>(null)
-
-  const bind = useDrag(
-    ({ active, movement: [mx], velocity: [vx], direction: [dirX] }) => {
-      if (disabled) return
-
-      const trigger = vx > 0.2 || Math.abs(mx) > 100
-
-      if (!active && trigger) {
-        if (dirX > 0) {
-          // Swipe right - tomorrow
-          onSwipeRight()
-          api.start({ x: 500, immediate: false })
-        } else {
-          // Swipe left - backlog
-          onSwipeLeft()
-          api.start({ x: -500, immediate: false })
-        }
-      } else if (!active) {
-        api.start({ x: 0, immediate: false })
-        setDirection(null)
-      } else {
-        api.start({ x: mx, immediate: true })
-        setDirection(mx > 20 ? 'right' : mx < -20 ? 'left' : null)
-      }
-    },
-    {
-      axis: 'x',
-      bounds: { left: -200, right: 200 },
-      rubberband: true,
-    }
-  )
-
+function CompletedTaskCard({ task, onToggleComplete, disabled }: CompletedTaskCardProps) {
   return (
-    <div className="relative overflow-hidden rounded-lg">
-      {/* Background indicators */}
-      <div className="absolute inset-0 flex items-center justify-between px-6">
-        <div className={`flex items-center gap-2 transition-opacity ${direction === 'left' ? 'opacity-100' : 'opacity-30'}`}>
-          <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+    <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-700">
+      <div className="flex items-start gap-3">
+        {/* Checkbox */}
+        <button
+          onClick={onToggleComplete}
+          disabled={disabled}
+          className="mt-0.5 w-6 h-6 rounded-full border-2 border-emerald-500 bg-emerald-500 flex items-center justify-center disabled:opacity-50 hover:bg-emerald-600 hover:border-emerald-600 transition-colors flex-shrink-0"
+          aria-label="Mark as incomplete"
+        >
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
-          <span className="font-medium text-purple-400">Backlog</span>
-        </div>
-        <div className={`flex items-center gap-2 transition-opacity ${direction === 'right' ? 'opacity-100' : 'opacity-30'}`}>
-          <span className="font-medium text-emerald-400">Tomorrow</span>
-          <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-zinc-400 line-through">{task.title}</h4>
+          {task.description && (
+            <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{task.description}</p>
+          )}
+          <div className="flex items-center gap-2 flex-wrap mt-2">
+            {task.tags && task.tags.length > 0 && (
+              task.tags.map(tag => (
+                <span key={tag} className="px-2 py-0.5 bg-zinc-800 text-zinc-500 text-xs rounded">
+                  {tag}
+                </span>
+              ))
+            )}
+            {task.scheduled_time && (
+              <span className="text-xs text-zinc-600">
+                {task.scheduled_time}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Task Card */}
-      <animated.div
-        {...bind()}
-        style={{ x, touchAction: 'pan-y' }}
-        className="relative bg-zinc-800 rounded-lg p-4 border border-zinc-700 cursor-grab active:cursor-grabbing"
-      >
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-white mb-1">{task.title}</h4>
-            {task.description && (
-              <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{task.description}</p>
-            )}
-            <div className="flex items-center gap-2 flex-wrap">
-              {task.tags && task.tags.length > 0 && (
-                task.tags.map(tag => (
-                  <span key={tag} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 text-xs rounded">
-                    {tag}
-                  </span>
-                ))
-              )}
-              {task.scheduled_time && (
-                <span className="text-xs text-zinc-500">
-                  {task.scheduled_time}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            disabled={disabled}
-            className="p-2 text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
-            aria-label="Delete task"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </animated.div>
     </div>
   )
 }

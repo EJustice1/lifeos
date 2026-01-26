@@ -61,9 +61,7 @@ export async function getTodayTasks() {
   return getTasks({ status: 'today', scheduled_date: today })
 }
 
-export async function getInboxTasks() {
-  return getTasks({ status: 'inbox' })
-}
+// Inbox has been removed - tasks go directly to backlog
 
 export async function getBacklogTasks() {
   return getTasks({ status: 'backlog' })
@@ -110,7 +108,7 @@ export async function createTask(data: {
       user_id: user.id,
       title: data.title,
       description: data.description,
-      status: data.status || 'inbox',
+      status: data.status || 'backlog',
       project_id: data.project_id,
       bucket_id: data.bucket_id,
       scheduled_date: data.scheduled_date,
@@ -184,9 +182,49 @@ export async function deleteTask(taskId: string) {
 }
 
 export async function completeTask(taskId: string) {
-  return updateTask(taskId, {
-    status: 'completed',
-  })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+
+  revalidatePath('/')
+  revalidatePath('/strategy')
+  return data
+}
+
+export async function uncompleteTask(taskId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({
+      status: 'today',
+      completed_at: null,
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) throw error
+
+  revalidatePath('/')
+  revalidatePath('/strategy')
+  return data
 }
 
 // ===================================================================

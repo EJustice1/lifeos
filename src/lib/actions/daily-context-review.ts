@@ -50,17 +50,13 @@ export async function getDailyContextData() {
 }
 
 // Submit daily context review data
-// Note: tomorrow_goals parameter removed - use Tasks system instead
 export async function submitDailyContextReview(
   date: string,
   executionScore: number,
-  focusQuality: number,
-  physicalVitality: number,
   unfocusedFactors: string[],
   lessonLearned: string | null,
   highlights: string | null,
-  productiveScreenMinutes: number = 0,
-  distractedScreenMinutes: number = 0,
+  screenTimeMinutes: number = 0,
   executionScoreSuggested?: number,
   executionScoreLocked: boolean = false,
   rolledOverTaskIds: string[] = []
@@ -76,14 +72,11 @@ export async function submitDailyContextReview(
       user_id: user.id,
       date: date,
       execution_score: executionScore,
-      focus_quality: focusQuality,
-      physical_vitality: physicalVitality,
       unfocused_factors: unfocusedFactors,
       lesson_learned: lessonLearned,
       highlights: highlights,
       tomorrow_goals: [], // Deprecated - keeping empty for backward compatibility
-      productive_screen_minutes: productiveScreenMinutes,
-      distracted_screen_minutes: distractedScreenMinutes,
+      screen_time_minutes: screenTimeMinutes,
       execution_score_suggested: executionScoreSuggested,
       execution_score_locked: executionScoreLocked,
       rolled_over_task_ids: rolledOverTaskIds,
@@ -102,15 +95,14 @@ export async function submitDailyContextReview(
     throw error
   }
 
-  // Sync screentime data to screen_time table (bidirectional sync)
-  if (productiveScreenMinutes > 0 || distractedScreenMinutes > 0) {
+  // Sync screentime data to screen_time table
+  if (screenTimeMinutes > 0) {
     const { error: screenTimeError } = await supabase
       .from('screen_time')
       .upsert({
         user_id: user.id,
         date: date,
-        productive_minutes: productiveScreenMinutes,
-        distracted_minutes: distractedScreenMinutes,
+        total_minutes: screenTimeMinutes,
         mobile_minutes: 0,
         desktop_minutes: 0,
         source: 'daily_review',
@@ -155,7 +147,7 @@ export async function getDailyContextReviewStats(days = 30) {
 
   const { data } = await supabase
     .from('daily_context_reviews')
-    .select('date, execution_score, focus_quality, physical_vitality')
+    .select('date, execution_score')
     .eq('user_id', user.id)
     .order('date', { ascending: false })
     .limit(days)

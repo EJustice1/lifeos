@@ -32,11 +32,11 @@ export function TaskListItem({ task, onUpdate, showPromoteButton = true }: TaskL
 
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
-      case 'inbox': return 'bg-zinc-600/20 text-zinc-400'
       case 'backlog': return 'bg-purple-500/20 text-purple-400'
       case 'today': return 'bg-blue-500/20 text-blue-400'
       case 'in_progress': return 'bg-yellow-500/20 text-yellow-400'
       case 'completed': return 'bg-emerald-500/20 text-emerald-400'
+      case 'cancelled': return 'bg-red-500/20 text-red-400'
       default: return 'bg-zinc-600/20 text-zinc-400'
     }
   }

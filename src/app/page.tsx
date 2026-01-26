@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DayViewClient } from './DayViewClient'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -11,5 +10,6 @@ export default async function Home() {
     redirect('/auth/login')
   }
 
-  return <DayViewClient />
+  // Redirect to Actions page (main hub)
+  redirect('/actions')
 }

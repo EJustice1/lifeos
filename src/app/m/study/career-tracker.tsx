@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStudySession } from '@/lib/hooks/useStudySession'
 import {
   logCompletedSession,
@@ -70,6 +71,7 @@ export function CareerTracker({
   buckets: Bucket[]
   todaySessions: Session[]
 }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const {
@@ -228,12 +230,17 @@ export function CareerTracker({
         }
         setTodaySessions(prev => [tempSession, ...prev])
 
-        await logCompletedSession(selectedBucket, totalMin, notes || undefined)
+        const newSession = await logCompletedSession(selectedBucket, totalMin, notes || undefined)
 
         setManualMinutes(30)
         setManualHours(0)
         setNotes('')
         showToast('Session logged!', 'success')
+        
+        // Navigate to review page
+        if (newSession && newSession.id) {
+          router.push(`/review/study?sessionId=${newSession.id}`)
+        }
       } catch (error) {
         setTodaySessions(previousSessions)
         showToast('Failed to log session. Please try again.', 'error')

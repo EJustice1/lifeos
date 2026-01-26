@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { StrategyHubClient } from './StrategyHubClient'
 
 export default async function StrategyHubPage() {
   const supabase = await createClient()
@@ -10,5 +9,6 @@ export default async function StrategyHubPage() {
     redirect('/auth/login')
   }
 
-  return <StrategyHubClient />
+  // Redirect to Vision page (new strategy view)
+  redirect('/vision')
 }

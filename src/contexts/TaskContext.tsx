@@ -8,6 +8,7 @@ import {
   updateTask as updateTaskAction,
   deleteTask as deleteTaskAction,
   completeTask as completeTaskAction,
+  uncompleteTask as uncompleteTaskAction,
   promoteToToday,
   moveToBacklog,
   moveTaskToDate,
@@ -25,6 +26,7 @@ interface TaskContextValue {
   updateTask: (id: string, updates: Partial<Task>) => Promise<Task>
   deleteTask: (id: string) => Promise<void>
   completeTask: (id: string) => Promise<void>
+  uncompleteTask: (id: string) => Promise<void>
 
   // Status transitions
   promoteTaskToToday: (id: string) => Promise<void>
@@ -37,7 +39,6 @@ interface TaskContextValue {
 
   // Filtering
   getTodayTasks: () => Task[]
-  getInboxTasks: () => Task[]
   getBacklogTasks: () => Task[]
   getTasksByDate: (date: string) => Task[]
 
@@ -92,12 +93,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       user_id: '', // Will be set by server
       title: data.title,
       description: data.description || null,
-      status: data.status || 'inbox',
+      status: data.status || 'backlog',
       project_id: data.project_id || null,
       bucket_id: data.bucket_id || null,
       scheduled_date: data.scheduled_date || null,
       scheduled_time: data.scheduled_time || null,
       duration_minutes: data.duration_minutes || null,
+      linked_domain: null,
       gcal_event_id: null,
       gcal_sync_status: null,
       gcal_last_sync: null,
@@ -164,8 +166,46 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   }, [tasks])
 
   const completeTask = useCallback(async (id: string): Promise<void> => {
-    await updateTask(id, { status: 'completed' })
-  }, [updateTask])
+    const oldTask = tasks.find(t => t.id === id)
+    if (!oldTask) throw new Error('Task not found')
+
+    // Optimistic update
+    setTasks(prev => prev.map(t => 
+      t.id === id 
+        ? { ...t, status: 'completed' as const, completed_at: new Date().toISOString() }
+        : t
+    ))
+
+    try {
+      const updatedTask = await completeTaskAction(id)
+      setTasks(prev => prev.map(t => (t.id === id ? updatedTask : t)))
+    } catch (err) {
+      // Rollback
+      setTasks(prev => prev.map(t => (t.id === id ? oldTask : t)))
+      throw err
+    }
+  }, [tasks])
+
+  const uncompleteTask = useCallback(async (id: string): Promise<void> => {
+    const oldTask = tasks.find(t => t.id === id)
+    if (!oldTask) throw new Error('Task not found')
+
+    // Optimistic update
+    setTasks(prev => prev.map(t => 
+      t.id === id 
+        ? { ...t, status: 'today' as const, completed_at: null }
+        : t
+    ))
+
+    try {
+      const updatedTask = await uncompleteTaskAction(id)
+      setTasks(prev => prev.map(t => (t.id === id ? updatedTask : t)))
+    } catch (err) {
+      // Rollback
+      setTasks(prev => prev.map(t => (t.id === id ? oldTask : t)))
+      throw err
+    }
+  }, [tasks])
 
   const promoteTaskToToday = useCallback(async (id: string): Promise<void> => {
     const today = new Date().toISOString().split('T')[0]
@@ -214,10 +254,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     )
   }, [tasks])
 
-  const getInboxTasks = useCallback((): Task[] => {
-    return tasks.filter(t => t.status === 'inbox')
-  }, [tasks])
-
   const getBacklogTasks = useCallback((): Task[] => {
     return tasks.filter(t => t.status === 'backlog')
   }, [tasks])
@@ -237,13 +273,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     updateTask,
     deleteTask,
     completeTask,
+    uncompleteTask,
     promoteTaskToToday,
     moveTaskToBacklog,
     moveTaskToDate: moveTaskToDateCallback,
     scheduleTask: scheduleTaskCallback,
     syncWithGoogleCalendar,
     getTodayTasks,
-    getInboxTasks,
     getBacklogTasks,
     getTasksByDate,
     refreshTasks,

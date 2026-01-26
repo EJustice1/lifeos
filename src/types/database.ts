@@ -440,15 +440,12 @@ export interface Database {
           user_id: string
           date: string
           execution_score: number
-          focus_quality: number
-          physical_vitality: number
           unfocused_factors: string[]
           lesson_learned: string | null
           highlights: string | null
           tomorrow_goals: string[]
           yesterday_goals: string[]
-          productive_screen_minutes: number | null
-          distracted_screen_minutes: number | null
+          screen_time_minutes: number | null
           execution_score_suggested: number | null
           execution_score_locked: boolean
           incomplete_tasks_processed: boolean
@@ -460,15 +457,12 @@ export interface Database {
           user_id: string
           date: string
           execution_score: number
-          focus_quality: number
-          physical_vitality: number
           unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
           tomorrow_goals?: string[]
           yesterday_goals?: string[]
-          productive_screen_minutes?: number | null
-          distracted_screen_minutes?: number | null
+          screen_time_minutes?: number | null
           execution_score_suggested?: number | null
           execution_score_locked?: boolean
           incomplete_tasks_processed?: boolean
@@ -480,15 +474,12 @@ export interface Database {
           user_id?: string
           date?: string
           execution_score?: number
-          focus_quality?: number
-          physical_vitality?: number
           unfocused_factors?: string[]
           lesson_learned?: string | null
           highlights?: string | null
           tomorrow_goals?: string[]
           yesterday_goals?: string[]
-          productive_screen_minutes?: number | null
-          distracted_screen_minutes?: number | null
+          screen_time_minutes?: number | null
           execution_score_suggested?: number | null
           execution_score_locked?: boolean
           incomplete_tasks_processed?: boolean
@@ -595,10 +586,11 @@ export interface Database {
           bucket_id: string | null
           title: string
           description: string | null
-          status: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          status: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
           scheduled_date: string | null
           scheduled_time: string | null
           duration_minutes: number | null
+          linked_domain: 'gym' | 'study' | null
           gcal_event_id: string | null
           gcal_sync_status: 'synced' | 'pending' | 'conflict' | 'error' | null
           gcal_last_sync: string | null
@@ -617,10 +609,11 @@ export interface Database {
           bucket_id?: string | null
           title: string
           description?: string | null
-          status?: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          status?: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
           scheduled_date?: string | null
           scheduled_time?: string | null
           duration_minutes?: number | null
+          linked_domain?: 'gym' | 'study' | null
           gcal_event_id?: string | null
           gcal_sync_status?: 'synced' | 'pending' | 'conflict' | 'error' | null
           gcal_last_sync?: string | null
@@ -639,10 +632,11 @@ export interface Database {
           bucket_id?: string | null
           title?: string
           description?: string | null
-          status?: 'inbox' | 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
+          status?: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
           scheduled_date?: string | null
           scheduled_time?: string | null
           duration_minutes?: number | null
+          linked_domain?: 'gym' | 'study' | null
           gcal_event_id?: string | null
           gcal_sync_status?: 'synced' | 'pending' | 'conflict' | 'error' | null
           gcal_last_sync?: string | null
@@ -655,6 +649,8 @@ export interface Database {
           position_in_day?: number | null
         }
       }
+
+      // Task Completion Feedback (Active Cooldown data)
 
       // Task Completion Feedback (Active Cooldown data)
       task_completion_feedback: {

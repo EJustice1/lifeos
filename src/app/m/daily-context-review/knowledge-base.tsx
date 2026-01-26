@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { useDailyReview } from './DailyReviewContext'
 import { MobileCard } from '@/components/mobile/cards/MobileCard'
-import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
 
-export default function KnowledgeBase({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+export default function KnowledgeBaseStep() {
   const { formData, setFormData } = useDailyReview()
   const [showLesson, setShowLesson] = useState(!!formData.lessonLearned)
 
@@ -58,25 +57,6 @@ export default function KnowledgeBase({ onNext, onBack }: { onNext: () => void; 
         />
         <p className="text-xs text-zinc-500 mt-2">Optional: Add any important events or accomplishments from today</p>
       </MobileCard>
-
-      <div className="flex space-x-4 mt-8">
-        <PrimaryButton
-          variant="secondary"
-          size="lg"
-          onClick={onBack}
-          className="flex-1"
-        >
-          Back
-        </PrimaryButton>
-        <PrimaryButton
-          variant="primary"
-          size="lg"
-          onClick={onNext}
-          className="flex-1"
-        >
-          Next
-        </PrimaryButton>
-      </div>
     </div>
   )
 }

@@ -4,7 +4,6 @@ import { useState, useEffect, useTransition } from 'react'
 import { useSession } from '@/context/SessionContext'
 import { startStudySession, endStudySession, deleteStudySession, updateStudySession } from '@/lib/actions/study'
 import { useRouter } from 'next/navigation'
-import { ActiveCooldownSheet } from '@/components/active-cooldown/ActiveCooldownSheet'
 
 interface Bucket {
   id: string
@@ -46,8 +45,6 @@ export function StudyTimer({
   const [isRunning, setIsRunning] = useState(false)
   const [editingSession, setEditingSession] = useState<string | null>(null)
   const [editDuration, setEditDuration] = useState(0)
-  const [showCooldown, setShowCooldown] = useState(false)
-  const [completedSessionId, setCompletedSessionId] = useState<string | null>(null)
 
   const {
     activeSession: contextSession,
@@ -60,10 +57,19 @@ export function StudyTimer({
   const [seconds, setSeconds] = useState(contextSession?.type === 'study' ? getSessionDuration() : 0)
 
   // Restore selected bucket from active session on mount
+  // Only restore if session is recent (within last 30 seconds of starting)
   useEffect(() => {
     if (contextSession?.type === 'study' && contextSession.bucketId) {
-      setSelectedBucket(contextSession.bucketId)
-      setIsRunning(true)
+      // Validate that session is actually active and recent
+      const sessionStartTime = new Date(contextSession.startedAt).getTime()
+      const timeSinceStart = Date.now() - sessionStartTime
+      
+      // Only restore if session started recently or has been running
+      // Don't restore if session is very fresh (< 2 seconds) as it might be a leftover
+      if (timeSinceStart > 2000) {
+        setSelectedBucket(contextSession.bucketId)
+        setIsRunning(true)
+      }
     }
   }, [])
 
@@ -114,22 +120,43 @@ export function StudyTimer({
     if (!activeSession) return
 
     const sessionId = activeSession
+    const durationSeconds = seconds
 
     startTransition(async () => {
+      let shouldNavigateToReview = false
+      
       try {
         await endStudySession(sessionId)
-        setCompletedSessionId(sessionId)
-        setShowCooldown(true)
+        // Only show review if session is at least 1 minute (60 seconds)
+        shouldNavigateToReview = durationSeconds >= 60
       } catch (error) {
-        // Silently handle validation errors (no time logged)
-        // Only log real errors
-        if (error instanceof Error && !error.message.includes('no time')) {
+        // Check if it's a validation error (session too short)
+        const isValidationError = error instanceof Error && 
+          (error.message.includes('no time') || error.message.includes('too short'))
+        
+        // Only log real errors (not validation errors)
+        if (!isValidationError) {
           console.error('Failed to end study session:', error)
         }
+        
+        // Don't navigate to review if session was too short or failed
+        shouldNavigateToReview = false
+      } finally {
+        // Always clear session state
+        endSession()
+        setActiveSession(null)
+        setIsRunning(false)
+        
+        // Navigate to review after state is cleared, only if session was long enough
+        if (shouldNavigateToReview) {
+          setTimeout(() => {
+            router.push(`/review/study?sessionId=${sessionId}`)
+          }, 100)
+        } else {
+          // Just refresh the page to show updated stats
+          router.refresh()
+        }
       }
-      setActiveSession(null)
-      endSession()
-      setIsRunning(false)
     })
   }
 
@@ -179,23 +206,6 @@ export function StudyTimer({
   }
 
   return (
-    <>
-      {/* Active Cooldown Sheet */}
-      {showCooldown && completedSessionId && (
-        <ActiveCooldownSheet
-          sessionId={completedSessionId}
-          sessionType="study"
-          onClose={() => {
-            setShowCooldown(false)
-            setCompletedSessionId(null)
-            router.refresh()
-          }}
-          onSave={() => {
-            router.refresh()
-          }}
-        />
-      )}
-
       <section className="space-y-4">
       {/* Bucket selector */}
       <div className="bg-zinc-900 rounded-xl p-4">
@@ -342,6 +352,5 @@ export function StudyTimer({
         </div>
       )}
       </section>
-    </>
   )
 }
