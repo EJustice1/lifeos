@@ -3,15 +3,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/contexts/TaskContext'
-import { DomainLaunchModal } from '@/components/modals/DomainLaunchModal'
-import type { Task } from '@/types/database'
+import { TaskCard } from '@/components/tasks/TaskCard'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import { useDrag } from '@use-gesture/react'
-import { useSpring, animated } from '@react-spring/web'
 
 export function TodayView() {
-  const [domainLaunchTask, setDomainLaunchTask] = useState<Task | null>(null)
-  const { tasks, completeTask, uncompleteTask, updateTask, loading } = useTasks()
+  const { tasks, loading } = useTasks()
 
   // Get today's tasks including completed ones
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
@@ -36,11 +32,19 @@ export function TodayView() {
     if (currentTaskIds.length !== taskOrder.length || 
         !currentTaskIds.every(id => taskOrder.includes(id))) {
       
-      // Sort once: uncompleted tasks first, then completed tasks
+      // Sort: 1) completion status, 2) project grouping
       const sorted = [...todayTasks].sort((a, b) => {
+        // First, sort by completion status
         const aCompleted = a.status === 'completed' ? 1 : 0
         const bCompleted = b.status === 'completed' ? 1 : 0
-        return aCompleted - bCompleted
+        if (aCompleted !== bCompleted) {
+          return aCompleted - bCompleted
+        }
+        
+        // Then, group by project (tasks with no project go last)
+        const aProject = a.project_id || 'zzz_no_project'
+        const bProject = b.project_id || 'zzz_no_project'
+        return aProject.localeCompare(bProject)
       })
       
       setTaskOrder(sorted.map(t => t.id))
@@ -67,19 +71,6 @@ export function TodayView() {
   // Count completed tasks for stats
   const completedCount = sortedTasks.filter(t => t.status === 'completed').length
 
-  const handleToggleComplete = async (task: Task) => {
-    try {
-      if (task.status === 'completed') {
-        await uncompleteTask(task.id)
-      } else {
-        await completeTask(task.id)
-      }
-      triggerHapticFeedback(HapticPatterns.SUCCESS)
-    } catch (error) {
-      console.error('Failed to toggle completion:', error)
-      triggerHapticFeedback(HapticPatterns.FAILURE)
-    }
-  }
 
   if (loading) {
     return (
@@ -119,24 +110,16 @@ export function TodayView() {
         )}
       </div>
 
-      {/* All tasks in single list - uncompleted at top, completed at bottom */}
+      {/* All tasks sorted by project - uncompleted at top, completed at bottom */}
       {sortedTasks.length > 0 && (
-        <div className="mt-4">
-          <div className="space-y-2 pb-24">
-            {sortedTasks.map((task) => (
-              <SwipeableTaskCard
-                key={task.id}
-                task={task}
-                onToggleComplete={handleToggleComplete}
-                onUpdate={updateTask}
-                onTap={(t) => {
-                  if (t.linked_domain) {
-                    setDomainLaunchTask(t)
-                  }
-                }}
-              />
-            ))}
-          </div>
+        <div className="mt-4 pb-24 space-y-2">
+          {sortedTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              variant="today"
+            />
+          ))}
         </div>
       )}
 
@@ -151,132 +134,6 @@ export function TodayView() {
 
       {/* Quick Add FAB */}
       <QuickAddFAB selectedDate={today} onRefresh={() => {}} />
-
-      {/* Domain Launch Modal */}
-      {domainLaunchTask && domainLaunchTask.linked_domain && (
-        <DomainLaunchModal
-          task={domainLaunchTask}
-          domain={domainLaunchTask.linked_domain}
-          onClose={() => setDomainLaunchTask(null)}
-        />
-      )}
-    </div>
-  )
-}
-
-interface SwipeableTaskCardProps {
-  task: Task
-  onToggleComplete: (task: Task) => void
-  onUpdate: (id: string, updates: Partial<Task>) => Promise<Task>
-  onTap?: (task: Task) => void
-}
-
-function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: SwipeableTaskCardProps) {
-  const [{ x }, api] = useSpring(() => ({ x: 0 }))
-  const [showActions, setShowActions] = useState(false)
-  const isCompleted = task.status === 'completed'
-
-  const bind = useDrag(
-    ({ movement: [mx], last, velocity: [vx] }) => {
-      // Swipe left to reveal actions
-      if (last) {
-        if (mx < -50 || vx < -0.5) {
-          setShowActions(true)
-          api.start({ x: -120 })
-        } else {
-          setShowActions(false)
-          api.start({ x: 0 })
-        }
-      } else {
-        api.start({ x: mx < 0 ? Math.max(mx, -120) : 0, immediate: true })
-      }
-    },
-    { axis: 'x' }
-  )
-
-  const handleMoveToBacklog = async () => {
-    try {
-      await onUpdate(task.id, { 
-        status: 'backlog',
-        scheduled_date: null,
-        scheduled_time: null
-      })
-      triggerHapticFeedback(HapticPatterns.SUCCESS)
-      setShowActions(false)
-      api.start({ x: 0 })
-    } catch (error) {
-      console.error('Failed to move to backlog:', error)
-      triggerHapticFeedback(HapticPatterns.FAILURE)
-    }
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Action Buttons (Behind) */}
-      {showActions && (
-        <div className="absolute right-0 top-0 bottom-0 flex items-center gap-2 pr-2">
-          <button
-            onClick={handleMoveToBacklog}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium text-sm"
-          >
-            Backlog
-          </button>
-        </div>
-      )}
-
-      {/* Task Row - NO CARD, bold design */}
-      <animated.div
-        {...bind()}
-        style={{ x }}
-        onClick={() => onTap?.(task)}
-        className={`py-6 px-6 touch-pan-y cursor-pointer hover:bg-blue-500/10 transition-colors border-l-4 ${
-          isCompleted 
-            ? 'border-emerald-500 bg-emerald-500/5 opacity-70' 
-            : 'border-blue-500 bg-blue-500/5'
-        }`}
-      >
-        <div className="flex items-start gap-4">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleComplete(task)
-            }}
-            className={`w-8 h-8 rounded-full border-3 flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${
-              isCompleted
-                ? 'border-emerald-500 bg-emerald-500'
-                : 'border-blue-400 hover:border-emerald-500'
-            }`}
-          >
-            {isCompleted && (
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className={`text-2xl font-bold leading-tight ${isCompleted ? 'text-zinc-500 line-through' : 'text-white'}`}>
-              {task.title}
-            </div>
-            {task.description && (
-              <div className={`text-base mt-2 ${isCompleted ? 'text-zinc-600 line-through' : 'text-zinc-400'}`}>
-                {task.description}
-              </div>
-            )}
-            <div className="flex items-center gap-4 mt-3">
-              {task.scheduled_time && (
-                <span className={`text-sm font-bold font-mono ${isCompleted ? 'text-zinc-600' : 'text-blue-400'}`}>
-                  {task.scheduled_time}
-                </span>
-              )}
-              {task.linked_domain && (
-                <span className={`text-sm font-bold ${isCompleted ? 'text-zinc-600' : 'text-blue-400'}`}>
-                  {task.linked_domain === 'gym' ? '💪 GYM' : '📚 STUDY'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </animated.div>
     </div>
   )
 }

@@ -127,50 +127,6 @@ export default function ActionsPage() {
       },
     },
     {
-      id: 'add-task',
-      label: 'Add Task',
-      description: 'Create new task',
-      color: 'text-emerald-300',
-      bgColor: 'bg-emerald-500/15',
-      hoverColor: 'hover:bg-emerald-500/25',
-      icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-          />
-        </svg>
-      ),
-      action: () => {
-        triggerHapticFeedback(HapticPatterns.LIGHT)
-        router.push('/tasks/new')
-      },
-    },
-    {
-      id: 'add-project',
-      label: 'Add Project',
-      description: 'Create new project',
-      color: 'text-indigo-300',
-      bgColor: 'bg-indigo-500/15',
-      hoverColor: 'hover:bg-indigo-500/25',
-      icon: (
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-          />
-        </svg>
-      ),
-      action: () => {
-        triggerHapticFeedback(HapticPatterns.LIGHT)
-        router.push('/projects/new')
-      },
-    },
-    {
       id: 'daily-review',
       label: 'Daily Review',
       description: 'Complete reflection',
@@ -298,44 +254,14 @@ export default function ActionsPage() {
           </div>
         </button>
 
-        {/* Add Task */}
-        <button
-          onClick={actions[4].action}
-          className="w-full px-5 py-5 bg-emerald-500/10 border-l-4 border-emerald-500 hover:bg-emerald-500/20 transition-all active:bg-emerald-500/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="text-emerald-400">
-              {actions[4].icon}
-            </div>
-            <div className="text-left">
-              <div className="text-xl font-bold text-white leading-tight">Add Task</div>
-            </div>
-          </div>
-        </button>
-
-        {/* Add Project */}
-        <button
-          onClick={actions[5].action}
-          className="w-full px-5 py-5 bg-indigo-500/10 border-l-4 border-indigo-500 hover:bg-indigo-500/20 transition-all active:bg-indigo-500/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="text-indigo-400">
-              {actions[5].icon}
-            </div>
-            <div className="text-left">
-              <div className="text-xl font-bold text-white leading-tight">Add Project</div>
-            </div>
-          </div>
-        </button>
-
         {/* Daily Review */}
         <button
-          onClick={actions[6].action}
+          onClick={actions[4].action}
           className="w-full px-5 py-5 bg-pink-500/10 border-l-4 border-pink-500 hover:bg-pink-500/20 transition-all active:bg-pink-500/30"
         >
           <div className="flex items-center gap-4">
             <div className="text-pink-400">
-              {actions[6].icon}
+              {actions[4].icon}
             </div>
             <div className="text-left">
               <div className="text-xl font-bold text-white leading-tight">Daily Review</div>
@@ -345,12 +271,12 @@ export default function ActionsPage() {
 
         {/* Settings */}
         <button
-          onClick={actions[7].action}
+          onClick={actions[5].action}
           className="w-full px-5 py-5 bg-zinc-600/15 border-l-4 border-zinc-600 hover:bg-zinc-600/25 transition-all"
         >
           <div className="flex items-center gap-4">
             <div className="text-zinc-400">
-              {actions[7].icon}
+              {actions[5].icon}
             </div>
             <div className="text-left">
               <div className="text-xl font-bold text-white leading-tight">Settings</div>

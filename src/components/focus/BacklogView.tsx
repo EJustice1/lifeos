@@ -4,14 +4,11 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/contexts/TaskContext'
 import { useProjects } from '@/contexts/ProjectContext'
-import type { Task } from '@/types/database'
+import { TaskCard } from '@/components/tasks/TaskCard'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import { useDrag } from '@use-gesture/react'
-import { useSpring, animated } from '@react-spring/web'
-import { Section, CollapsibleSection, StatusBadge } from '@/components/editorial'
 
 export function BacklogView() {
-  const { tasks, loading, refreshTasks } = useTasks()
+  const { tasks, loading } = useTasks()
   const { projects } = useProjects()
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set(['orphaned']))
 
@@ -86,9 +83,6 @@ export function BacklogView() {
             </div>
             <div className="text-sm text-zinc-500 font-bold uppercase tracking-wide">Backlog</div>
           </div>
-          <div className="text-xs text-zinc-600">
-            Swipe right →
-          </div>
         </div>
       </div>
 
@@ -139,11 +133,10 @@ export function BacklogView() {
               {isExpanded && (
                 <div className="space-y-2 mt-2">
                   {group.tasks.map(task => (
-                    <SwipeableBacklogTask
+                    <TaskCard
                       key={task.id}
                       task={task}
-                      onRefresh={refreshTasks}
-                      projectColor={projectColor}
+                      variant="backlog"
                     />
                   ))}
                 </div>
@@ -166,113 +159,6 @@ export function BacklogView() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
       </button>
-    </div>
-  )
-}
-
-interface SwipeableBacklogTaskProps {
-  task: Task
-  onRefresh: () => Promise<void>
-  projectColor?: string
-}
-
-function SwipeableBacklogTask({ task, onRefresh, projectColor = '#a855f7' }: SwipeableBacklogTaskProps) {
-  const [{ x }, api] = useSpring(() => ({ x: 0 }))
-  const [showPromoteButton, setShowPromoteButton] = useState(false)
-  const [isPromoting, setIsPromoting] = useState(false)
-
-  const bind = useDrag(
-    ({ movement: [mx], last, velocity: [vx] }) => {
-      // Swipe right to reveal promote button
-      if (last) {
-        if (mx > 50 || vx > 0.5) {
-          setShowPromoteButton(true)
-          api.start({ x: 120 })
-        } else {
-          setShowPromoteButton(false)
-          api.start({ x: 0 })
-        }
-      } else {
-        api.start({ x: mx > 0 ? Math.min(mx, 120) : 0, immediate: true })
-      }
-    },
-    { axis: 'x' }
-  )
-
-  const handlePromote = async () => {
-    if (isPromoting) return
-    
-    try {
-      setIsPromoting(true)
-      // Import dynamically to avoid circular deps
-      const { updateTask } = await import('@/lib/actions/tasks')
-      
-      const today = new Date().toISOString().split('T')[0]
-      await updateTask(task.id, {
-        status: 'today',
-        scheduled_date: today,
-      })
-
-      triggerHapticFeedback(HapticPatterns.SUCCESS)
-      
-      // Animate out
-      api.start({ x: 300, config: { tension: 200, friction: 20 } })
-      
-      // Refresh after animation
-      setTimeout(() => {
-        onRefresh()
-      }, 300)
-    } catch (error) {
-      console.error('Failed to promote task:', error)
-      triggerHapticFeedback(HapticPatterns.FAILURE)
-      setIsPromoting(false)
-      api.start({ x: 0 })
-    }
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Action Button (Behind - revealed on swipe) */}
-      {showPromoteButton && (
-        <div className="absolute left-0 top-0 bottom-0 flex items-center pl-2 z-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handlePromote()
-            }}
-            disabled={isPromoting}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm"
-          >
-            {isPromoting ? 'Moving...' : 'To Today'}
-          </button>
-        </div>
-      )}
-
-      {/* Task Row - NO CARD */}
-      <animated.div
-        {...bind()}
-        style={{ x }}
-        className="relative py-4 px-6 touch-pan-y transition-colors bg-zinc-950 z-10"
-      >
-        <div className="flex items-start gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-zinc-700 flex-shrink-0 mt-0.5"></div>
-          <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-white leading-tight">{task.title}</div>
-            {task.description && (
-              <div className="text-sm text-zinc-500 mt-1">{task.description}</div>
-            )}
-            {task.tags && task.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {task.tags.map(tag => (
-                  <span key={tag} className="px-2 py-0.5 text-xs font-bold text-zinc-500 uppercase tracking-wide">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </animated.div>
     </div>
   )
 }
