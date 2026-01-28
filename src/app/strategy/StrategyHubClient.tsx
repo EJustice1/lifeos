@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useGoals } from '@/contexts/GoalContext'
 import { useProjects } from '@/contexts/ProjectContext'
@@ -14,7 +14,14 @@ import type { Task } from '@/types/database'
 export function StrategyHubClient() {
   const { goals: lifeGoals, loading: goalsLoading } = useGoals()
   const { projects, loading: projectsLoading } = useProjects()
-  const { tasks, loading: tasksLoading } = useTasks()
+  const {
+    tasks,
+    loading: tasksLoading,
+    getTodayTasks,
+    getBacklogTasks,
+    getTasksByDate,
+    getTaskStats,
+  } = useTasks()
   const [activeTab, setActiveTab] = useState<'today' | 'backlog' | 'projects' | 'goals'>('today')
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false)
 
@@ -42,17 +49,63 @@ export function StrategyHubClient() {
     [tasks]
   )
 
-  // Memoize derived data
+  // Memoize derived data using unified task manager methods
   const orphanedProjects = useMemo(() => projectsByGoal['none'] || [], [projectsByGoal])
-  const backlogTasks = useMemo(() => tasks.filter(t => t.status === 'backlog'), [tasks])
+  const backlogTasks = useMemo(() => getBacklogTasks(), [getBacklogTasks])
   const orphanedTasks = useMemo(() => tasks.filter(t => !t.project_id && t.status !== 'backlog'), [tasks])
   
-  // Today's tasks
+  // Today's tasks using unified task manager
+  const todayTasks = useMemo(() => getTodayTasks(), [getTodayTasks])
+  
+  // Get today's stats
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
-  const todayTasks = useMemo(() => 
-    tasks.filter(t => t.scheduled_date === today && t.status !== 'cancelled'),
+  const todayStats = useMemo(() => getTaskStats(today), [getTaskStats, today])
+  
+  // Store the initial sort order to prevent reordering when status changes
+  const [todayTaskOrder, setTodayTaskOrder] = useState<string[]>([])
+  
+  // Get today's tasks
+  const todayTasksFiltered = useMemo(() => 
+    tasks.filter(t => 
+      (t.status === 'today' || t.status === 'completed' || t.status === 'in_progress') && 
+      t.scheduled_date === today
+    ),
     [tasks, today]
   )
+  
+  // Initialize or update task order when tasks change (but not when just status changes)
+  useEffect(() => {
+    const currentTaskIds = todayTasksFiltered.map(t => t.id)
+    
+    // If we have new tasks or the task list has changed in composition
+    if (currentTaskIds.length !== todayTaskOrder.length || 
+        !currentTaskIds.every(id => todayTaskOrder.includes(id))) {
+      
+      // Sort once: uncompleted tasks first, then completed tasks
+      const sorted = [...todayTasksFiltered].sort((a, b) => {
+        const aCompleted = a.status === 'completed' ? 1 : 0
+        const bCompleted = b.status === 'completed' ? 1 : 0
+        return aCompleted - bCompleted
+      })
+      
+      setTodayTaskOrder(sorted.map(t => t.id))
+    }
+  }, [todayTasksFiltered, todayTaskOrder])
+  
+  // Sort tasks based on the stored order
+  const allTodayTasks = useMemo(() => {
+    if (todayTaskOrder.length === 0) return todayTasksFiltered
+    
+    return todayTasksFiltered.sort((a, b) => {
+      const indexA = todayTaskOrder.indexOf(a.id)
+      const indexB = todayTaskOrder.indexOf(b.id)
+      
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return 0
+    })
+  }, [todayTasksFiltered, todayTaskOrder])
 
   if (loading) {
     return (
@@ -136,7 +189,7 @@ export function StrategyHubClient() {
       <div className="px-4 py-6">
         {activeTab === 'today' && (
           <div className="space-y-2">
-            {todayTasks.length === 0 ? (
+            {allTodayTasks.length === 0 ? (
               <div className="text-center py-12">
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -149,11 +202,11 @@ export function StrategyHubClient() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-body-sm text-zinc-400">
-                      {todayTasks.filter(t => t.status === 'completed').length}/{todayTasks.length} completed
+                      {todayStats.completed}/{todayStats.total} completed ({todayStats.completionRate.toFixed(0)}%)
                     </p>
                   </div>
                 </div>
-                {todayTasks.map(task => (
+                {allTodayTasks.map(task => (
                   <TaskListItem key={task.id} task={task} />
                 ))}
               </>
@@ -199,7 +252,8 @@ export function StrategyHubClient() {
                 {/* Orphaned projects (no life goal) */}
                 {orphanedProjects.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-title-md font-semibold text-white mb-3">Unassigned Projects</h3>
+                    <h3 className="text-title-md font-semibold text-white mb-3">No Life Goal</h3>
+                    <p className="text-body-sm text-zinc-400 mb-3">Projects not linked to a life goal</p>
                     <div className="space-y-3">
                       {orphanedProjects.map(project => (
                         <ProjectCard

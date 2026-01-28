@@ -46,19 +46,21 @@ export function ListItem({
   const interactiveClass = interactive ? 'cursor-pointer hover:bg-zinc-900/50 transition-colors' : ''
   const clickHandler = interactive && onClick ? onClick : undefined
 
+  const isCompleted = status === 'completed'
+
   return (
     <div
-      className={`border-b border-zinc-800 py-4 ${statusBorderClass} ${interactiveClass} ${className}`}
+      className={`border-b border-zinc-800 py-4 ${statusBorderClass} ${interactiveClass} ${className} ${isCompleted ? 'opacity-70' : ''}`}
       onClick={clickHandler}
       style={style}
     >
       <div className="flex items-start justify-between gap-4 px-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-title-md font-medium text-white truncate">
+          <h3 className={`text-title-md font-medium ${isCompleted ? 'text-zinc-500 line-through' : 'text-white'} truncate`}>
             {title}
           </h3>
           {description && (
-            <p className="text-body-sm text-zinc-400 mt-1 line-clamp-2">
+            <p className={`text-body-sm ${isCompleted ? 'text-zinc-600 line-through' : 'text-zinc-400'} mt-1 line-clamp-2`}>
               {description}
             </p>
           )}

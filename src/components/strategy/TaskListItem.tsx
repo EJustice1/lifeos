@@ -12,7 +12,7 @@ interface TaskListItemProps {
 }
 
 function TaskListItemComponent({ task, showPromoteButton = true }: TaskListItemProps) {
-  const { deleteTask } = useTasks()
+  const { deleteTask, completeTask, uncompleteTask } = useTasks()
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -23,6 +23,20 @@ function TaskListItemComponent({ task, showPromoteButton = true }: TaskListItemP
       await deleteTask(task.id)
     } catch (error) {
       console.error('Failed to delete task:', error)
+    }
+  }
+
+  const handleToggleComplete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    try {
+      if (task.status === 'completed') {
+        await uncompleteTask(task.id)
+      } else {
+        await completeTask(task.id)
+      }
+    } catch (error) {
+      console.error('Failed to toggle task completion:', error)
     }
   }
 
@@ -71,6 +85,22 @@ function TaskListItemComponent({ task, showPromoteButton = true }: TaskListItemP
       }
       actions={
         <div className="flex items-center gap-1">
+          <button
+            onClick={handleToggleComplete}
+            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              task.status === 'completed'
+                ? 'border-emerald-500 bg-emerald-500'
+                : 'border-zinc-600 hover:border-emerald-500 hover:bg-emerald-500/20'
+            }`}
+            aria-label={task.status === 'completed' ? 'Mark as incomplete' : 'Complete task'}
+          >
+            {task.status === 'completed' && (
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+
           <StatusBadge status={task.status} size="sm" />
 
           {showPromoteButton && task.status !== 'today' && task.status !== 'completed' && (

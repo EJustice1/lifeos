@@ -7,6 +7,8 @@ import {
   createProject as createProjectAction,
   updateProject as updateProjectAction,
   deleteProject as deleteProjectAction,
+  archiveProject as archiveProjectAction,
+  unarchiveProject as unarchiveProjectAction,
 } from '@/lib/actions/tasks'
 
 interface ProjectContextValue {
@@ -18,10 +20,14 @@ interface ProjectContextValue {
   createProject: (data: CreateProjectData) => Promise<Project>
   updateProject: (id: string, updates: Partial<Project>) => Promise<Project>
   deleteProject: (id: string) => Promise<void>
+  archiveProject: (id: string) => Promise<Project>
+  unarchiveProject: (id: string) => Promise<Project>
 
   // Filtering
   getProjectsByGoal: (goalId: string) => Project[]
   getOrphanedProjects: () => Project[]
+  getProjectsByType: (type: string) => Project[]
+  getActiveProjects: () => Project[]
 
   // Refresh
   refreshProjects: () => Promise<void>
@@ -32,6 +38,7 @@ interface CreateProjectData {
   description?: string
   life_goal_id?: string
   color?: string
+  type?: 'class' | 'lab' | 'project' | 'work' | 'other'
   target_date?: string
 }
 
@@ -71,6 +78,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       description: data.description || null,
       life_goal_id: data.life_goal_id || null,
       color: data.color || '#3b82f6',
+      type: data.type || null,
       status: 'active',
       target_date: data.target_date || null,
       completed_at: null,
@@ -124,13 +132,57 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [projects])
 
+  const archiveProject = useCallback(async (id: string): Promise<Project> => {
+    const oldProject = projects.find(p => p.id === id)
+    if (!oldProject) throw new Error('Project not found')
+
+    // Optimistic update
+    setProjects(prev => prev.map(p => (p.id === id ? { ...p, archived: true, status: 'archived' as const } : p)))
+
+    try {
+      const archivedProject = await archiveProjectAction(id)
+      setProjects(prev => prev.map(p => (p.id === id ? archivedProject : p)))
+      return archivedProject
+    } catch (err) {
+      // Rollback
+      setProjects(prev => prev.map(p => (p.id === id ? oldProject : p)))
+      throw err
+    }
+  }, [projects])
+
+  const unarchiveProject = useCallback(async (id: string): Promise<Project> => {
+    const oldProject = projects.find(p => p.id === id)
+    if (!oldProject) throw new Error('Project not found')
+
+    // Optimistic update
+    setProjects(prev => prev.map(p => (p.id === id ? { ...p, archived: false, status: 'active' as const } : p)))
+
+    try {
+      const unarchivedProject = await unarchiveProjectAction(id)
+      setProjects(prev => prev.map(p => (p.id === id ? unarchivedProject : p)))
+      return unarchivedProject
+    } catch (err) {
+      // Rollback
+      setProjects(prev => prev.map(p => (p.id === id ? oldProject : p)))
+      throw err
+    }
+  }, [projects])
+
   // Filtering helpers
   const getProjectsByGoal = useCallback((goalId: string): Project[] => {
-    return projects.filter(p => p.life_goal_id === goalId)
+    return projects.filter(p => p.life_goal_id === goalId && !p.archived)
   }, [projects])
 
   const getOrphanedProjects = useCallback((): Project[] => {
-    return projects.filter(p => !p.life_goal_id)
+    return projects.filter(p => !p.life_goal_id && !p.archived)
+  }, [projects])
+
+  const getProjectsByType = useCallback((type: string): Project[] => {
+    return projects.filter(p => p.type === type && !p.archived)
+  }, [projects])
+
+  const getActiveProjects = useCallback((): Project[] => {
+    return projects.filter(p => !p.archived)
   }, [projects])
 
   const value: ProjectContextValue = {
@@ -140,8 +192,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     createProject,
     updateProject,
     deleteProject,
+    archiveProject,
+    unarchiveProject,
     getProjectsByGoal,
     getOrphanedProjects,
+    getProjectsByType,
+    getActiveProjects,
     refreshProjects,
   }
 

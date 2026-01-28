@@ -12,7 +12,6 @@ export async function getTasks(filter?: {
   status?: Task['status']
   scheduled_date?: string
   project_id?: string
-  bucket_id?: string
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -32,9 +31,6 @@ export async function getTasks(filter?: {
   }
   if (filter?.project_id) {
     query = query.eq('project_id', filter.project_id)
-  }
-  if (filter?.bucket_id) {
-    query = query.eq('bucket_id', filter.bucket_id)
   }
 
   const { data } = await query
@@ -91,7 +87,6 @@ export async function createTask(data: {
   description?: string
   status?: Task['status']
   project_id?: string
-  bucket_id?: string
   scheduled_date?: string
   scheduled_time?: string
   duration_minutes?: number
@@ -110,7 +105,6 @@ export async function createTask(data: {
       description: data.description,
       status: data.status || 'backlog',
       project_id: data.project_id,
-      bucket_id: data.bucket_id,
       scheduled_date: data.scheduled_date,
       scheduled_time: data.scheduled_time,
       duration_minutes: data.duration_minutes,
@@ -134,7 +128,6 @@ export async function updateTask(
     description?: string | null
     status?: Task['status']
     project_id?: string | null
-    bucket_id?: string | null
     scheduled_date?: string | null
     scheduled_time?: string | null
     duration_minutes?: number | null
@@ -427,6 +420,7 @@ export async function createProject(data: {
   description?: string
   life_goal_id?: string
   color?: string
+  type?: 'class' | 'lab' | 'project' | 'work' | 'other'
   target_date?: string
 }) {
   const supabase = await createClient()
@@ -441,6 +435,7 @@ export async function createProject(data: {
       description: data.description,
       life_goal_id: data.life_goal_id,
       color: data.color || '#3b82f6',
+      type: data.type,
       target_date: data.target_date,
     })
     .select()
@@ -449,6 +444,7 @@ export async function createProject(data: {
   if (error) throw error
 
   revalidatePath('/strategy')
+  revalidatePath('/m/study')
   return project
 }
 
@@ -459,6 +455,7 @@ export async function updateProject(
     description?: string | null
     life_goal_id?: string | null
     color?: string
+    type?: 'class' | 'lab' | 'project' | 'work' | 'other' | null
     status?: Project['status']
     target_date?: string | null
     completed_at?: string | null
@@ -480,6 +477,7 @@ export async function updateProject(
   if (error) throw error
 
   revalidatePath('/strategy')
+  revalidatePath('/m/study')
   return data
 }
 
@@ -497,6 +495,15 @@ export async function deleteProject(projectId: string) {
   if (error) throw error
 
   revalidatePath('/strategy')
+  revalidatePath('/m/study')
+}
+
+export async function archiveProject(projectId: string) {
+  return updateProject(projectId, { archived: true, status: 'archived' })
+}
+
+export async function unarchiveProject(projectId: string) {
+  return updateProject(projectId, { archived: false, status: 'active' })
 }
 
 // ===================================================================

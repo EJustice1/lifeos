@@ -11,7 +11,7 @@ import {
 
 export interface StudySessionData extends BaseSessionData {
   sessionId: string
-  bucketId: string
+  projectId: string
   elapsedSeconds: number
   notes: string
   startedAt: string
@@ -19,7 +19,7 @@ export interface StudySessionData extends BaseSessionData {
 
 export interface UseStudySessionReturn {
   activeSession: StudySessionData | null
-  startSession: (bucketId: string) => Promise<void>
+  startSession: (projectId: string) => Promise<void>
   updateTimer: (seconds: number) => void
   updateNotes: (notes: string) => void
   endSession: (notes?: string) => Promise<{ saved: boolean }>
@@ -41,7 +41,7 @@ function transformDbSession(dbSession: any): StudySessionData {
   return {
     id: dbSession.id,
     sessionId: dbSession.id,
-    bucketId: dbSession.bucket_id,
+    projectId: dbSession.project_id,
     elapsedSeconds: 0, // Will be calculated from startedAt
     notes: dbSession.notes || '',
     startedAt: dbSession.started_at,
@@ -71,8 +71,8 @@ export function useStudySession(): UseStudySessionReturn {
     },
     
     // Start a new study session in the database
-    onStart: async (bucketId: string) => {
-      const session = await startStudySessionAction(bucketId)
+    onStart: async (projectId: string) => {
+      const session = await startStudySessionAction(projectId)
       return session
     },
     
@@ -92,7 +92,7 @@ export function useStudySession(): UseStudySessionReturn {
     // Extract metadata for localStorage
     getMetadata: (session) => ({
       sessionId: session.sessionId,
-      bucketId: session.bucketId,
+      projectId: session.projectId,
     }),
     
     // Only save if session is at least 1 minute long
@@ -123,8 +123,8 @@ export function useStudySession(): UseStudySessionReturn {
   /**
    * Start a new study session
    */
-  const startSession = useCallback(async (bucketId: string) => {
-    await unifiedStartSession(bucketId)
+  const startSession = useCallback(async (projectId: string) => {
+    await unifiedStartSession(projectId)
   }, [unifiedStartSession])
 
   /**

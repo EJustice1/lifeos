@@ -29,12 +29,17 @@ function ProjectCardComponent({ project, tasks }: ProjectCardProps) {
         <div className="space-y-4">
           {/* Project header info */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <StatusBadge
                 status={project.status as any}
                 label={project.status.replace('_', ' ')}
                 size="sm"
               />
+              {project.type && (
+                <span className="px-2 py-0.5 text-label-sm bg-cyan-500/10 text-cyan-400 rounded capitalize border border-cyan-500/20">
+                  {project.type}
+                </span>
+              )}
               {project.target_date && (
                 <span className="flex items-center gap-1 text-label-md text-zinc-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

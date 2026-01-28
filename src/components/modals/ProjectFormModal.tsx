@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react'
 import { useProjects } from '@/contexts/ProjectContext'
 import { useGoals } from '@/contexts/GoalContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
+import type { Project } from '@/types/database'
 
 interface ProjectFormModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
   defaultLifeGoalId?: string
+  editingProject?: Project
+  mode?: 'create' | 'edit'
 }
 
 const PRESET_COLORS = [
@@ -24,21 +27,46 @@ const PRESET_COLORS = [
   { name: 'Indigo', value: '#6366f1' },
 ]
 
-export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId }: ProjectFormModalProps) {
-  const { createProject } = useProjects()
+const PROJECT_TYPES: Array<{ value: 'class' | 'lab' | 'project' | 'work' | 'other'; label: string }> = [
+  { value: 'class', label: 'Class' },
+  { value: 'lab', label: 'Lab' },
+  { value: 'project', label: 'Project' },
+  { value: 'work', label: 'Work' },
+  { value: 'other', label: 'Other' },
+]
+
+export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId, editingProject, mode = 'create' }: ProjectFormModalProps) {
+  const { createProject, updateProject } = useProjects()
   const { goals: lifeGoals, loading: loadingGoals } = useGoals()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [lifeGoalId, setLifeGoalId] = useState(defaultLifeGoalId || '')
   const [color, setColor] = useState('#3b82f6')
+  const [type, setType] = useState<'class' | 'lab' | 'project' | 'work' | 'other' | ''>('')
   const [targetDate, setTargetDate] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Initialize form with editing project data
   useEffect(() => {
-    if (isOpen && defaultLifeGoalId) {
-      setLifeGoalId(defaultLifeGoalId)
+    if (isOpen) {
+      if (editingProject && mode === 'edit') {
+        setTitle(editingProject.title)
+        setDescription(editingProject.description || '')
+        setLifeGoalId(editingProject.life_goal_id || '')
+        setColor(editingProject.color)
+        setType(editingProject.type || '')
+        setTargetDate(editingProject.target_date || '')
+      } else {
+        // Reset for create mode
+        setTitle('')
+        setDescription('')
+        setLifeGoalId(defaultLifeGoalId || '')
+        setColor('#3b82f6')
+        setType('')
+        setTargetDate('')
+      }
     }
-  }, [isOpen, defaultLifeGoalId])
+  }, [isOpen, editingProject, mode, defaultLifeGoalId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,27 +75,32 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
     try {
       setLoading(true)
 
-      await createProject({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        life_goal_id: lifeGoalId || undefined,
-        color,
-        target_date: targetDate || undefined,
-      })
+      if (mode === 'edit' && editingProject) {
+        await updateProject(editingProject.id, {
+          title: title.trim(),
+          description: description.trim() || null,
+          life_goal_id: lifeGoalId || null,
+          color,
+          type: type || null,
+          target_date: targetDate || null,
+        })
+      } else {
+        await createProject({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          life_goal_id: lifeGoalId || undefined,
+          color,
+          type: type || undefined,
+          target_date: targetDate || undefined,
+        })
+      }
 
       triggerHapticFeedback(HapticPatterns.SUCCESS)
-      
-      // Reset form
-      setTitle('')
-      setDescription('')
-      setLifeGoalId(defaultLifeGoalId || '')
-      setColor('#3b82f6')
-      setTargetDate('')
       
       onSuccess?.()
       onClose()
     } catch (error) {
-      console.error('Failed to create project:', error)
+      console.error(`Failed to ${mode} project:`, error)
       triggerHapticFeedback(HapticPatterns.FAILURE)
     } finally {
       setLoading(false)
@@ -87,7 +120,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
       >
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-headline-md font-bold text-white">Add Project</h2>
+          <h2 className="text-headline-md font-bold text-white">{mode === 'edit' ? 'Edit Project' : 'Add Project'}</h2>
           <button
             onClick={onClose}
             className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -136,6 +169,40 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
               rows={3}
               className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
             />
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="block text-body-sm font-medium text-zinc-300 mb-2">
+              Type (optional)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setType('')}
+                className={`px-3 py-2 rounded-lg text-body-sm font-medium transition-colors ${
+                  type === ''
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                None
+              </button>
+              {PROJECT_TYPES.map((projectType) => (
+                <button
+                  key={projectType.value}
+                  type="button"
+                  onClick={() => setType(projectType.value)}
+                  className={`px-3 py-2 rounded-lg text-body-sm font-medium transition-colors ${
+                    type === projectType.value
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {projectType.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Life Goal */}
@@ -216,7 +283,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess, defaultLifeGoalId
               disabled={!title.trim() || loading}
               className="flex-1 px-4 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
-              {loading ? 'Creating...' : 'Create Project'}
+              {loading ? (mode === 'edit' ? 'Updating...' : 'Creating...') : (mode === 'edit' ? 'Update Project' : 'Create Project')}
             </button>
           </div>
         </form>

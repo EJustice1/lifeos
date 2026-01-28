@@ -1,12 +1,9 @@
-import { getBuckets, getTodaySessions } from '@/lib/actions/study'
+import { getTodaySessions } from '@/lib/actions/study'
 import { CareerTracker } from './career-tracker'
 import Link from 'next/link'
 
 export default async function StudyPage() {
-  const [buckets, todaySessions] = await Promise.all([
-    getBuckets(),
-    getTodaySessions(),
-  ])
+  const todaySessions = await getTodaySessions()
 
   return (
     <div className="min-h-screen bg-[var(--mobile-bg)] text-white">
@@ -19,7 +16,7 @@ export default async function StudyPage() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </Link>
-      <CareerTracker buckets={buckets} todaySessions={todaySessions} />
+      <CareerTracker todaySessions={todaySessions} />
     </div>
   )
 }

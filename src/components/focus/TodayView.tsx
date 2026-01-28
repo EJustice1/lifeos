@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/contexts/TaskContext'
 import { DomainLaunchModal } from '@/components/modals/DomainLaunchModal'
@@ -13,19 +13,59 @@ export function TodayView() {
   const [domainLaunchTask, setDomainLaunchTask] = useState<Task | null>(null)
   const { tasks, completeTask, uncompleteTask, updateTask, loading } = useTasks()
 
-  // Get today's tasks
+  // Get today's tasks including completed ones
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
-  const tasksForDate = useMemo(() => 
+  
+  // Store the initial sort order to prevent reordering when status changes
+  const [taskOrder, setTaskOrder] = useState<string[]>([])
+  
+  // Get today's tasks
+  const todayTasks = useMemo(() => 
     tasks.filter(t => 
-      t.status === 'today' ||
-      (t.scheduled_date === today && t.status !== 'completed' && t.status !== 'cancelled' && t.status !== 'backlog')
+      (t.status === 'today' || t.status === 'completed' || t.status === 'in_progress') && 
+      t.scheduled_date === today
     ),
     [tasks, today]
   )
-
-  // Separate completed and active tasks
-  const activeTasks = tasksForDate.filter(t => t.status !== 'completed')
-  const completedTasks = tasksForDate.filter(t => t.status === 'completed')
+  
+  // Initialize or update task order when tasks change (but not when just status changes)
+  useEffect(() => {
+    const currentTaskIds = todayTasks.map(t => t.id)
+    
+    // If we have new tasks or the task list has changed in composition (not just status)
+    if (currentTaskIds.length !== taskOrder.length || 
+        !currentTaskIds.every(id => taskOrder.includes(id))) {
+      
+      // Sort once: uncompleted tasks first, then completed tasks
+      const sorted = [...todayTasks].sort((a, b) => {
+        const aCompleted = a.status === 'completed' ? 1 : 0
+        const bCompleted = b.status === 'completed' ? 1 : 0
+        return aCompleted - bCompleted
+      })
+      
+      setTaskOrder(sorted.map(t => t.id))
+    }
+  }, [todayTasks, taskOrder])
+  
+  // Sort tasks based on the stored order
+  const sortedTasks = useMemo(() => {
+    if (taskOrder.length === 0) return todayTasks
+    
+    return todayTasks.sort((a, b) => {
+      const indexA = taskOrder.indexOf(a.id)
+      const indexB = taskOrder.indexOf(b.id)
+      
+      // If both are in order, sort by order
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+      // New tasks not in order go to the end
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return 0
+    })
+  }, [todayTasks, taskOrder])
+  
+  // Count completed tasks for stats
+  const completedCount = sortedTasks.filter(t => t.status === 'completed').length
 
   const handleToggleComplete = async (task: Task) => {
     try {
@@ -56,34 +96,34 @@ export function TodayView() {
         <div className="flex items-end justify-between">
           <div>
             <div className="text-[3rem] leading-none font-black text-white">
-              {activeTasks.length}
+              {sortedTasks.length - completedCount}
             </div>
             <div className="text-sm text-zinc-500 font-bold uppercase tracking-wide">Active</div>
           </div>
           <div className="text-right">
             <div className="text-[2rem] leading-none font-black text-emerald-400">
-              {completedTasks.length}
+              {completedCount}
             </div>
             <div className="text-xs text-zinc-500 font-bold uppercase">Done</div>
           </div>
         </div>
 
         {/* Progress visualization */}
-        {tasksForDate.length > 0 && (
+        {sortedTasks.length > 0 && (
           <div className="relative h-2 bg-zinc-900 overflow-hidden mt-3 rounded-full">
             <div
               className="absolute left-0 top-0 bottom-0 bg-emerald-500"
-              style={{ width: `${Math.round((completedTasks.length / tasksForDate.length) * 100)}%` }}
+              style={{ width: `${Math.round((completedCount / sortedTasks.length) * 100)}%` }}
             />
           </div>
         )}
       </div>
 
-      {/* Active tasks - NO CARDS, visual hierarchy */}
-      {activeTasks.length > 0 && (
+      {/* All tasks in single list - uncompleted at top, completed at bottom */}
+      {sortedTasks.length > 0 && (
         <div className="mt-4">
-          <div className="space-y-2">
-            {activeTasks.map((task) => (
+          <div className="space-y-2 pb-24">
+            {sortedTasks.map((task) => (
               <SwipeableTaskCard
                 key={task.id}
                 task={task}
@@ -100,42 +140,8 @@ export function TodayView() {
         </div>
       )}
 
-      {/* Completed - collapsed by default */}
-      {completedTasks.length > 0 && (
-        <div className="mt-8 px-6 pb-24">
-          <details className="group">
-            <summary className="text-xl font-black text-zinc-600 uppercase tracking-wider cursor-pointer list-none flex items-center gap-3">
-              <svg className="w-5 h-5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-              </svg>
-              Done ({completedTasks.length})
-            </summary>
-            <div className="mt-4 space-y-1 opacity-50">
-              {completedTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="py-3 px-4 border-l-2 border-emerald-500 bg-emerald-500/5"
-                >
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleToggleComplete(task)}
-                      className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </button>
-                    <div className="text-lg font-medium text-zinc-500 line-through">{task.title}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-      )}
-
       {/* Empty State */}
-      {tasksForDate.length === 0 && (
+      {sortedTasks.length === 0 && (
         <div className="px-6 py-24 text-center">
           <div className="text-[4rem] mb-6">✓</div>
           <h3 className="text-3xl font-black text-white mb-3">All Clear</h3>
@@ -168,6 +174,7 @@ interface SwipeableTaskCardProps {
 function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: SwipeableTaskCardProps) {
   const [{ x }, api] = useSpring(() => ({ x: 0 }))
   const [showActions, setShowActions] = useState(false)
+  const isCompleted = task.status === 'completed'
 
   const bind = useDrag(
     ({ movement: [mx], last, velocity: [vx] }) => {
@@ -222,7 +229,11 @@ function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: Swipeabl
         {...bind()}
         style={{ x }}
         onClick={() => onTap?.(task)}
-        className="py-6 px-6 touch-pan-y cursor-pointer hover:bg-blue-500/10 transition-colors border-l-4 border-blue-500 bg-blue-500/5"
+        className={`py-6 px-6 touch-pan-y cursor-pointer hover:bg-blue-500/10 transition-colors border-l-4 ${
+          isCompleted 
+            ? 'border-emerald-500 bg-emerald-500/5 opacity-70' 
+            : 'border-blue-500 bg-blue-500/5'
+        }`}
       >
         <div className="flex items-start gap-4">
           <button
@@ -230,25 +241,35 @@ function SwipeableTaskCard({ task, onToggleComplete, onUpdate, onTap }: Swipeabl
               e.stopPropagation()
               onToggleComplete(task)
             }}
-            className="w-8 h-8 rounded-full border-3 border-blue-400 hover:border-emerald-500 flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
+            className={`w-8 h-8 rounded-full border-3 flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${
+              isCompleted
+                ? 'border-emerald-500 bg-emerald-500'
+                : 'border-blue-400 hover:border-emerald-500'
+            }`}
           >
-            {task.status === 'completed' && (
-              <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isCompleted && (
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             )}
           </button>
           <div className="flex-1 min-w-0">
-            <div className="text-2xl font-bold text-white leading-tight">{task.title}</div>
+            <div className={`text-2xl font-bold leading-tight ${isCompleted ? 'text-zinc-500 line-through' : 'text-white'}`}>
+              {task.title}
+            </div>
             {task.description && (
-              <div className="text-base text-zinc-400 mt-2">{task.description}</div>
+              <div className={`text-base mt-2 ${isCompleted ? 'text-zinc-600 line-through' : 'text-zinc-400'}`}>
+                {task.description}
+              </div>
             )}
             <div className="flex items-center gap-4 mt-3">
               {task.scheduled_time && (
-                <span className="text-sm text-blue-400 font-bold font-mono">{task.scheduled_time}</span>
+                <span className={`text-sm font-bold font-mono ${isCompleted ? 'text-zinc-600' : 'text-blue-400'}`}>
+                  {task.scheduled_time}
+                </span>
               )}
               {task.linked_domain && (
-                <span className="text-sm font-bold text-blue-400">
+                <span className={`text-sm font-bold ${isCompleted ? 'text-zinc-600' : 'text-blue-400'}`}>
                   {task.linked_domain === 'gym' ? '💪 GYM' : '📚 STUDY'}
                 </span>
               )}

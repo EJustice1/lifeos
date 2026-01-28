@@ -3,30 +3,18 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStudySession } from '@/lib/hooks/useStudySession'
-import {
-  logCompletedSession,
-  createBucket,
-  archiveBucket,
-} from '@/lib/actions/study'
-import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
-import { MobileSelect } from '@/components/mobile/inputs/MobileSelect'
-import { MobileSlider } from '@/components/mobile/inputs/MobileSlider'
+import { logCompletedSession } from '@/lib/actions/study'
+import { useProjects } from '@/contexts/ProjectContext'
+import { ProjectFormModal } from '@/components/modals/ProjectFormModal'
 import { ToggleButton } from '@/components/mobile/buttons/ToggleButton'
 import { useToast } from '@/components/mobile/feedback/ToastProvider'
-
-interface Bucket {
-  id: string
-  name: string
-  type: 'class' | 'lab' | 'project' | 'work' | 'other'
-  color: string
-  is_archived: boolean
-}
+import type { Project } from '@/types/database'
 
 interface Session {
   id: string
   duration_minutes: number
   notes: string | null
-  bucket: { name: string; color: string } | null
+  project: { title: string; color: string } | null
 }
 
 // Helper functions
@@ -44,34 +32,14 @@ function formatMinutes(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-const PRESET_COLORS = [
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#6366f1', // indigo
-]
-
-const BUCKET_TYPES: Array<'class' | 'lab' | 'project' | 'work' | 'other'> = [
-  'class',
-  'lab',
-  'project',
-  'work',
-  'other',
-]
-
 export function CareerTracker({
-  buckets: initialBuckets,
   todaySessions: initialSessions,
 }: {
-  buckets: Bucket[]
   todaySessions: Session[]
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { projects, archiveProject, refreshProjects } = useProjects()
 
   const {
     activeSession: activeStudySession,
@@ -93,25 +61,20 @@ export function CareerTracker({
 
   // UI mode state
   const [mode, setMode] = useState<'timer' | 'manual'>('timer')
-  const [showBucketManager, setShowBucketManager] = useState(false)
-  const [showCreateBucket, setShowCreateBucket] = useState(false)
+  const [showProjectManager, setShowProjectManager] = useState(false)
+  const [showProjectModal, setShowProjectModal] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | undefined>(undefined)
 
   // Form state
-  const [selectedBucket, setSelectedBucket] = useState(
-    activeStudySession?.bucketId || initialBuckets[0]?.id || ''
+  const activeProjects = projects.filter(p => !p.archived)
+  const [selectedProject, setSelectedProject] = useState(
+    activeStudySession?.projectId || activeProjects[0]?.id || ''
   )
   const [notes, setNotes] = useState(activeStudySession?.notes || '')
   const [manualMinutes, setManualMinutes] = useState(30)
   const [manualHours, setManualHours] = useState(0)
 
-  // Bucket creation state
-  const [newBucketName, setNewBucketName] = useState('')
-  const [newBucketType, setNewBucketType] = useState<'class' | 'lab' | 'project' | 'work' | 'other'>('class')
-  const [newBucketColor, setNewBucketColor] = useState(PRESET_COLORS[0])
-  const [bucketError, setBucketError] = useState('')
-
   // Data state
-  const [buckets, setBuckets] = useState(initialBuckets)
   const [todaySessions, setTodaySessions] = useState(initialSessions)
 
   // Timer effect - trigger re-renders and periodically update storage
@@ -138,9 +101,9 @@ export function CareerTracker({
   }, [notes, isSessionActive])
 
   // Aggregate today's sessions
-  const todayByBucket = todaySessions.reduce((acc, session) => {
-    const name = session.bucket?.name ?? 'Unknown'
-    const color = session.bucket?.color ?? '#3b82f6'
+  const todayByProject = todaySessions.reduce((acc, session) => {
+    const name = session.project?.title ?? 'Unknown'
+    const color = session.project?.color ?? '#3b82f6'
     if (!acc[name]) {
       acc[name] = { minutes: 0, color }
     }
@@ -148,17 +111,17 @@ export function CareerTracker({
     return acc
   }, {} as Record<string, { minutes: number; color: string }>)
 
-  const totalMinutes = Object.values(todayByBucket).reduce((sum, b) => sum + b.minutes, 0)
+  const totalMinutes = Object.values(todayByProject).reduce((sum, p) => sum + p.minutes, 0)
   const currentSessionMinutes = isRunning ? Math.floor(seconds / 60) : 0
   const adjustedTotal = totalMinutes + currentSessionMinutes
 
   // Timer handlers
   async function handleStartTimer() {
-    if (!selectedBucket) return
+    if (!selectedProject) return
 
     startTransition(async () => {
       try {
-        await startSession(selectedBucket)
+        await startSession(selectedProject)
       } catch (error) {
         showToast('Failed to start session. Please try again.', 'error')
         console.error('Start session error:', error)
@@ -174,12 +137,12 @@ export function CareerTracker({
     startTransition(async () => {
       try {
         // Optimistically update
-        const bucket = buckets.find(b => b.id === selectedBucket)
+        const project = activeProjects.find(p => p.id === selectedProject)
         const newSession: Session = {
           id: activeStudySession.sessionId,
           duration_minutes: Math.floor(seconds / 60),
           notes: notes || null,
-          bucket: bucket ? { name: bucket.name, color: bucket.color } : null,
+          project: project ? { title: project.title, color: project.color } : null,
         }
         setTodaySessions(prev => [newSession, ...prev])
 
@@ -207,7 +170,7 @@ export function CareerTracker({
 
   // Manual entry handler
   async function handleManualLog() {
-    if (!selectedBucket) return
+    if (!selectedProject) return
 
     const totalMin = (manualHours * 60) + manualMinutes
     if (totalMin <= 0) {
@@ -220,16 +183,16 @@ export function CareerTracker({
     startTransition(async () => {
       try {
         // Optimistic update
-        const bucket = buckets.find(b => b.id === selectedBucket)
+        const project = activeProjects.find(p => p.id === selectedProject)
         const tempSession: Session = {
           id: 'temp-' + Date.now(),
           duration_minutes: totalMin,
           notes: notes || null,
-          bucket: bucket ? { name: bucket.name, color: bucket.color } : null,
+          project: project ? { title: project.title, color: project.color } : null,
         }
         setTodaySessions(prev => [tempSession, ...prev])
 
-        const newSession = await logCompletedSession(selectedBucket, totalMin, notes || undefined)
+        const newSession = await logCompletedSession(selectedProject, totalMin, notes || undefined)
 
         setManualMinutes(30)
         setManualHours(0)
@@ -248,159 +211,74 @@ export function CareerTracker({
     })
   }
 
-  // Bucket management handlers
-  async function handleCreateBucket() {
-    if (!newBucketName.trim()) {
-      setBucketError('Name is required')
-      return
-    }
-
-    setBucketError('')
-
-    startTransition(async () => {
-      try {
-        const bucket = await createBucket(newBucketName.trim(), newBucketType, newBucketColor)
-        setBuckets(prev => [...prev, bucket])
-        setSelectedBucket(bucket.id)
-        setNewBucketName('')
-        setNewBucketType('class')
-        setNewBucketColor(PRESET_COLORS[0])
-        setShowCreateBucket(false)
-        showToast('Bucket created!', 'success')
-      } catch (error) {
-        showToast('Failed to create bucket. Please try again.', 'error')
-        console.error('Create bucket error:', error)
-      }
-    })
+  // Project management handlers
+  function handleCreateProject() {
+    setEditingProject(undefined)
+    setShowProjectModal(true)
   }
 
-  async function handleArchiveBucket(bucketId: string) {
-    const bucketToArchive = buckets.find(b => b.id === bucketId)
-    if (!bucketToArchive) return
+  function handleEditProject(project: Project) {
+    setEditingProject(project)
+    setShowProjectModal(true)
+  }
+
+  function handleProjectModalClose() {
+    setShowProjectModal(false)
+    setEditingProject(undefined)
+  }
+
+  async function handleProjectSuccess() {
+    await refreshProjects()
+    handleProjectModalClose()
+  }
+
+  async function handleArchiveProject(projectId: string) {
+    const projectToArchive = activeProjects.find(p => p.id === projectId)
+    if (!projectToArchive) return
 
     const confirmed = confirm(
-      `Archive "${bucketToArchive.name}"? Sessions will be preserved but the bucket will be hidden.`
+      `Archive "${projectToArchive.title}"? Sessions will be preserved but the project will be hidden.`
     )
     if (!confirmed) return
 
     startTransition(async () => {
       try {
-        await archiveBucket(bucketId)
-        setBuckets(prev => prev.filter(b => b.id !== bucketId))
+        await archiveProject(projectId)
 
-        if (selectedBucket === bucketId) {
-          const remaining = buckets.filter(b => b.id !== bucketId)
-          setSelectedBucket(remaining[0]?.id ?? '')
+        if (selectedProject === projectId) {
+          const remaining = activeProjects.filter(p => p.id !== projectId)
+          setSelectedProject(remaining[0]?.id ?? '')
         }
 
-        showToast('Bucket archived!', 'success')
+        showToast('Project archived!', 'success')
       } catch (error) {
-        showToast('Failed to archive bucket. Please try again.', 'error')
-        console.error('Archive bucket error:', error)
+        showToast('Failed to archive project. Please try again.', 'error')
+        console.error('Archive project error:', error)
       }
     })
   }
 
-  // No buckets state
-  if (buckets.length === 0) {
+  // No projects state
+  if (activeProjects.length === 0) {
     return (
       <section className="space-y-4">
         <div className="bg-zinc-900 rounded-xl p-6 text-center">
-          <p className="text-body-md text-zinc-400 mb-4">No buckets found. Create one to start tracking.</p>
+          <p className="text-body-md text-zinc-400 mb-4">No projects found. Create one to start tracking.</p>
           <button
-            onClick={() => {
-              setShowBucketManager(true)
-              setShowCreateBucket(true)
-            }}
+            onClick={handleCreateProject}
             className="bg-emerald-600 hover:bg-emerald-500 rounded-xl px-6 py-3 font-semibold transition-colors"
           >
-            Create Your First Bucket
+            Create Your First Project
           </button>
         </div>
 
-        {/* Bucket creation form */}
-        {showCreateBucket && (
-          <div className="bg-zinc-900 rounded-xl p-4">
-            <h3 className="text-title-md font-semibold mb-4">Create New Bucket</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Name</label>
-                <input
-                  type="text"
-                  value={newBucketName}
-                  onChange={(e) => {
-                    setNewBucketName(e.target.value)
-                    setBucketError('')
-                  }}
-                  placeholder="e.g., CS 101"
-                  className="w-full bg-zinc-800 rounded-lg p-3 text-body-md"
-                  maxLength={50}
-                />
-                {bucketError && (
-                  <p className="text-red-400 text-body-sm mt-1">{bucketError}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {BUCKET_TYPES.map(type => (
-                    <button
-                      key={type}
-                      onClick={() => setNewBucketType(type)}
-                      className={`p-3 rounded-lg text-body-sm font-medium capitalize transition-colors ${
-                        newBucketType === type
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Color</label>
-                <div className="grid grid-cols-8 gap-2">
-                  {PRESET_COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setNewBucketColor(color)}
-                      className={`w-10 h-10 rounded-lg transition-transform ${
-                        newBucketColor === color ? 'ring-2 ring-white scale-110' : ''
-                      }`}
-                      style={{ backgroundColor: color }}
-                      aria-label={`Select color ${color}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowCreateBucket(false)
-                    setNewBucketName('')
-                    setBucketError('')
-                  }}
-                  disabled={isPending}
-                  className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 rounded-xl p-4 font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateBucket}
-                  disabled={isPending}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl p-4 font-semibold transition-colors"
-                >
-                  {isPending ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ProjectFormModal
+          isOpen={showProjectModal}
+          onClose={handleProjectModalClose}
+          onSuccess={handleProjectSuccess}
+          editingProject={editingProject}
+          mode={editingProject ? 'edit' : 'create'}
+        />
       </section>
     )
   }
@@ -410,136 +288,74 @@ export function CareerTracker({
 
       <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
         <button
-          onClick={() => setShowBucketManager(!showBucketManager)}
+          onClick={() => setShowProjectManager(!showProjectManager)}
           className="w-full flex items-center justify-between text-left"
         >
-          <span className="font-semibold">Manage Buckets</span>
-          <span className="text-zinc-400">{showBucketManager ? '▲' : '▼'}</span>
+          <span className="font-semibold">Manage Projects</span>
+          <span className="text-zinc-400">{showProjectManager ? '▲' : '▼'}</span>
         </button>
       </div>
 
-      {/* Bucket Manager Section */}
-      {showBucketManager && (
+      {/* Project Manager Section */}
+      {showProjectManager && (
         <div className="bg-zinc-900 rounded-xl p-4 space-y-4">
           <div>
-            <h3 className="text-body-sm text-zinc-400 mb-3 font-medium">ACTIVE BUCKETS</h3>
+            <h3 className="text-body-sm text-zinc-400 mb-3 font-medium">ACTIVE PROJECTS</h3>
             <div className="space-y-2">
-              {buckets.map(bucket => (
+              {activeProjects.map(project => (
                 <div
-                  key={bucket.id}
+                  key={project.id}
                   className="bg-zinc-800 rounded-lg p-3 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: bucket.color }}
+                      style={{ backgroundColor: project.color }}
                     />
                     <div>
-                      <p className="font-medium">{bucket.name}</p>
-                      <p className="text-label-sm text-zinc-500 capitalize">{bucket.type}</p>
+                      <p className="font-medium">{project.title}</p>
+                      {project.type && (
+                        <p className="text-label-sm text-zinc-500 capitalize">{project.type}</p>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleArchiveBucket(bucket.id)}
-                    disabled={isPending}
-                    className="text-label-sm text-zinc-400 hover:text-red-400 disabled:opacity-50 transition-colors"
-                  >
-                    Archive
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditProject(project)}
+                      disabled={isPending}
+                      className="text-label-sm text-zinc-400 hover:text-cyan-400 disabled:opacity-50 transition-colors px-2"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleArchiveProject(project.id)}
+                      disabled={isPending}
+                      className="text-label-sm text-zinc-400 hover:text-red-400 disabled:opacity-50 transition-colors px-2"
+                    >
+                      Archive
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {!showCreateBucket ? (
-            <button
-              onClick={() => setShowCreateBucket(true)}
-              className="w-full bg-zinc-800 hover:bg-zinc-700 rounded-xl p-4 font-semibold transition-colors"
-            >
-              + Create New Bucket
-            </button>
-          ) : (
-            <div className="space-y-4 pt-2 border-t border-zinc-800">
-              <h3 className="text-title-md font-semibold">Create New Bucket</h3>
-
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Name</label>
-                <input
-                  type="text"
-                  value={newBucketName}
-                  onChange={(e) => {
-                    setNewBucketName(e.target.value)
-                    setBucketError('')
-                  }}
-                  placeholder="e.g., CS 101"
-                  className="w-full bg-zinc-800 rounded-lg p-3 text-body-md"
-                  maxLength={50}
-                />
-                {bucketError && (
-                  <p className="text-red-400 text-body-sm mt-1">{bucketError}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {BUCKET_TYPES.map(type => (
-                    <button
-                      key={type}
-                      onClick={() => setNewBucketType(type)}
-                      className={`p-3 rounded-lg text-body-sm font-medium capitalize transition-colors ${
-                        newBucketType === type
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-body-sm text-zinc-400 block mb-2">Color</label>
-                <div className="grid grid-cols-8 gap-2">
-                  {PRESET_COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setNewBucketColor(color)}
-                      className={`w-10 h-10 rounded-lg transition-transform ${
-                        newBucketColor === color ? 'ring-2 ring-white scale-110' : ''
-                      }`}
-                      style={{ backgroundColor: color }}
-                      aria-label={`Select color ${color}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    setShowCreateBucket(false)
-                    setNewBucketName('')
-                    setBucketError('')
-                  }}
-                  disabled={isPending}
-                  className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 rounded-xl p-4 font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateBucket}
-                  disabled={isPending}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl p-4 font-semibold transition-colors"
-                >
-                  {isPending ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={handleCreateProject}
+            className="w-full bg-zinc-800 hover:bg-zinc-700 rounded-xl p-4 font-semibold transition-colors"
+          >
+            + Create New Project
+          </button>
         </div>
       )}
+
+      <ProjectFormModal
+        isOpen={showProjectModal}
+        onClose={handleProjectModalClose}
+        onSuccess={handleProjectSuccess}
+        editingProject={editingProject}
+        mode={editingProject ? 'edit' : 'create'}
+      />
 
       <div className="bg-[var(--mobile-card-bg)] rounded-[var(--mobile-border-radius)] p-[var(--mobile-card-padding)]">
         <ToggleButton
@@ -556,20 +372,20 @@ export function CareerTracker({
       {/* Main Interface - Timer Mode */}
       {mode === 'timer' && (
         <>
-          {/* Bucket selector */}
+          {/* Project selector */}
           <div className="bg-zinc-900 rounded-xl p-4">
             <label className="text-body-sm text-zinc-400 block mb-2">
-              {isRunning ? 'Current Bucket' : 'Select Bucket'}
+              {isRunning ? 'Current Project' : 'Select Project'}
             </label>
             <select
-              value={selectedBucket}
-              onChange={(e) => setSelectedBucket(e.target.value)}
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
               disabled={isRunning}
               className="w-full bg-zinc-800 rounded-lg p-4 text-title-md font-medium disabled:opacity-50"
             >
-              {buckets.map((bucket) => (
-                <option key={bucket.id} value={bucket.id}>
-                  {bucket.name}
+              {activeProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.title}
                 </option>
               ))}
             </select>
@@ -607,7 +423,7 @@ export function CareerTracker({
             {!isRunning ? (
               <button
                 onClick={handleStartTimer}
-                disabled={isPending || !selectedBucket}
+                disabled={isPending || !selectedProject}
                 className="col-span-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-title-lg font-bold transition-colors"
               >
                 {isPending ? 'Starting...' : 'Start Session'}
@@ -635,17 +451,17 @@ export function CareerTracker({
       {/* Main Interface - Manual Mode */}
       {mode === 'manual' && (
         <>
-          {/* Bucket selector */}
+          {/* Project selector */}
           <div className="bg-zinc-900 rounded-xl p-4">
-            <label className="text-body-sm text-zinc-400 block mb-2">Select Bucket</label>
+            <label className="text-body-sm text-zinc-400 block mb-2">Select Project</label>
             <select
-              value={selectedBucket}
-              onChange={(e) => setSelectedBucket(e.target.value)}
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
               className="w-full bg-zinc-800 rounded-lg p-4 text-title-md font-medium"
             >
-              {buckets.map((bucket) => (
-                <option key={bucket.id} value={bucket.id}>
-                  {bucket.name}
+              {activeProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.title}
                 </option>
               ))}
             </select>
@@ -732,7 +548,7 @@ export function CareerTracker({
           {/* Log button */}
           <button
             onClick={handleManualLog}
-            disabled={isPending || !selectedBucket}
+            disabled={isPending || !selectedProject}
             className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-xl p-5 text-title-lg font-bold transition-colors"
           >
             {isPending ? 'Logging...' : 'Log Session'}
@@ -741,7 +557,7 @@ export function CareerTracker({
       )}
 
       {/* Today's Summary */}
-      {(Object.keys(todayByBucket).length > 0 || isRunning) && (
+      {(Object.keys(todayByProject).length > 0 || isRunning) && (
         <div className="bg-zinc-900 rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-body-sm text-zinc-400 font-medium">TODAY'S PROGRESS</h3>
@@ -752,7 +568,7 @@ export function CareerTracker({
           </div>
 
           <div className="space-y-3">
-            {Object.entries(todayByBucket).map(([name, data]) => {
+            {Object.entries(todayByProject).map(([name, data]) => {
               const percentage = totalMinutes > 0 ? Math.round((data.minutes / totalMinutes) * 100) : 0
               return (
                 <div key={name}>

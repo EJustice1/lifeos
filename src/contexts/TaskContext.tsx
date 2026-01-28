@@ -1,20 +1,17 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import type { Task } from '@/types/database'
-import {
-  getTasks,
-  createTask as createTaskAction,
-  updateTask as updateTaskAction,
-  deleteTask as deleteTaskAction,
-  completeTask as completeTaskAction,
-  uncompleteTask as uncompleteTaskAction,
-  promoteToToday,
-  moveToBacklog,
-  moveTaskToDate,
-  scheduleTask,
-} from '@/lib/actions/tasks'
+import React, { createContext, useContext, useEffect, useCallback } from 'react'
+import type { Task, Project } from '@/types/database'
+import { useTaskManager, type CreateTaskData } from '@/lib/hooks/useTaskManager'
 import { manualSyncGoogleCalendar } from '@/lib/actions/google-calendar'
+import { createClient } from '@/lib/supabase/client'
+import type {
+  TaskStats,
+  DailyTaskStats,
+  DateRangeStats,
+  ProjectTaskStats,
+  StreakData,
+} from '@/lib/utils/task-stats'
 
 interface TaskContextValue {
   tasks: Task[]
@@ -34,259 +31,111 @@ interface TaskContextValue {
   moveTaskToDate: (id: string, date: string) => Promise<void>
   scheduleTask: (id: string, date: string, time?: string, duration?: number) => Promise<void>
 
+  // Bulk operations
+  bulkUpdateStatus: (ids: string[], status: Task['status'], date?: string) => Promise<void>
+  bulkDelete: (ids: string[]) => Promise<void>
+
   // Google Calendar integration
   syncWithGoogleCalendar: () => Promise<void>
 
-  // Filtering
+  // Date-based filtering
   getTodayTasks: () => Task[]
   getBacklogTasks: () => Task[]
   getTasksByDate: (date: string) => Task[]
+  getTasksByDateRange: (startDate: string, endDate: string) => Task[]
+  getCompletedTasks: (date?: string) => Task[]
+  getIncompleteTasks: (date?: string) => Task[]
+
+  // Stats & Analytics
+  getTaskStats: (date?: string) => TaskStats | DailyTaskStats
+  getTaskStatsByDateRange: (startDate: string, endDate: string) => DateRangeStats
+  getProjectProgress: (projects: Project[]) => ProjectTaskStats[]
+  getStreakData: () => StreakData
+  getCompletionRate: (date?: string) => number
 
   // Refresh
   refreshTasks: () => Promise<void>
 }
 
-interface CreateTaskData {
-  title: string
-  description?: string
-  status?: Task['status']
-  project_id?: string
-  bucket_id?: string
-  scheduled_date?: string
-  scheduled_time?: string
-  duration_minutes?: number
-  priority?: number
-  tags?: string[]
-}
-
 const TaskContext = createContext<TaskContextValue | undefined>(undefined)
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const taskManager = useTaskManager()
 
   // Load tasks on mount
   useEffect(() => {
-    refreshTasks()
+    taskManager.refreshTasks()
   }, [])
 
-  const refreshTasks = useCallback(async () => {
-    try {
-      setLoading(true)
-      const fetchedTasks = await getTasks()
-      setTasks(fetchedTasks)
-      setError(null)
-    } catch (err) {
-      console.error('Failed to load tasks:', err)
-      setError(err instanceof Error ? err : new Error('Failed to load tasks'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Optimistic update pattern
-  const createTask = useCallback(async (data: CreateTaskData): Promise<Task> => {
-    const tempId = `temp-${Date.now()}`
-    const optimisticTask: Task = {
-      id: tempId,
-      user_id: '', // Will be set by server
-      title: data.title,
-      description: data.description || null,
-      status: data.status || 'backlog',
-      project_id: data.project_id || null,
-      bucket_id: data.bucket_id || null,
-      scheduled_date: data.scheduled_date || null,
-      scheduled_time: data.scheduled_time || null,
-      duration_minutes: data.duration_minutes || null,
-      linked_domain: null,
-      gcal_event_id: null,
-      gcal_sync_status: null,
-      gcal_last_sync: null,
-      priority: data.priority || 3,
-      tags: data.tags || [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      completed_at: null,
-      promoted_to_today_at: null,
-      position_in_day: null,
-    }
-
-    setTasks(prev => [...prev, optimisticTask])
-
-    try {
-      const newTask = await createTaskAction(data)
-      setTasks(prev => prev.map(t => (t.id === tempId ? newTask : t)))
-      return newTask
-    } catch (err) {
-      setTasks(prev => prev.filter(t => t.id !== tempId))
-      throw err
-    }
-  }, [])
-
-  const updateTask = useCallback(async (id: string, updates: Partial<Task>): Promise<Task> => {
-    const oldTask = tasks.find(t => t.id === id)
-    if (!oldTask) throw new Error('Task not found')
-
-    // Optimistic update
-    setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)))
-
-    try {
-      // Filter out null values and convert to the expected type
-      const filteredUpdates: any = {}
-      for (const [key, value] of Object.entries(updates)) {
-        if (value !== null && value !== undefined) {
-          filteredUpdates[key] = value
+  // Set up real-time sync with Supabase
+  useEffect(() => {
+    const supabase = createClient()
+    
+    // Subscribe to tasks table changes
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+        },
+        (payload) => {
+          console.log('Task change detected:', payload)
+          // Debounce refresh to avoid excessive updates
+          setTimeout(() => {
+            taskManager.refreshTasks()
+          }, 500)
         }
-      }
-      
-      const updatedTask = await updateTaskAction(id, filteredUpdates)
-      setTasks(prev => prev.map(t => (t.id === id ? updatedTask : t)))
-      return updatedTask
-    } catch (err) {
-      // Rollback
-      setTasks(prev => prev.map(t => (t.id === id ? oldTask : t)))
-      throw err
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel)
     }
-  }, [tasks])
+  }, [taskManager])
 
-  const deleteTask = useCallback(async (id: string): Promise<void> => {
-    const oldTasks = tasks
-
-    // Optimistic delete
-    setTasks(prev => prev.filter(t => t.id !== id))
-
-    try {
-      await deleteTaskAction(id)
-    } catch (err) {
-      // Rollback
-      setTasks(oldTasks)
-      throw err
-    }
-  }, [tasks])
-
-  const completeTask = useCallback(async (id: string): Promise<void> => {
-    const oldTask = tasks.find(t => t.id === id)
-    if (!oldTask) throw new Error('Task not found')
-
-    // Optimistic update
-    setTasks(prev => prev.map(t => 
-      t.id === id 
-        ? { ...t, status: 'completed' as const, completed_at: new Date().toISOString() }
-        : t
-    ))
-
-    try {
-      const updatedTask = await completeTaskAction(id)
-      setTasks(prev => prev.map(t => (t.id === id ? updatedTask : t)))
-    } catch (err) {
-      // Rollback
-      setTasks(prev => prev.map(t => (t.id === id ? oldTask : t)))
-      throw err
-    }
-  }, [tasks])
-
-  const uncompleteTask = useCallback(async (id: string): Promise<void> => {
-    const oldTask = tasks.find(t => t.id === id)
-    if (!oldTask) throw new Error('Task not found')
-
-    // Optimistic update
-    setTasks(prev => prev.map(t => 
-      t.id === id 
-        ? { ...t, status: 'today' as const, completed_at: null }
-        : t
-    ))
-
-    try {
-      const updatedTask = await uncompleteTaskAction(id)
-      setTasks(prev => prev.map(t => (t.id === id ? updatedTask : t)))
-    } catch (err) {
-      // Rollback
-      setTasks(prev => prev.map(t => (t.id === id ? oldTask : t)))
-      throw err
-    }
-  }, [tasks])
-
-  const promoteTaskToToday = useCallback(async (id: string): Promise<void> => {
-    const today = new Date().toISOString().split('T')[0]
-    await updateTask(id, { status: 'today', scheduled_date: today })
-  }, [updateTask])
-
-  const moveTaskToBacklog = useCallback(async (id: string): Promise<void> => {
-    await updateTask(id, {
-      status: 'backlog',
-      scheduled_date: null,
-      scheduled_time: null,
-    })
-  }, [updateTask])
-
-  const moveTaskToDateCallback = useCallback(async (id: string, date: string): Promise<void> => {
-    await updateTask(id, { scheduled_date: date, status: 'today' })
-  }, [updateTask])
-
-  const scheduleTaskCallback = useCallback(
-    async (id: string, date: string, time?: string, duration?: number): Promise<void> => {
-      await updateTask(id, {
-        scheduled_date: date,
-        scheduled_time: time || null,
-        duration_minutes: duration || null,
-        status: 'today',
-      })
-    },
-    [updateTask]
-  )
-
+  // Google Calendar sync
   const syncWithGoogleCalendar = useCallback(async (): Promise<void> => {
     try {
       await manualSyncGoogleCalendar()
-      await refreshTasks()
+      await taskManager.refreshTasks()
     } catch (err) {
       console.error('Sync failed:', err)
       throw err
     }
-  }, [refreshTasks])
-
-  // Memoize filtered task views
-  const getTodayTasks = useCallback((): Task[] => {
-    const today = new Date().toISOString().split('T')[0]
-    return tasks.filter(
-      t => t.status === 'today' || (t.scheduled_date === today && t.status !== 'completed')
-    )
-  }, [tasks])
-
-  const getBacklogTasks = useCallback((): Task[] => {
-    return tasks.filter(t => t.status === 'backlog')
-  }, [tasks])
-
-  const getTasksByDate = useCallback(
-    (date: string): Task[] => {
-      return tasks.filter(t => 
-        t.scheduled_date === date && 
-        t.status !== 'cancelled' && 
-        t.status !== 'backlog'
-      )
-    },
-    [tasks]
-  )
+  }, [taskManager])
 
   const value: TaskContextValue = {
-    tasks,
-    loading,
-    error,
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    promoteTaskToToday,
-    moveTaskToBacklog,
-    moveTaskToDate: moveTaskToDateCallback,
-    scheduleTask: scheduleTaskCallback,
+    tasks: taskManager.tasks,
+    loading: taskManager.loading,
+    error: taskManager.error,
+    createTask: taskManager.createTask,
+    updateTask: taskManager.updateTask,
+    deleteTask: taskManager.deleteTask,
+    completeTask: taskManager.completeTask,
+    uncompleteTask: taskManager.uncompleteTask,
+    promoteTaskToToday: taskManager.promoteTaskToToday,
+    moveTaskToBacklog: taskManager.moveTaskToBacklog,
+    moveTaskToDate: taskManager.moveTaskToDate,
+    scheduleTask: taskManager.scheduleTask,
+    bulkUpdateStatus: taskManager.bulkUpdateStatus,
+    bulkDelete: taskManager.bulkDelete,
     syncWithGoogleCalendar,
-    getTodayTasks,
-    getBacklogTasks,
-    getTasksByDate,
-    refreshTasks,
+    getTodayTasks: taskManager.getTodayTasks,
+    getBacklogTasks: taskManager.getBacklogTasks,
+    getTasksByDate: taskManager.getTasksByDate,
+    getTasksByDateRange: taskManager.getTasksByDateRange,
+    getCompletedTasks: taskManager.getCompletedTasksByDate,
+    getIncompleteTasks: taskManager.getIncompleteTasksByDate,
+    getTaskStats: taskManager.getTaskStats,
+    getTaskStatsByDateRange: taskManager.getTaskStatsByDateRange,
+    getProjectProgress: taskManager.getProjectProgress,
+    getStreakData: taskManager.getStreakData,
+    getCompletionRate: taskManager.getCompletionRate,
+    refreshTasks: taskManager.refreshTasks,
   }
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>

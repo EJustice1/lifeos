@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/web'
 import type { Task } from '@/types/database'
-import { getTasks, moveTaskToDate, moveToBacklog, deleteTask, completeTask, uncompleteTask } from '@/lib/actions/tasks'
+import { useTasks } from '@/contexts/TaskContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
 import { getReviewDate } from '@/lib/utils/review-date'
 import { getReviewCutoffHour } from '@/lib/actions/settings'
@@ -15,34 +15,48 @@ interface ConsciousRolloverProps {
 }
 
 export default function ConsciousRollover({ onAllProcessed, disabled = false }: ConsciousRolloverProps) {
-  const [allTasks, setAllTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const {
+    tasks: allTasksFromContext,
+    loading: tasksLoading,
+    getTasksByDate,
+    completeTask,
+    uncompleteTask,
+    moveTaskToDate,
+    moveTaskToBacklog,
+    deleteTask,
+    refreshTasks,
+  } = useTasks()
+
+  const [reviewDate, setReviewDate] = useState<string>('')
+  const [initializing, setInitializing] = useState(true)
   const [rolledOverTaskIds, setRolledOverTaskIds] = useState<string[]>([])
   const [taskChoices, setTaskChoices] = useState<Record<string, 'tomorrow' | 'backlog' | null>>({})
   const [processedTasks, setProcessedTasks] = useState<Set<string>>(new Set())
 
+  // Initialize review date
   useEffect(() => {
-    loadTodayTasks()
+    async function init() {
+      try {
+        const cutoffHour = await getReviewCutoffHour()
+        const date = getReviewDate(cutoffHour)
+        setReviewDate(date)
+      } catch (error) {
+        console.error('Failed to get review date:', error)
+      } finally {
+        setInitializing(false)
+      }
+    }
+    init()
   }, [])
 
-  async function loadTodayTasks() {
-    try {
-      setLoading(true)
-      const cutoffHour = await getReviewCutoffHour()
-      const reviewDate = getReviewDate(cutoffHour)
-      const allTasksData = await getTasks({ scheduled_date: reviewDate })
-      // Filter to only show tasks that are 'today', 'in_progress', or 'completed'
-      const relevantTasks = allTasksData.filter(t => 
+  // Get tasks for the review date
+  const allTasks = reviewDate && !tasksLoading && !initializing
+    ? getTasksByDate(reviewDate).filter(t => 
         ['today', 'in_progress', 'completed'].includes(t.status)
       )
-      setAllTasks(relevantTasks)
-    } catch (error) {
-      console.error('Failed to load tasks:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    : []
 
+  const loading = tasksLoading || initializing
   const completedTasks = allTasks.filter(t => t.status === 'completed')
   const incompleteTasks = allTasks.filter(t => t.status !== 'completed')
 
@@ -53,12 +67,13 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
       } else {
         await completeTask(task.id)
       }
-      // Reload tasks to get updated status
-      await loadTodayTasks()
+      // Tasks will auto-update via real-time sync
       triggerHapticFeedback(HapticPatterns.SUCCESS)
     } catch (error) {
       console.error('Failed to toggle task completion:', error)
       triggerHapticFeedback(HapticPatterns.FAILURE)
+      // Refresh on error to ensure consistency
+      await refreshTasks()
     }
   }
 
@@ -89,10 +104,13 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
             await moveTaskToDate(task.id, tomorrowStr)
             tomorrowIds.push(task.id)
           } else if (choice === 'backlog') {
-            await moveToBacklog(task.id)
+            await moveTaskToBacklog(task.id)
           }
           newProcessedIds.add(task.id)
         }
+        
+        // Refresh tasks to sync with other views
+        await refreshTasks()
         
         setProcessedTasks(newProcessedIds)
         setRolledOverTaskIds(tomorrowIds)
@@ -100,7 +118,7 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
       }
       processAll()
     }
-  }, [taskChoices, incompleteTasks, loading, processedTasks, onAllProcessed])
+  }, [taskChoices, incompleteTasks, loading, processedTasks, onAllProcessed, moveTaskToDate, moveTaskToBacklog, refreshTasks])
 
   if (loading) {
     return (
@@ -210,9 +228,15 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
                 }}
                 onDelete={async () => {
                   if (confirm('Delete this task?')) {
-                    await deleteTask(task.id)
-                    setAllTasks(prev => prev.filter(t => t.id !== task.id))
-                    triggerHapticFeedback(HapticPatterns.SUCCESS)
+                    try {
+                      await deleteTask(task.id)
+                      // Tasks will auto-update via real-time sync
+                      triggerHapticFeedback(HapticPatterns.SUCCESS)
+                    } catch (error) {
+                      console.error('Failed to delete task:', error)
+                      triggerHapticFeedback(HapticPatterns.FAILURE)
+                      await refreshTasks()
+                    }
                   }
                 }}
                 disabled={disabled || processedTasks.has(task.id)}

@@ -3,64 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function getBuckets(includeArchived = false) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+// Bucket functions removed - use project actions from tasks.ts instead
 
-  let query = supabase
-    .from('buckets')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('name')
-
-  if (!includeArchived) {
-    query = query.eq('is_archived', false)
-  }
-
-  const { data } = await query
-  return data ?? []
-}
-
-export async function createBucket(
-  name: string,
-  type: 'class' | 'lab' | 'project' | 'work' | 'other',
-  color = '#3b82f6'
-) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data, error } = await supabase
-    .from('buckets')
-    .insert({
-      user_id: user.id,
-      name,
-      type,
-      color,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  revalidatePath('/m/study')
-  revalidatePath('/d/career')
-  return data
-}
-
-export async function archiveBucket(bucketId: string) {
-  const supabase = await createClient()
-
-  const { error } = await supabase
-    .from('buckets')
-    .update({ is_archived: true })
-    .eq('id', bucketId)
-
-  if (error) throw error
-  revalidatePath('/d/career')
-}
-
-export async function startStudySession(bucketId: string) {
+export async function startStudySession(projectId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -97,7 +42,7 @@ export async function startStudySession(bucketId: string) {
     .from('study_sessions')
     .insert({
       user_id: user.id,
-      bucket_id: bucketId,
+      project_id: projectId,
       date: now.toISOString().split('T')[0],
       started_at: now.toISOString(),
     })
@@ -120,7 +65,7 @@ export async function getActiveStudySession() {
     .from('study_sessions')
     .select(`
       *,
-      bucket:buckets(id, name, color, type)
+      project:projects(id, title, color, type)
     `)
     .eq('user_id', user.id)
     .is('ended_at', null)
@@ -240,7 +185,7 @@ export async function endStudySession(sessionId: string, notes?: string, endedAt
 /**
  * Log a completed study session with flexible timestamp options
  * 
- * @param bucketId - The study bucket/subject ID
+ * @param projectId - The project ID to associate with this session
  * @param durationMinutes - Duration in minutes
  * @param notes - Optional notes about the session
  * @param options - Timestamp options:
@@ -250,16 +195,16 @@ export async function endStudySession(sessionId: string, notes?: string, endedAt
  * 
  * @example
  * // Daily review (starts at midnight): 2 hours shows as 12:00 AM - 2:00 AM
- * logCompletedSession(bucketId, 120, undefined, { useMidnightStart: true })
+ * logCompletedSession(projectId, 120, undefined, { useMidnightStart: true })
  * 
  * // Immediate logging (works backwards): 2 hours at 5 PM shows as 3:00 PM - 5:00 PM
- * logCompletedSession(bucketId, 120)
+ * logCompletedSession(projectId, 120)
  * 
  * // Custom time (specific start): 2 hours from 2 PM shows as 2:00 PM - 4:00 PM
- * logCompletedSession(bucketId, 120, undefined, { startedAt: '2024-01-15T14:00:00Z' })
+ * logCompletedSession(projectId, 120, undefined, { startedAt: '2024-01-15T14:00:00Z' })
  */
 export async function logCompletedSession(
-  bucketId: string,
+  projectId: string,
   durationMinutes: number,
   notes?: string,
   options?: {
@@ -299,7 +244,7 @@ export async function logCompletedSession(
     .from('study_sessions')
     .insert({
       user_id: user.id,
-      bucket_id: bucketId,
+      project_id: projectId,
       date: now.toISOString().split('T')[0],
       started_at: started.toISOString(),
       ended_at: ended.toISOString(),
@@ -326,7 +271,7 @@ export async function getTodaySessions() {
     .from('study_sessions')
     .select(`
       *,
-      bucket:buckets(id, name, color)
+      project:projects(id, title, color)
     `)
     .eq('user_id', user.id)
     .eq('date', today)
@@ -397,7 +342,7 @@ export async function getWeeklyStats() {
     .from('study_sessions')
     .select(`
       duration_minutes,
-      bucket:buckets(name, color)
+      project:projects(title, color)
     `)
     .eq('user_id', user.id)
     .gte('date', weekAgo.toISOString().split('T')[0])
@@ -406,12 +351,12 @@ export async function getWeeklyStats() {
 
   const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
 
-  const byBucket = sessions.reduce((acc, s) => {
+  const byProject = sessions.reduce((acc, s) => {
     // Supabase returns joined relations - handle both object and array types
-    const bucket = s.bucket as { name?: string; color?: string } | { name?: string; color?: string }[] | null
-    const bucketData = Array.isArray(bucket) ? bucket[0] : bucket
-    const name = bucketData?.name ?? 'Unknown'
-    if (!acc[name]) acc[name] = { minutes: 0, color: bucketData?.color ?? '#3b82f6' }
+    const project = s.project as { title?: string; color?: string } | { title?: string; color?: string }[] | null
+    const projectData = Array.isArray(project) ? project[0] : project
+    const name = projectData?.title ?? 'Unknown'
+    if (!acc[name]) acc[name] = { minutes: 0, color: projectData?.color ?? '#3b82f6' }
     acc[name].minutes += s.duration_minutes || 0
     return acc
   }, {} as Record<string, { minutes: number; color: string }>)
@@ -420,7 +365,7 @@ export async function getWeeklyStats() {
     totalMinutes,
     totalHours: Math.round(totalMinutes / 60 * 10) / 10,
     dailyAverage: Math.round(totalMinutes / 7),
-    byBucket,
+    byProject,
   }
 }
 

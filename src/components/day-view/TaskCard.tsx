@@ -15,11 +15,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   const { completeTask, uncompleteTask } = useTasks()
 
   const handleClick = () => {
-    // Launchpad logic: route based on bucket_id or tags
-    if (task.bucket_id) {
-      // Task is linked to study bucket → open Study Timer
-      router.push(`/m/study?task=${task.id}&bucket=${task.bucket_id}`)
-    } else if (task.tags?.includes('workout')) {
+    // Launchpad logic: route based on linked_domain or project_id
+    if (task.linked_domain === 'study') {
+      // Task is linked to study domain → open Study Timer
+      router.push(`/m/study?task=${task.id}${task.project_id ? `&project=${task.project_id}` : ''}`)
+    } else if (task.linked_domain === 'gym' || task.tags?.includes('workout')) {
       // Task is workout-related → open Gym Tracker
       router.push(`/m/gym?task=${task.id}`)
     } else if (onClick) {

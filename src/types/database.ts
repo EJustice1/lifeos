@@ -190,7 +190,8 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          bucket_id: string
+          project_id: string | null
+          bucket_id: string | null // DEPRECATED: kept for migration reference
           date: string
           started_at: string
           ended_at: string | null
@@ -204,7 +205,8 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          bucket_id: string
+          project_id?: string | null
+          bucket_id?: string | null // DEPRECATED
           date: string
           started_at: string
           ended_at?: string | null
@@ -218,7 +220,8 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          bucket_id?: string
+          project_id?: string | null
+          bucket_id?: string | null // DEPRECATED
           date?: string
           started_at?: string
           ended_at?: string | null
@@ -540,6 +543,7 @@ export interface Database {
           title: string
           description: string | null
           color: string
+          type: 'class' | 'lab' | 'project' | 'work' | 'other' | null
           status: 'active' | 'completed' | 'on_hold' | 'archived'
           target_date: string | null
           created_at: string
@@ -554,6 +558,7 @@ export interface Database {
           title: string
           description?: string | null
           color?: string
+          type?: 'class' | 'lab' | 'project' | 'work' | 'other' | null
           status?: 'active' | 'completed' | 'on_hold' | 'archived'
           target_date?: string | null
           created_at?: string
@@ -568,6 +573,7 @@ export interface Database {
           title?: string
           description?: string | null
           color?: string
+          type?: 'class' | 'lab' | 'project' | 'work' | 'other' | null
           status?: 'active' | 'completed' | 'on_hold' | 'archived'
           target_date?: string | null
           created_at?: string
@@ -583,7 +589,6 @@ export interface Database {
           id: string
           user_id: string
           project_id: string | null
-          bucket_id: string | null
           title: string
           description: string | null
           status: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
@@ -606,7 +611,6 @@ export interface Database {
           id?: string
           user_id: string
           project_id?: string | null
-          bucket_id?: string | null
           title: string
           description?: string | null
           status?: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
@@ -629,7 +633,6 @@ export interface Database {
           id?: string
           user_id?: string
           project_id?: string | null
-          bucket_id?: string | null
           title?: string
           description?: string | null
           status?: 'backlog' | 'today' | 'in_progress' | 'completed' | 'cancelled'
