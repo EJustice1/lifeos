@@ -84,7 +84,7 @@ function EditTaskForm() {
         scheduled_time: scheduledTime || null,
         duration_minutes: durationMinutes ? Number(durationMinutes) : null,
         priority,
-        tags: tagArray.length > 0 ? tagArray : null,
+        tags: tagArray.length > 0 ? tagArray : undefined,
         status,
       })
 

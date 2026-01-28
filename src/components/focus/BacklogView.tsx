@@ -6,6 +6,7 @@ import { useTasks } from '@/contexts/TaskContext'
 import { useProjects } from '@/contexts/ProjectContext'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
+import type { Task } from '@/types/database'
 
 export function BacklogView() {
   const { tasks, loading } = useTasks()
