@@ -1,8 +1,5 @@
 "use client"
-import { useReducer, useEffect, useCallback, useState } from 'react'
-import { getDailyContextData, getExistingDailyContextReview, submitDailyContextReview } from '@/lib/actions/daily-context-review'
-import { useToast } from '@/components/mobile/feedback/ToastProvider'
-import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
+import { useMemo, Suspense } from 'react'
 import GoalsAndScreentime from './goals-and-screentime'
 import ScreentimeStep from './screentime'
 import ContextSnapshot from './context-snapshot'
@@ -10,96 +7,74 @@ import InternalState from './internal-state'
 import KnowledgeBase from './knowledge-base'
 import ConsciousRollover from '@/components/daily-review/ConsciousRollover'
 import PlanningStep from '@/components/daily-review/PlanningStep'
-import { DailyReviewProvider, useDailyReview, DailyReviewRow, DailyReviewFormData } from './DailyReviewContext'
+import { DailyReviewProvider, useDailyReview } from './DailyReviewContext'
 import { DailyContextReviewSummary } from './review-summary'
 import Link from 'next/link'
+import { useDailyReviewController } from '@/lib/hooks/useDailyReviewController'
 
-interface DailyContextData {
-  date: string
-  studyHours: number
-  studyMinutes: number
-  workoutsCompleted: number
-  workoutsTotal: number
-  screenTimeHours: number
-  screenTimeMinutes: number
-}
-
-type State = 
-  | { type: 'LOADING' }
-  | { type: 'EDITING_FORM' }
-  | { type: 'VIEWING_SUMMARY' }
-  | { type: 'SUBMITTING' }
-  | { type: 'ERROR'; message: string }
-
-type Action = 
-  | { type: 'DATA_LOADED'; contextData: DailyContextData | null; existingReview: DailyReviewRow | null }
-  | { type: 'LOAD_ERROR'; message: string }
-  | { type: 'START_SUBMIT' }
-  | { type: 'START_EDIT' }
-  | { type: 'SUBMIT_SUCCESS' }
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'DATA_LOADED':
-      return action.existingReview 
-        ? { type: 'VIEWING_SUMMARY' }
-        : { type: 'EDITING_FORM' }
-    case 'LOAD_ERROR':
-      return { type: 'ERROR', message: action.message }
-    case 'START_SUBMIT':
-      return { type: 'SUBMITTING' }
-    case 'START_EDIT':
-      return { type: 'EDITING_FORM' }
-    case 'SUBMIT_SUCCESS':
-      return { type: 'VIEWING_SUMMARY' }
-    default:
-      return state
-  }
-}
-
-const STEPS = [
-  { id: 'tasks', label: 'Today\'s Tasks', component: GoalsAndScreentime },
-  { id: 'screentime', label: 'Screentime', component: ScreentimeStep },
-  { id: 'context', label: 'Context Snapshot', component: ContextSnapshot },
-  { id: 'internal', label: 'Internal State', component: InternalState },
-  { id: 'knowledge', label: 'Knowledge Base', component: KnowledgeBase },
-  { id: 'rollover', label: 'Conscious Rollover', component: ConsciousRollover },
-  { id: 'planning', label: 'Planning', component: PlanningStep },
+// Define all available steps with flag indicating if they're only for today
+const ALL_STEPS = [
+  { id: 'tasks', label: 'Today\'s Tasks', component: GoalsAndScreentime, onlyToday: true },
+  { id: 'screentime', label: 'Screentime', component: ScreentimeStep, onlyToday: false },
+  { id: 'context', label: 'Context Snapshot', component: ContextSnapshot, onlyToday: false },
+  { id: 'internal', label: 'Internal State', component: InternalState, onlyToday: false },
+  { id: 'knowledge', label: 'Knowledge Base', component: KnowledgeBase, onlyToday: false },
+  { id: 'rollover', label: 'Conscious Rollover', component: ConsciousRollover, onlyToday: true },
+  { id: 'planning', label: 'Planning', component: PlanningStep, onlyToday: true },
 ]
 
-function DailyContextReviewPage() {
-  const [state, dispatch] = useReducer(reducer, { type: 'LOADING' })
-  const [contextData, setContextData] = useState<DailyContextData | null>(null)
-  const [existingReview, setExistingReview] = useState<DailyReviewRow | null>(null)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [rolledOverTaskIds, setRolledOverTaskIds] = useState<string[]>([])
-  const [canProceedFromRollover, setCanProceedFromRollover] = useState(false)
-  const { showToast } = useToast()
+function DailyReviewSkeleton() {
+  return (
+    <div className="px-4 py-6 space-y-6">
+      <div className="space-y-3">
+        <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse"></div>
+        <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse"></div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-5 w-32 bg-zinc-800 rounded animate-pulse"></div>
+        <div className="h-24 w-full bg-zinc-800 rounded-xl animate-pulse"></div>
+        <div className="h-24 w-full bg-zinc-800 rounded-xl animate-pulse"></div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-5 w-40 bg-zinc-800 rounded animate-pulse"></div>
+        <div className="h-16 w-full bg-zinc-800 rounded-xl animate-pulse"></div>
+      </div>
+    </div>
+  )
+}
 
-  const loadData = useCallback(async () => {
-    try {
-      const ctx = await getDailyContextData()
-      const rev = await getExistingDailyContextReview()
-      setContextData(ctx)
-      setExistingReview(rev)
-      dispatch({ type: 'DATA_LOADED', contextData: ctx!, existingReview: rev })
-    } catch (e) {
-      dispatch({ type: 'LOAD_ERROR', message: 'Failed to load' })
-      showToast('Failed to load daily review data', 'error')
-    }
-  }, [showToast])
+function DailyContextReviewPageInner({
+  controller,
+}: {
+  controller: ReturnType<typeof useDailyReviewController>
+}) {
+  const { contextData, existingReview, formData } = useDailyReview()
+  const {
+    state,
+    selectedDate,
+    isViewingPast,
+    canGoPrev,
+    canGoNext,
+    oldestDate,
+    newestDate,
+    goToPrevDay,
+    goToNextDay,
+    setDate,
+    loadData,
+    handleSubmit,
+    startEdit,
+    currentStep,
+    setCurrentStep,
+    setRolledOverTaskIds,
+    canProceedFromRollover,
+    setCanProceedFromRollover,
+  } = controller
 
-  useEffect(() => {
-    loadData()
-
-    // Auto-refresh every 5 minutes to catch date transitions
-    // This ensures the page shows the correct day's review after crossing cutoff time
-    const refreshInterval = setInterval(() => {
-      loadData()
-    }, 5 * 60 * 1000) // 5 minutes
-
-    return () => clearInterval(refreshInterval)
-  }, [loadData])
+  // Show all steps regardless of date
+  const STEPS = useMemo(() => {
+    // Show all steps for both today and past dates
+    return ALL_STEPS
+  }, [])
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -113,69 +88,61 @@ function DailyContextReviewPage() {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!contextData) {
-      showToast('Missing context data', 'error')
-      return
-    }
-
-    dispatch({ type: 'START_SUBMIT' })
-    
-    try {
-      // Get form data from context (this needs to be passed from the review steps)
-      // For now, we'll submit with minimal data - you'll need to wire up the form data properly
-      await submitDailyContextReview(
-        contextData.date, // Use the review date from contextData
-        50, // Default execution score - should come from form
-        [], // unfocused factors - should come from form
-        null, // lesson learned - should come from form
-        null, // highlights - should come from form
-        0, // screentime - should come from form
-        undefined, // execution score suggested
-        false, // execution score locked
-        rolledOverTaskIds // task IDs rolled over to tomorrow
-      )
-      
-      showToast('Review submitted successfully!', 'success')
-      dispatch({ type: 'SUBMIT_SUCCESS' })
-      
-      // Reload to show the submitted review
-      await loadData()
-    } catch (error) {
-      console.error('Failed to submit review:', error)
-      showToast('Failed to submit review', 'error')
-      dispatch({ type: 'START_EDIT' })
-    }
-  }
-
   const isRolloverStep = STEPS[currentStep].id === 'rollover'
-  // Allow proceeding if: not on rollover step, OR rollover step has been completed
-  const canProceed = !isRolloverStep || canProceedFromRollover
+  // Allow proceeding if: viewing past (no rollover gate), not on rollover step, OR rollover step has been completed
+  const canProceed = isViewingPast || !isRolloverStep || canProceedFromRollover
 
   return (
-    <DailyReviewProvider initialData={{ contextData, existingReview }}>
       <div className="min-h-screen bg-zinc-950 pb-24">
         {/* Header */}
         <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex-1">
               <h1 className="text-title-lg font-bold text-white">Daily Review</h1>
-              {contextData && (
-                <p className="text-body-sm text-zinc-400">
-                  {new Date(contextData.date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                  {' • '}
-                  Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
-                </p>
-              )}
-              {!contextData && (
-                <p className="text-body-sm text-zinc-400">
-                  Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
-                </p>
-              )}
+              <div className="flex items-center gap-2 mt-1">
+                {/* Date Navigation */}
+                <button
+                  onClick={goToPrevDay}
+                  disabled={!canGoPrev || state.type === 'LOADING'}
+                  className="p-1 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous day"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    min={oldestDate}
+                    max={newestDate}
+                    value={selectedDate}
+                    onChange={(event) => setDate(event.target.value)}
+                    className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-body-sm rounded-md px-2 py-1 focus:outline-none focus:border-emerald-500"
+                    aria-label="Select review date"
+                  />
+                  {isViewingPast && (
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-label-xs rounded-full border border-blue-500/30">
+                      Viewing Past
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={goToNextDay}
+                  disabled={!canGoNext || state.type === 'LOADING'}
+                  className="p-1 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next day"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-body-sm text-zinc-400 mt-0.5">
+                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].label}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -211,9 +178,7 @@ function DailyContextReviewPage() {
 
         {/* Content */}
         {state.type === 'LOADING' && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          </div>
+          <DailyReviewSkeleton />
         )}
 
         {state.type === 'ERROR' && (
@@ -228,7 +193,7 @@ function DailyContextReviewPage() {
               review={existingReview} 
               contextData={contextData}
               onEdit={() => {
-                dispatch({ type: 'START_EDIT' })
+                startEdit()
                 setCurrentStep(0)
               }}
             />
@@ -238,23 +203,25 @@ function DailyContextReviewPage() {
         {(state.type === 'EDITING_FORM' || state.type === 'SUBMITTING') && (
           <>
             <div className="px-4 py-6">
-              {currentStep === 0 && <GoalsAndScreentime />}
-              {currentStep === 1 && <ScreentimeStep />}
-              {currentStep === 2 && <ContextSnapshot />}
-              {currentStep === 3 && <InternalState />}
-              {currentStep === 4 && <KnowledgeBase />}
-              {currentStep === 5 && (
-                <ConsciousRollover
-                  onAllProcessed={(ids) => {
-                    setRolledOverTaskIds(ids)
-                    setCanProceedFromRollover(true)
-                  }}
-                  disabled={state.type === 'SUBMITTING'}
-                />
-              )}
-              {currentStep === 6 && (
-                <PlanningStep disabled={state.type === 'SUBMITTING'} />
-              )}
+              {(() => {
+                const CurrentStepComponent = STEPS[currentStep].component
+                const stepId = STEPS[currentStep].id
+
+                // Render component with appropriate props based on step ID
+                if (stepId === 'rollover') {
+                  return <CurrentStepComponent
+                    onAllProcessed={(ids) => {
+                      setRolledOverTaskIds(ids)
+                      setCanProceedFromRollover(true)
+                    }}
+                    disabled={state.type === 'SUBMITTING'}
+                  />
+                } else if (stepId === 'planning') {
+                  return <CurrentStepComponent disabled={state.type === 'SUBMITTING'} />
+                } else {
+                  return <CurrentStepComponent />
+                }
+              })()}
             </div>
 
             {/* Navigation Buttons */}
@@ -282,7 +249,17 @@ function DailyContextReviewPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleSubmit}
+                    onClick={() => {
+                      handleSubmit({
+                        executionScore: formData.executionScore,
+                        unfocusedFactors: formData.unfocusedFactors,
+                        lessonLearned: formData.lessonLearned,
+                        highlights: formData.highlights,
+                        screenTimeMinutes: formData.screenTimeMinutes,
+                        executionScoreSuggested: formData.executionScoreSuggested,
+                        executionScoreLocked: formData.executionScoreLocked ?? false,
+                      })
+                    }}
                     disabled={state.type === 'SUBMITTING'}
                     className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                   >
@@ -299,7 +276,7 @@ function DailyContextReviewPage() {
                         Submitting...
                       </>
                     ) : (
-                      'Complete Review'
+                      isViewingPast ? 'Save Review' : 'Complete Review'
                     )}
                   </button>
                 )}
@@ -308,8 +285,35 @@ function DailyContextReviewPage() {
           </>
         )}
       </div>
+  )
+}
+
+function DailyContextReviewPage() {
+  const controller = useDailyReviewController()
+  return (
+    <DailyReviewProvider
+      initialData={{ contextData: controller.contextData, existingReview: controller.existingReview }}
+      reviewDate={controller.selectedDate}
+    >
+      <DailyContextReviewPageInner controller={controller} />
     </DailyReviewProvider>
   )
 }
 
-export default DailyContextReviewPage
+export default function DailyContextReviewPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-full">
+          <div className="bg-zinc-900 border-b border-zinc-800 px-4 py-3">
+            <div className="h-6 w-32 bg-zinc-800 rounded animate-pulse"></div>
+            <div className="mt-2 h-4 w-44 bg-zinc-800 rounded animate-pulse"></div>
+          </div>
+          <DailyReviewSkeleton />
+        </div>
+      </div>
+    }>
+      <DailyContextReviewPage />
+    </Suspense>
+  )
+}

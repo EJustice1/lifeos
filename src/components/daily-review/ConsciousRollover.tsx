@@ -1,13 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useDrag } from '@use-gesture/react'
-import { useSpring, animated } from '@react-spring/web'
 import type { Task } from '@/types/database'
-import { useTasks } from '@/contexts/TaskContext'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import { getReviewDate } from '@/lib/utils/review-date'
-import { getReviewCutoffHour } from '@/lib/actions/settings'
+import { useDailyReview } from '@/app/m/daily-context-review/DailyReviewContext'
+import { useDailyReviewTaskService } from '@/lib/services/dailyReviewTaskService'
 
 interface ConsciousRolloverProps {
   onAllProcessed?: (rolledOverIds: string[]) => void
@@ -15,58 +12,41 @@ interface ConsciousRolloverProps {
 }
 
 export default function ConsciousRollover({ onAllProcessed, disabled = false }: ConsciousRolloverProps) {
+  const { reviewDate } = useDailyReview()
   const {
-    tasks: allTasksFromContext,
+    reviewTasks,
     loading: tasksLoading,
-    getTasksByDate,
-    completeTask,
-    uncompleteTask,
+    toggleTaskComplete,
     moveTaskToDate,
     moveTaskToBacklog,
     deleteTask,
     refreshTasks,
-  } = useTasks()
+  } = useDailyReviewTaskService(reviewDate)
 
-  const [reviewDate, setReviewDate] = useState<string>('')
-  const [initializing, setInitializing] = useState(true)
   const [rolledOverTaskIds, setRolledOverTaskIds] = useState<string[]>([])
   const [taskChoices, setTaskChoices] = useState<Record<string, 'tomorrow' | 'backlog' | null>>({})
   const [processedTasks, setProcessedTasks] = useState<Set<string>>(new Set())
-
-  // Initialize review date
-  useEffect(() => {
-    async function init() {
-      try {
-        const cutoffHour = await getReviewCutoffHour()
-        const date = getReviewDate(cutoffHour)
-        setReviewDate(date)
-      } catch (error) {
-        console.error('Failed to get review date:', error)
-      } finally {
-        setInitializing(false)
-      }
-    }
-    init()
-  }, [])
+  const [hasNotifiedCompletion, setHasNotifiedCompletion] = useState(false)
 
   // Get tasks for the review date
-  const allTasks = reviewDate && !tasksLoading && !initializing
-    ? getTasksByDate(reviewDate).filter(t => 
-        ['today', 'in_progress', 'completed'].includes(t.status)
-      )
-    : []
+  const allTasks = reviewTasks
 
-  const loading = tasksLoading || initializing
+  // Reset state when reviewDate changes
+  useEffect(() => {
+    setRolledOverTaskIds([])
+    setTaskChoices({})
+    setProcessedTasks(new Set())
+    setHasNotifiedCompletion(false)
+  }, [reviewDate])
+
+  const loading = tasksLoading
   const completedTasks = allTasks.filter(t => t.status === 'completed')
+  // Get all incomplete tasks for the review date
   const incompleteTasks = allTasks.filter(t => t.status !== 'completed')
 
   async function handleToggleComplete(task: Task) {
     try {
-      if (task.status === 'completed') {
-        await uncompleteTask(task.id)
-      } else {
-        await completeTask(task.id)
-      }
+      await toggleTaskComplete(task)
       // Tasks will auto-update via real-time sync
       triggerHapticFeedback(HapticPatterns.SUCCESS)
     } catch (error) {
@@ -81,8 +61,9 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
   useEffect(() => {
     const unprocessedIncompleteTasks = incompleteTasks.filter(t => !processedTasks.has(t.id))
     
-    // If there are no incomplete tasks at all, immediately signal completion
-    if (incompleteTasks.length === 0 && !loading) {
+    // If there are no incomplete tasks at all, immediately signal completion (only once)
+    if (incompleteTasks.length === 0 && !loading && !hasNotifiedCompletion) {
+      setHasNotifiedCompletion(true)
       onAllProcessed?.([])
       return
     }
@@ -98,7 +79,8 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
         for (const task of unprocessedIncompleteTasks) {
           const choice = taskChoices[task.id]
           if (choice === 'tomorrow') {
-            const tomorrow = new Date()
+            const tomorrowBase = reviewDate ? new Date(reviewDate) : new Date()
+            const tomorrow = new Date(tomorrowBase)
             tomorrow.setDate(tomorrow.getDate() + 1)
             const tomorrowStr = tomorrow.toISOString().split('T')[0]
             await moveTaskToDate(task.id, tomorrowStr)
@@ -114,11 +96,12 @@ export default function ConsciousRollover({ onAllProcessed, disabled = false }: 
         
         setProcessedTasks(newProcessedIds)
         setRolledOverTaskIds(tomorrowIds)
+        setHasNotifiedCompletion(true)
         onAllProcessed?.(tomorrowIds)
       }
       processAll()
     }
-  }, [taskChoices, incompleteTasks, loading, processedTasks, onAllProcessed, moveTaskToDate, moveTaskToBacklog, refreshTasks])
+  }, [taskChoices, incompleteTasks, loading, processedTasks, hasNotifiedCompletion, onAllProcessed, moveTaskToDate, moveTaskToBacklog, refreshTasks])
 
   if (loading) {
     return (

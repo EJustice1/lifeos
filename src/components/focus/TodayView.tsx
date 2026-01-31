@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useTasks } from '@/contexts/TaskContext'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
+import { getTodayLocal } from '@/lib/utils/review-date'
 
 export function TodayView() {
   const { tasks, loading } = useTasks()
 
   // Get today's tasks including completed ones
-  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const today = useMemo(() => getTodayLocal(), [])
   
   // Store the initial sort order to prevent reordering when status changes
   const [taskOrder, setTaskOrder] = useState<string[]>([])

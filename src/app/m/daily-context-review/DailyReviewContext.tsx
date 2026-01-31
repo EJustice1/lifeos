@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
+import type { DailyContextData, DailyReviewRow } from '@/types/daily-review'
 
 export interface DailyReviewFormData {
   executionScore: number
@@ -15,39 +16,14 @@ export interface DailyReviewFormData {
   executionScoreLocked?: boolean
 }
 
-interface DailyContextData {
-  date: string
-  studyHours: number
-  studyMinutes: number
-  workoutsCompleted: number
-  workoutsTotal: number
-  screenTimeHours: number
-  screenTimeMinutes: number
-}
-
-export interface DailyReviewRow {
-  id: string
-  user_id: string
-  date: string
-  execution_score: number
-  unfocused_factors: string[]
-  lesson_learned: string | null
-  highlights: string | null
-  tomorrow_goals?: string[]
-  yesterday_goals?: string[]
-  created_at: string
-  // Screentime field (total only)
-  screen_time_minutes?: number
-  // Execution validation fields
-  execution_score_suggested?: number
-  execution_score_locked?: boolean
-}
+export type { DailyContextData, DailyReviewRow }
 
 interface DailyReviewContextType {
   formData: DailyReviewFormData
   setFormData: (data: Partial<DailyReviewFormData>) => void
   contextData: DailyContextData | null
   existingReview: DailyReviewRow | null
+  reviewDate: string
   yesterdayGoals: string[]
   setYesterdayGoals: (goals: string[]) => void
   completedGoals: Set<number>
@@ -59,51 +35,63 @@ const DailyReviewContext = createContext<DailyReviewContextType | undefined>(und
 export function DailyReviewProvider({
   children,
   initialData = { contextData: null, existingReview: null },
+  reviewDate,
 }: {
   children: ReactNode
   initialData?: {
     contextData: DailyContextData | null
     existingReview: DailyReviewRow | null
   }
+  reviewDate: string
 }) {
   const [yesterdayGoals, setYesterdayGoals] = useState<string[]>([])
   const [completedGoals, setCompletedGoals] = useState<Set<number>>(new Set())
-  
-  const [formData, setFormData] = useState<DailyReviewFormData>(() => {
-    // Initialize with existing review data if available
-    if (initialData.existingReview) {
+
+  const buildInitialFormData = useMemo(() => {
+    return () => {
+      if (initialData.existingReview) {
+        return {
+          executionScore: initialData.existingReview.execution_score || 50,
+          unfocusedFactors: initialData.existingReview.unfocused_factors || [],
+          lessonLearned: initialData.existingReview.lesson_learned || null,
+          highlights: initialData.existingReview.highlights || null,
+          screenTimeMinutes: initialData.existingReview.screen_time_minutes || 0,
+          executionScoreSuggested: initialData.existingReview.execution_score_suggested,
+          executionScoreLocked: initialData.existingReview.execution_score_locked || false,
+        }
+      }
+
       return {
-        executionScore: initialData.existingReview.execution_score || 50,
-        unfocusedFactors: initialData.existingReview.unfocused_factors || [],
-        lessonLearned: initialData.existingReview.lesson_learned || null,
-        highlights: initialData.existingReview.highlights || null,
-        screenTimeMinutes: initialData.existingReview.screen_time_minutes || 0,
-        executionScoreSuggested: initialData.existingReview.execution_score_suggested,
-        executionScoreLocked: initialData.existingReview.execution_score_locked || false,
+        executionScore: 50,
+        unfocusedFactors: [],
+        lessonLearned: null,
+        highlights: null,
+        tomorrowGoals: [],
+        screenTimeMinutes: 0,
+        executionScoreSuggested: undefined,
+        executionScoreLocked: false,
       }
     }
+  }, [initialData.existingReview])
 
-    return {
-      executionScore: 50,
-      unfocusedFactors: [],
-      lessonLearned: null,
-      highlights: null,
-      tomorrowGoals: [],
-      screenTimeMinutes: 0,
-      executionScoreSuggested: undefined,
-      executionScoreLocked: false,
-    }
-  })
+  const [formData, setFormData] = useState<DailyReviewFormData>(() => buildInitialFormData())
 
   const updateFormData = (data: Partial<DailyReviewFormData>) => {
     setFormData(prev => ({ ...prev, ...data }))
   }
+
+  useEffect(() => {
+    setFormData(buildInitialFormData())
+    setYesterdayGoals([])
+    setCompletedGoals(new Set())
+  }, [buildInitialFormData, reviewDate])
 
   const contextValue: DailyReviewContextType = {
     formData,
     setFormData: updateFormData,
     contextData: initialData.contextData,
     existingReview: initialData.existingReview,
+    reviewDate,
     yesterdayGoals,
     setYesterdayGoals,
     completedGoals,

@@ -1,54 +1,23 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { PrimaryButton } from '@/components/mobile/buttons/PrimaryButton'
-import { useTasks } from '@/contexts/TaskContext'
 import type { Task } from '@/types/database'
 import { triggerHapticFeedback, HapticPatterns } from '@/lib/utils/haptic-feedback'
-import { getReviewDate } from '@/lib/utils/review-date'
-import { getReviewCutoffHour } from '@/lib/actions/settings'
+import { useDailyReview } from './DailyReviewContext'
+import { useDailyReviewTaskService } from '@/lib/services/dailyReviewTaskService'
 
 export default function TaskReviewStep() {
+  const { reviewDate } = useDailyReview()
   const {
-    tasks: allTasksFromContext,
+    reviewTasks,
     loading: tasksLoading,
-    getTasksByDate,
-    completeTask,
-    uncompleteTask,
+    toggleTaskComplete,
     refreshTasks,
-    getCompletionRate,
-  } = useTasks()
+  } = useDailyReviewTaskService(reviewDate)
 
-  const [reviewDate, setReviewDate] = useState<string>('')
-  const [initializing, setInitializing] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [taskOrder, setTaskOrder] = useState<string[]>([])
 
-  // Initialize review date
-  useEffect(() => {
-    async function init() {
-      try {
-        const cutoffHour = await getReviewCutoffHour()
-        const date = getReviewDate(cutoffHour)
-        setReviewDate(date)
-      } catch (error) {
-        console.error('Failed to get review date:', error)
-      } finally {
-        setInitializing(false)
-      }
-    }
-    init()
-  }, [])
-
-  // Get tasks for the review date
-  const reviewTasks = useMemo(() => {
-    if (!reviewDate || tasksLoading || initializing) return []
-    
-    return getTasksByDate(reviewDate).filter(t => 
-      ['today', 'in_progress', 'completed'].includes(t.status)
-    )
-  }, [reviewDate, tasksLoading, initializing, getTasksByDate])
-  
   // Initialize or update task order when tasks change (but not when just status changes)
   useEffect(() => {
     const currentTaskIds = reviewTasks.map(t => t.id)
@@ -83,7 +52,7 @@ export default function TaskReviewStep() {
     })
   }, [reviewTasks, taskOrder])
 
-  const loading = tasksLoading || initializing
+  const loading = tasksLoading
   const completedCount = sortedTasks.filter(t => t.status === 'completed').length
   const totalTasks = sortedTasks.length
   const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0
@@ -91,11 +60,7 @@ export default function TaskReviewStep() {
   async function handleToggleComplete(task: Task) {
     try {
       setUpdating(true)
-      if (task.status === 'completed') {
-        await uncompleteTask(task.id)
-      } else {
-        await completeTask(task.id)
-      }
+      await toggleTaskComplete(task)
       // Tasks will auto-update via real-time sync
       triggerHapticFeedback(HapticPatterns.SUCCESS)
     } catch (error) {

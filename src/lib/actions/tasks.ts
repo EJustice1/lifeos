@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Task, LifeGoal, Project } from '@/types/database'
+import { getTodayLocal } from '@/lib/utils/review-date'
 
 // ===================================================================
 // TASK CRUD OPERATIONS
@@ -53,7 +54,7 @@ export async function getTaskById(taskId: string) {
 }
 
 export async function getTodayTasks() {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayLocal()
   return getTasks({ status: 'today', scheduled_date: today })
 }
 
@@ -225,7 +226,7 @@ export async function uncompleteTask(taskId: string) {
 // ===================================================================
 
 export async function promoteToToday(taskId: string) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayLocal()
 
   return updateTask(taskId, {
     status: 'today',
@@ -590,4 +591,226 @@ export async function bulkDeleteTasks(taskIds: string[]) {
 
   revalidatePath('/')
   revalidatePath('/strategy')
+}
+
+// ===================================================================
+// AUTOMATIC TASK ROLLOVER
+// ===================================================================
+
+export interface AutomaticRolloverResult {
+  success: boolean
+  tasksMovedCount: number
+  tasksMoved: string[]
+  alreadyExecuted: boolean
+}
+
+/**
+ * Executes automatic task rollover for incomplete tasks from previous days.
+ * This function is idempotent - it will only execute once per review date.
+ *
+ * Tasks that are automatically moved to backlog:
+ * - Tasks with status='today' AND scheduled_date < reviewDate
+ * - Tasks with status='in_progress' AND scheduled_date < reviewDate
+ * - Tasks with scheduled_date = yesterday AND status != 'completed'
+ */
+export async function executeAutomaticTaskRollover(reviewDate: string): Promise<AutomaticRolloverResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  try {
+    // Check if rollover already executed for this date (idempotency check)
+    const { data: rolloverState } = await supabase
+      .from('task_rollover_state')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (rolloverState && rolloverState.last_rollover_date === reviewDate) {
+      // Already executed for this date
+      return {
+        success: true,
+        tasksMovedCount: 0,
+        tasksMoved: [],
+        alreadyExecuted: true,
+      }
+    }
+
+    // Calculate yesterday's date
+    const reviewDateObj = new Date(reviewDate)
+    const yesterday = new Date(reviewDateObj)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    // Find all tasks that need to be moved to backlog
+    const { data: tasksToRollover } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .neq('status', 'completed')
+      .neq('status', 'cancelled')
+      .or(`and(status.eq.today,scheduled_date.lt.${reviewDate}),and(status.eq.in_progress,scheduled_date.lt.${reviewDate}),and(scheduled_date.eq.${yesterdayStr},status.neq.completed,status.neq.cancelled)`)
+
+    if (!tasksToRollover || tasksToRollover.length === 0) {
+      // No tasks to rollover, but mark as executed
+      await supabase
+        .from('task_rollover_state')
+        .upsert({
+          user_id: user.id,
+          last_rollover_date: reviewDate,
+          last_rollover_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        })
+
+      return {
+        success: true,
+        tasksMovedCount: 0,
+        tasksMoved: [],
+        alreadyExecuted: false,
+      }
+    }
+
+    const taskIds = tasksToRollover.map(t => t.id)
+
+    // Move tasks to backlog (bulk update)
+    const { error: updateError } = await supabase
+      .from('tasks')
+      .update({
+        status: 'backlog',
+        scheduled_date: null,
+        scheduled_time: null,
+      })
+      .in('id', taskIds)
+      .eq('user_id', user.id)
+
+    if (updateError) throw updateError
+
+    // Insert audit log entry
+    await supabase
+      .from('task_rollover_log')
+      .insert({
+        user_id: user.id,
+        rollover_date: reviewDate,
+        tasks_moved: taskIds,
+        executed_at: new Date().toISOString(),
+      })
+
+    // Update rollover state
+    await supabase
+      .from('task_rollover_state')
+      .upsert({
+        user_id: user.id,
+        last_rollover_date: reviewDate,
+        last_rollover_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id'
+      })
+
+    // Revalidate paths
+    revalidatePath('/')
+    revalidatePath('/m/daily-context-review')
+
+    return {
+      success: true,
+      tasksMovedCount: taskIds.length,
+      tasksMoved: taskIds,
+      alreadyExecuted: false,
+    }
+  } catch (error) {
+    console.error('Automatic task rollover failed:', error)
+    throw error
+  }
+}
+
+export interface UndoRolloverResult {
+  success: boolean
+  tasksRestored: number
+}
+
+/**
+ * Undoes the last automatic task rollover if within the 5-minute window.
+ * Restores tasks to their previous state.
+ */
+export async function undoLastTaskRollover(): Promise<UndoRolloverResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  try {
+    // Get the latest rollover log entry
+    const { data: latestLog } = await supabase
+      .from('task_rollover_log')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('executed_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (!latestLog) {
+      throw new Error('No rollover log found')
+    }
+
+    // Check if within 5-minute undo window
+    const executedAt = new Date(latestLog.executed_at)
+    const now = new Date()
+    const minutesSinceExecution = (now.getTime() - executedAt.getTime()) / (1000 * 60)
+
+    if (minutesSinceExecution > 5) {
+      throw new Error('Undo window expired (5 minutes)')
+    }
+
+    // Calculate yesterday from the rollover date
+    const rolloverDateObj = new Date(latestLog.rollover_date)
+    const yesterday = new Date(rolloverDateObj)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    // Restore tasks to their previous state
+    const { error: restoreError } = await supabase
+      .from('tasks')
+      .update({
+        status: 'today',
+        scheduled_date: yesterdayStr,
+      })
+      .in('id', latestLog.tasks_moved)
+      .eq('user_id', user.id)
+
+    if (restoreError) throw restoreError
+
+    // Delete the log entry
+    await supabase
+      .from('task_rollover_log')
+      .delete()
+      .eq('id', latestLog.id)
+      .eq('user_id', user.id)
+
+    // Update rollover state (revert to previous date)
+    const rolloverDateObj2 = new Date(latestLog.rollover_date)
+    const dayBeforeRollover = new Date(rolloverDateObj2)
+    dayBeforeRollover.setDate(dayBeforeRollover.getDate() - 1)
+    const dayBeforeRolloverStr = dayBeforeRollover.toISOString().split('T')[0]
+
+    await supabase
+      .from('task_rollover_state')
+      .update({
+        last_rollover_date: dayBeforeRolloverStr,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id)
+
+    // Revalidate paths
+    revalidatePath('/')
+    revalidatePath('/m/daily-context-review')
+
+    return {
+      success: true,
+      tasksRestored: latestLog.tasks_moved.length,
+    }
+  } catch (error) {
+    console.error('Undo rollover failed:', error)
+    throw error
+  }
 }
